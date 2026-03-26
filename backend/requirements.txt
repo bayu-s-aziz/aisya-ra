@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+supabase
+python-dotenv
+google-genai
+groq
+python-multipart
+openpyxl
+weasyprint
+gunicorn
+apscheduler
+PyPDF2
+python-docx
+pytest
