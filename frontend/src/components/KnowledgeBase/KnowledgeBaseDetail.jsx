@@ -71,11 +71,11 @@ function KnowledgeBaseDetail({ selectedDocId, selectedDoc, onDocDeleted }) {
   }
 
   return (
-    <div className="mt-5 space-y-4 rounded-lg border border-[#d1d7db] p-4">
+    <div className="mt-5 space-y-4 rounded-2xl border border-[#e2e8f0] bg-white p-4 md:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-sm text-[#667781]">Dokumen terpilih</p>
-          <p className="text-base font-medium text-[#111b21]">{selectedDoc?.nama_file || '-'}</p>
+          <p className="text-sm text-[#64748b]">Dokumen terpilih</p>
+          <p className="text-base font-medium text-[#0f172a]">{selectedDoc?.nama_file || '-'}</p>
         </div>
         <button
           type="button"
@@ -93,22 +93,22 @@ function KnowledgeBaseDetail({ selectedDocId, selectedDoc, onDocDeleted }) {
       {error ? <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div> : null}
       {deleteError ? <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">{deleteError}</div> : null}
 
-      {loading ? <p className="text-sm text-[#667781]">Memuat chunks...</p> : null}
+      {loading ? <p className="text-sm text-[#64748b]">Memuat chunks...</p> : null}
 
       {!loading ? (
         <>
           <div>
-            <p className="text-sm font-medium text-[#111b21]">Daftar Chunk</p>
+            <p className="text-sm font-medium text-[#0f172a]">Daftar Chunk</p>
             {chunks.length === 0 ? (
-              <p className="mt-1 text-sm text-[#667781]">Belum ada chunk.</p>
+              <p className="mt-1 text-sm text-[#64748b]">Belum ada chunk.</p>
             ) : (
               <ul className="mt-2 space-y-2">
                 {chunks.map((chunk, index) => {
                   const embeddingSize = Array.isArray(chunk?.embedding) ? chunk.embedding.length : 0
                   return (
-                    <li key={chunk.id || `${chunk.doc_id}-${index}`} className="rounded-md border border-[#e9edef] px-3 py-2">
-                      <p className="text-sm font-medium text-[#111b21]">Chunk #{index + 1}</p>
-                      <p className="text-xs text-[#667781]">Embedding dimensi: {embeddingSize}</p>
+                    <li key={chunk.id || `${chunk.doc_id}-${index}`} className="rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-3 py-2">
+                      <p className="text-sm font-medium text-[#0f172a]">Chunk #{index + 1}</p>
+                      <p className="text-xs text-[#64748b]">Embedding dimensi: {embeddingSize}</p>
                     </li>
                   )
                 })}
@@ -117,8 +117,8 @@ function KnowledgeBaseDetail({ selectedDocId, selectedDoc, onDocDeleted }) {
           </div>
 
           <div>
-            <p className="text-sm font-medium text-[#111b21]">Konten teks chunk pertama</p>
-            <p className="mt-1 whitespace-pre-wrap text-sm text-[#41525d]">{firstChunkText}</p>
+            <p className="text-sm font-medium text-[#0f172a]">Konten teks chunk pertama</p>
+            <p className="mt-1 whitespace-pre-wrap rounded-xl border border-[#e2e8f0] bg-[#f8fafc] p-3 text-sm text-[#334155]">{firstChunkText}</p>
           </div>
         </>
       ) : null}

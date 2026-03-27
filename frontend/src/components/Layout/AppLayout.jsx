@@ -1,11 +1,18 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
 import {
+  AcademicCapIcon,
   Bars3Icon,
   ChevronDownIcon,
+  ClipboardDocumentListIcon,
   BookOpenIcon,
+  CalendarDaysIcon,
+  ChatBubbleLeftEllipsisIcon,
+  DocumentTextIcon,
   HomeIcon,
+  UserGroupIcon,
   UserIcon,
-  XMarkIcon,
+  BellAlertIcon,
+  BuildingLibraryIcon,
 } from '@heroicons/react/24/outline'
 import { fetchAuthMeData } from '../../lib/authMe'
 import { useChatStore } from '../../store/chatStore'
@@ -16,31 +23,95 @@ const loadChatView = () => import('../../views/ChatView')
 const loadKnowledgeBaseView = () => import('../../views/KnowledgeBaseView')
 const loadDashboardView = () => import('../../views/DashboardView')
 const loadProfileView = () => import('../../views/ProfileView')
+const loadRpphView = () => import('../../views/RpphView')
+const loadSuratView = () => import('../../views/SuratView')
+const loadNotifikasiView = () => import('../../views/NotifikasiView')
+const loadPresensiManagementPanel = () => import('../../components/Settings/PresensiManagementPanel')
 
 const ChatList = lazy(loadChatList)
 const ChatView = lazy(loadChatView)
 const KnowledgeBaseView = lazy(loadKnowledgeBaseView)
 const DashboardView = lazy(loadDashboardView)
 const ProfileView = lazy(loadProfileView)
+const RpphView = lazy(loadRpphView)
+const SuratView = lazy(loadSuratView)
+const NotifikasiView = lazy(loadNotifikasiView)
+const PresensiManagementPanel = lazy(loadPresensiManagementPanel)
 
-const loadStudentsManagementPanel = () => import('../../components/Settings/StudentsManagementPanel')
-const loadUsersManagementPanel = () => import('../../components/Settings/UsersManagementPanel')
-const loadKelompokManagementPanel = () => import('../../components/Settings/KelompokManagementPanel')
-const loadPresensiManagementPanel = () => import('../../components/Settings/PresensiManagementPanel')
-
-const DASHBOARD_MENUS = [
-  { id: 'ringkasan', label: 'Ringkasan Dashboard' },
-  { id: 'manajemen-siswa', label: 'Manajemen Siswa' },
-  { id: 'manajemen-presensi', label: 'Manajemen Presensi' },
-  { id: 'manajemen-pengguna', label: 'Manajemen Pengguna' },
-  { id: 'manajemen-kelompok', label: 'Manajemen Kelompok' },
+const APP_MENU_ITEMS = [
+  {
+    id: 'chat',
+    title: 'Chat',
+    description: 'Ruang percakapan AISYA Assistant',
+    icon: ChatBubbleLeftEllipsisIcon,
+  },
+  {
+    id: 'knowledge',
+    title: 'Knowledge Base',
+    description: 'Upload dan kelola dokumen pengetahuan',
+    icon: BookOpenIcon,
+  },
+  {
+    id: 'rpph',
+    title: 'RPPH',
+    description: 'Riwayat dan unduh dokumen RPPH',
+    icon: CalendarDaysIcon,
+  },
+  {
+    id: 'surat',
+    title: 'Surat',
+    description: 'Buat surat, arsip, dan template',
+    icon: DocumentTextIcon,
+  },
+  {
+    id: 'presensi',
+    title: 'Presensi',
+    description: 'Input dan rekap presensi siswa',
+    icon: BuildingLibraryIcon,
+  },
+  {
+    id: 'notifikasi',
+    title: 'Notifikasi',
+    description: 'Lihat dan tandai notifikasi terbaru',
+    icon: BellAlertIcon,
+  },
 ]
 
 const KEPALA_ROLES = ['kepala_ra', 'kepala', 'admin', 'admin_ra']
 
+const DASHBOARD_MENUS = [
+  {
+    id: 'ringkasan',
+    label: 'Ringkasan Dashboard',
+    icon: HomeIcon,
+  },
+  {
+    id: 'manajemen-siswa',
+    label: 'Manajemen Siswa',
+    icon: AcademicCapIcon,
+  },
+  {
+    id: 'manajemen-presensi',
+    label: 'Manajemen Presensi',
+    icon: ClipboardDocumentListIcon,
+  },
+  {
+    id: 'manajemen-pengguna',
+    label: 'Manajemen Pengguna',
+    icon: UserGroupIcon,
+    adminOnly: true,
+  },
+  {
+    id: 'manajemen-kelompok',
+    label: 'Manajemen Kelompok',
+    icon: BuildingLibraryIcon,
+    adminOnly: true,
+  },
+]
+
 function SidebarLoadingFallback() {
   return (
-    <div className="h-full rounded-2xl border border-[#323847] bg-[#202634] px-4 py-4 text-sm text-[#94a3b8]">
+    <div className="h-full bg-transparent px-4 py-4 text-sm text-[#94a3b8]">
       Memuat sidebar...
     </div>
   )
@@ -48,18 +119,10 @@ function SidebarLoadingFallback() {
 
 function ContentLoadingFallback() {
   return (
-    <div className="flex h-full items-center justify-center bg-white px-4">
+    <div className="flex h-full items-center justify-center bg-[#f8fafc] px-4">
       <p className="text-sm text-[#64748b]">Memuat konten...</p>
     </div>
   )
-}
-
-function prefetchDashboardPanelResources(panelId) {
-  if (panelId === 'manajemen-siswa') return loadStudentsManagementPanel()
-  if (panelId === 'manajemen-pengguna') return loadUsersManagementPanel()
-  if (panelId === 'manajemen-kelompok') return loadKelompokManagementPanel()
-  if (panelId === 'manajemen-presensi') return loadPresensiManagementPanel()
-  return Promise.resolve()
 }
 
 function getInitials(name) {
@@ -77,13 +140,16 @@ function AppLayout() {
   const token = localStorage.getItem('aisya_access_token')
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
-  const [currentView, setCurrentView] = useState('chat') // default to chat like ChatGPT
+  const [currentView, setCurrentView] = useState('chat')
   const [dashboardPanel, setDashboardPanel] = useState('ringkasan')
   const [openUserSettingsSignal, setOpenUserSettingsSignal] = useState(0)
   const [openRaSettingsSignal, setOpenRaSettingsSignal] = useState(0)
 
   const [profile, setProfile] = useState(null)
   const [raProfile, setRaProfile] = useState(null)
+  const [shellError, setShellError] = useState('')
+  const [isSwitchingView, setIsSwitchingView] = useState(false)
+
   const userMenuRef = useRef(null)
 
   const {
@@ -113,15 +179,9 @@ function AppLayout() {
     return documents.find((doc) => String(doc.id) === String(selectedDocId)) || null
   }, [documents, selectedDocId, currentView])
 
-  const activeTitle = useMemo(() => {
-    const titleMap = {
-      chat: 'AISYA Assistant',
-      knowledge: 'Knowledge Base',
-      dashboard: 'Dashboard',
-      profile: 'Profil',
-    }
-    return titleMap[currentView] || 'AISYA'
-  }, [currentView])
+  const dashboardMenus = useMemo(() => {
+    return DASHBOARD_MENUS.filter((item) => !item.adminOnly || canManageRaProfile)
+  }, [canManageRaProfile])
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -142,13 +202,6 @@ function AppLayout() {
     const namaRa = (raProfile?.nama_ra || '').trim()
     document.title = namaRa ? `AISYA RA | ${namaRa}` : 'AISYA RA'
   }, [raProfile?.nama_ra])
-
-  useEffect(() => {
-    if (currentView === 'chat' && (chatStoreSelectedRoomId || selectedRoom?.id)) {
-      // setSelectedRoomId(String(chatStoreSelectedRoomId || selectedRoom?.id))
-      setIsSidebarOpen(false)
-    }
-  }, [chatStoreSelectedRoomId, selectedRoom?.id, currentView])
 
   useEffect(() => {
     if (!isUserMenuOpen) return
@@ -173,6 +226,14 @@ function AppLayout() {
         loadProfileView()
       } else if (currentView === 'knowledge') {
         loadKnowledgeBaseView()
+      } else if (currentView === 'rpph') {
+        loadRpphView()
+      } else if (currentView === 'surat') {
+        loadSuratView()
+      } else if (currentView === 'notifikasi') {
+        loadNotifikasiView()
+      } else if (currentView === 'presensi') {
+        loadPresensiManagementPanel()
       }
     }
 
@@ -190,46 +251,38 @@ function AppLayout() {
   }, [currentView])
 
   const handleViewChange = (view) => {
+    setIsSwitchingView(true)
+    setShellError('')
     setCurrentView(view)
     setIsUserMenuOpen(false)
-    if (view === 'chat') {
-      setIsSidebarOpen(true) // open sidebar for chat
-    } else {
-      setIsSidebarOpen(false)
-    }
+    setTimeout(() => setIsSwitchingView(false), 120)
   }
 
   const openDashboardFromMenu = () => {
+    setShellError('')
     setCurrentView('dashboard')
     setDashboardPanel('ringkasan')
     setIsUserMenuOpen(false)
-    setIsSidebarOpen(false)
-  }
-
-  const openKnowledgeBaseFromMenu = () => {
-    setCurrentView('knowledge')
-    setIsUserMenuOpen(false)
-    setIsSidebarOpen(false)
   }
 
   const openUserProfileSettings = () => {
+    setShellError('')
     setCurrentView('profile')
     setOpenUserSettingsSignal((prev) => prev + 1)
     setIsUserMenuOpen(false)
-    setIsSidebarOpen(false)
   }
 
   const openRaProfileSettings = () => {
+    setShellError('')
     setCurrentView('profile')
     setOpenRaSettingsSignal((prev) => prev + 1)
     setIsUserMenuOpen(false)
-    setIsSidebarOpen(false)
   }
 
   const openProfileOverview = () => {
+    setShellError('')
     setCurrentView('profile')
     setIsUserMenuOpen(false)
-    setIsSidebarOpen(false)
   }
 
   const handleLogout = () => {
@@ -243,7 +296,21 @@ function AppLayout() {
   const renderSidebar = () => {
     return (
       <Suspense fallback={<SidebarLoadingFallback />}>
-        <ChatList />
+        <ChatList
+          appMenuItems={APP_MENU_ITEMS}
+          currentView={currentView}
+          onSelectApp={(view) => {
+            handleViewChange(view)
+            setIsSidebarOpen(false)
+          }}
+          listTitle={currentView === 'dashboard' ? 'Menu dashboard' : 'Your chats'}
+          customItems={currentView === 'dashboard' ? dashboardMenus : []}
+          activeCustomItemId={dashboardPanel}
+          onCustomItemClick={(itemId) => {
+            setDashboardPanel(itemId)
+            setIsSidebarOpen(false)
+          }}
+        />
       </Suspense>
     )
   }
@@ -274,6 +341,8 @@ function AppLayout() {
           <KnowledgeBaseView
             selectedDocId={selectedDocId || ''}
             selectedDoc={selectedDoc}
+            onSelectDocId={(docId) => setSelectedDocId(docId)}
+            onDocumentsLoaded={(nextDocs) => setDocuments(nextDocs)}
             onDocDeleted={(deletedId) => {
               const nextDocs = documents.filter((doc) => String(doc.id) !== String(deletedId))
               setDocuments(nextDocs)
@@ -284,6 +353,42 @@ function AppLayout() {
               }
             }}
           />
+        </Suspense>
+      )
+    }
+
+    if (currentView === 'rpph') {
+      return (
+        <Suspense fallback={<ContentLoadingFallback />}>
+          <RpphView />
+        </Suspense>
+      )
+    }
+
+    if (currentView === 'surat') {
+      return (
+        <Suspense fallback={<ContentLoadingFallback />}>
+          <SuratView />
+        </Suspense>
+      )
+    }
+
+    if (currentView === 'presensi') {
+      return (
+        <Suspense fallback={<ContentLoadingFallback />}>
+          <div className="h-full overflow-y-auto bg-[#f8fafc] px-4 py-4 md:px-6">
+            <div className="mx-auto w-full max-w-6xl rounded-3xl border border-[#e2e8f0] bg-white p-4 shadow-sm md:p-6">
+              <PresensiManagementPanel />
+            </div>
+          </div>
+        </Suspense>
+      )
+    }
+
+    if (currentView === 'notifikasi') {
+      return (
+        <Suspense fallback={<ContentLoadingFallback />}>
+          <NotifikasiView />
         </Suspense>
       )
     }
@@ -301,7 +406,7 @@ function AppLayout() {
   }
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-white">
+    <div className="flex h-screen w-full overflow-hidden bg-[#f5f5f7] text-[#0f172a]">
       {isSidebarOpen ? (
         <button
           type="button"
@@ -313,103 +418,127 @@ function AppLayout() {
 
       <aside
         className={[
-          'fixed inset-y-0 left-0 z-40 flex w-[320px] max-w-[92vw] flex-col border-r border-[#e5e7eb] bg-white transition-transform duration-200',
-          'md:static md:w-[320px] md:max-w-[320px] md:flex-none md:translate-x-0',
+          'fixed inset-y-0 left-0 z-40 flex w-[260px] max-w-[90vw] flex-col border-r border-[#e4e7ec] bg-[#f3f4f6] transition-transform duration-200',
+          'md:static md:w-[260px] md:max-w-[260px] md:flex-none md:translate-x-0',
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full',
         ].join(' ')}
       >
-        <div className="min-h-0 flex-1 px-3 py-3">
+        <header className="border-b border-[#e4e7ec] px-3 py-3">
+          <div className="flex items-center gap-2">
+            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-[#111827] text-[11px] font-bold text-white">AI</div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#667085]">AISYA Workspace</p>
+              <p className="text-sm font-semibold text-[#111827]">Panel Kiri</p>
+            </div>
+          </div>
+        </header>
+
+        <div className="min-h-0 flex-1 py-2">
           {renderSidebar()}
+        </div>
+
+        <div className="relative border-t border-[#e4e7ec] p-2" ref={userMenuRef}>
+          <button
+            type="button"
+            onClick={() => {
+              setIsUserMenuOpen((prev) => !prev)
+            }}
+            className="flex w-full items-center gap-2 rounded-xl px-2 py-2 text-left hover:bg-white"
+            title="Menu pengguna"
+          >
+            {profile?.foto_url ? (
+              <img src={profile.foto_url} alt={shortName} className="h-8 w-8 rounded-full object-cover" />
+            ) : (
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#dbe2ea] text-sm font-semibold text-[#0f172a]">
+                {getInitials(shortName)}
+              </div>
+            )}
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold text-[#0f172a]">{shortName || 'Pengguna AISYA'}</p>
+              <p className="truncate text-xs text-[#667085]">Free</p>
+            </div>
+            <ChevronDownIcon className="h-4 w-4 text-[#64748b]" />
+          </button>
+
+          {isUserMenuOpen ? (
+            <div className="menu-pop absolute bottom-[calc(100%+10px)] left-3 z-50 w-[260px] overflow-hidden rounded-2xl border border-[#e4e7ec] bg-white shadow-xl">
+              <div className="border-b border-[#e4e7ec] px-4 py-3">
+                <p className="text-sm font-semibold text-[#0f172a]">{shortName || 'Pengguna AISYA'}</p>
+                <p className="mt-0.5 text-xs text-[#64748b]">{profile?.email || '-'}</p>
+              </div>
+              <button
+                type="button"
+                onClick={openDashboardFromMenu}
+                className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-[#374151] hover:bg-[#f8fafc]"
+              >
+                <HomeIcon className="h-4 w-4" />
+                Dashboard
+              </button>
+              <button
+                type="button"
+                onClick={openUserProfileSettings}
+                className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-[#374151] hover:bg-[#f8fafc]"
+              >
+                <UserIcon className="h-4 w-4" />
+                Pengaturan Profil Pengguna
+              </button>
+              {canManageRaProfile ? (
+                <button
+                  type="button"
+                  onClick={openRaProfileSettings}
+                  className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-[#374151] hover:bg-[#f8fafc]"
+                >
+                  <UserIcon className="h-4 w-4" />
+                  Pengaturan Profil RA
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={openProfileOverview}
+                className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-[#374151] hover:bg-[#f8fafc]"
+              >
+                <UserIcon className="h-4 w-4" />
+                Lihat Profil
+              </button>
+              <div className="border-t border-[#e4e7ec]" />
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="w-full px-4 py-2.5 text-left text-sm text-[#dc2626] hover:bg-[#f8fafc]"
+              >
+                Keluar
+              </button>
+            </div>
+          ) : null}
         </div>
       </aside>
 
-      <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <div className="flex items-center justify-between border-b border-[#e5e7eb] bg-white px-3 py-2.5 md:px-6">
+      <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
+        {!isSidebarOpen ? (
           <button
             type="button"
             onClick={() => setIsSidebarOpen(true)}
-            className="rounded-full p-2 text-[#475569] hover:bg-[#f1f5f9] md:hidden"
+            className="absolute left-3 top-3 z-20 rounded-full border border-[#d0d5dd] bg-white/90 p-2 text-[#475569] shadow-sm hover:bg-white md:hidden"
             aria-label="Buka sidebar"
           >
             <Bars3Icon className="h-5 w-5" />
           </button>
-          <div className="min-w-0 flex-1 md:flex-none">
-            <p className="truncate text-sm font-semibold text-[#0f172a] md:text-base">{activeTitle}</p>
-          </div>
-          <div className="relative" ref={userMenuRef}>
-            <button
-              type="button"
-              onClick={() => setIsUserMenuOpen((prev) => !prev)}
-              className="flex items-center gap-3 rounded-full border border-[#e5e7eb] bg-white px-3 py-2 text-left hover:bg-[#f8fafc]"
-              title="Menu pengguna"
-            >
-              {profile?.foto_url ? (
-                <img src={profile.foto_url} alt={shortName} className="h-8 w-8 rounded-full object-cover" />
-              ) : (
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#f1f5f9] text-sm font-semibold text-[#0f172a]">
-                  {getInitials(shortName)}
-                </div>
-              )}
-              <ChevronDownIcon className="h-4 w-4 text-[#64748b]" />
-            </button>
+        ) : null}
 
-            {isUserMenuOpen ? (
-              <div className="absolute bottom-[calc(100%+8px)] right-0 z-50 w-64 overflow-hidden rounded-xl border border-[#e5e7eb] bg-white shadow-lg">
-                <button
-                  type="button"
-                  onClick={openKnowledgeBaseFromMenu}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-[#374151] hover:bg-[#f8fafc]"
-                >
-                  <BookOpenIcon className="h-4 w-4" />
-                  Knowledge Base
-                </button>
-                <button
-                  type="button"
-                  onClick={openDashboardFromMenu}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-[#374151] hover:bg-[#f8fafc]"
-                >
-                  <HomeIcon className="h-4 w-4" />
-                  Dashboard
-                </button>
-                <button
-                  type="button"
-                  onClick={openUserProfileSettings}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-[#374151] hover:bg-[#f8fafc]"
-                >
-                  <UserIcon className="h-4 w-4" />
-                  Pengaturan Profil Pengguna
-                </button>
-                {canManageRaProfile ? (
-                  <button
-                    type="button"
-                    onClick={openRaProfileSettings}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-[#374151] hover:bg-[#f8fafc]"
-                  >
-                    <UserIcon className="h-4 w-4" />
-                    Pengaturan Profil RA
-                  </button>
-                ) : null}
-                <button
-                  type="button"
-                  onClick={openProfileOverview}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-[#374151] hover:bg-[#f8fafc]"
-                >
-                  <UserIcon className="h-4 w-4" />
-                  Lihat Profil
-                </button>
-                <div className="border-t border-[#e5e7eb]" />
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="w-full px-3 py-2 text-left text-sm text-[#dc2626] hover:bg-[#f8fafc]"
-                >
-                  Keluar
-                </button>
-              </div>
-            ) : null}
+        {shellError ? (
+          <div className="border-b border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+            {shellError}
           </div>
+        ) : null}
+
+        <div
+          className={[
+            'content-fade min-h-0 flex-1 transition-opacity duration-150',
+            isSwitchingView ? 'opacity-70' : 'opacity-100',
+          ].join(' ')}
+        >
+          {renderMainContent()}
         </div>
-        <div className="min-h-0 flex-1">{renderMainContent()}</div>
       </main>
     </div>
   )

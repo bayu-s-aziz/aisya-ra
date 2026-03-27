@@ -77,14 +77,16 @@ function MessageBubble({ message }) {
   const imageUrl = getImageUrlFromMessage(message)
 
   return (
-    <div className={`mb-4 flex w-full ${isUser ? 'justify-end' : 'justify-start'}`}>
+    <div className={`message-enter mb-5 flex w-full ${isUser ? 'justify-end' : 'justify-start'}`}>
       <div
-        className={`relative max-w-[80%] min-w-0 overflow-hidden rounded-2xl px-4 py-3 text-sm ${
+        className={`max-w-[92%] min-w-0 text-sm md:max-w-[85%] ${
           isUser
-            ? 'bg-[#007aff] text-white'
-            : 'bg-[#f1f1f1] text-[#111827]'
+            ? 'overflow-hidden rounded-2xl bg-[#111827] px-4 py-3 text-white shadow-sm'
+            : 'px-0 py-1 text-[#101828]'
         }`}
       >
+        {!isUser ? <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#98a2b3]">AISYA</p> : null}
+
         {imageUrl ? (
           <a href={imageUrl} target="_blank" rel="noreferrer" className="mb-2 block">
             <img
@@ -101,9 +103,9 @@ function MessageBubble({ message }) {
         </div>
 
         {timeLabel ? (
-          <span className={`absolute bottom-[-18px] right-0 text-[11px] leading-none ${isUser ? 'text-[#64748b]' : 'text-[#64748b]'}`}>
+          <p className={`mt-2 text-[11px] leading-none ${isUser ? 'text-right text-slate-300' : 'text-left text-[#98a2b3]'}`}>
             {timeLabel}
-          </span>
+          </p>
         ) : null}
       </div>
     </div>

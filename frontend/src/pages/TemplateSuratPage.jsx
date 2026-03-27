@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import api from '../lib/api'
 
 const JENIS_OPTIONS = ['undangan', 'keterangan', 'tugas', 'izin', 'lainnya']
@@ -16,9 +16,9 @@ function TemplateSuratPage() {
   const [saving, setSaving] = useState(false)
 
   const token = localStorage.getItem('aisya_access_token')
-  const headers = { Authorization: `Bearer ${token}` }
+  const headers = useMemo(() => ({ Authorization: `Bearer ${token}` }), [token])
 
-  const fetchTemplates = async () => {
+  const fetchTemplates = useCallback(async () => {
     setLoading(true)
     setError('')
     try {
@@ -29,9 +29,11 @@ function TemplateSuratPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [headers])
 
-  useEffect(() => { fetchTemplates() }, [])
+  useEffect(() => {
+    fetchTemplates()
+  }, [fetchTemplates])
 
   const clearMessages = () => { setError(''); setSuccess('') }
 
@@ -91,7 +93,7 @@ function TemplateSuratPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 px-4 py-8">
+    <div className="h-full bg-[#f8fafc] px-4 py-4 md:px-6">
       <div className="mx-auto w-full max-w-5xl">
         <div className="rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
           {/* Header */}

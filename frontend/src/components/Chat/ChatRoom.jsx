@@ -1,7 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import PropTypes from 'prop-types'
-import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline'
-import ChatHeader from './ChatHeader'
 import MessageList from './MessageList'
 import ChatInput from './ChatInput'
 import api from '../../lib/api'
@@ -29,17 +27,17 @@ function uniqueById(list) {
 
 function EmptyChatState({ onOpenSidebar }) {
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-6 bg-white px-4">
-      <div className="text-center">
+    <div className="flex h-full flex-col items-center justify-center gap-6 bg-[#f8fafc] px-4">
+      <div className="max-w-xl rounded-3xl border border-[#e2e8f0] bg-white px-8 py-8 text-center shadow-sm">
         <h1 className="text-2xl font-semibold text-[#0f172a]">AISYA Assistant</h1>
-        <p className="mt-2 text-sm text-[#64748b]">How can I help you today?</p>
+        <p className="mt-2 text-sm text-[#64748b]">Pilih percakapan di sidebar kiri atau buat ruang baru untuk memulai.</p>
       </div>
       <button
         type="button"
         onClick={onOpenSidebar}
-        className="rounded-lg bg-[#007aff] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#0056cc] md:hidden"
+        className="rounded-full bg-[#0f172a] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#020617] md:hidden"
       >
-        Open Sidebar
+        Buka Sidebar
       </button>
     </div>
   )
@@ -57,9 +55,7 @@ function ChatRoom({ roomId, onOpenSidebar }) {
   const [loadingMore, setLoadingMore] = useState(false)
   const [messagesError, setMessagesError] = useState('')
 
-  const rooms = useChatStore((state) => state.rooms)
   const selectedRoomId = useChatStore((state) => state.selectedRoomId)
-  const selectedRoom = useChatStore((state) => state.selectedRoom)
   const incomingMessages = useChatStore((state) => state.incomingMessages)
   const sending = useChatStore((state) => state.sending)
   const sendError = useChatStore((state) => state.sendError)
@@ -70,10 +66,6 @@ function ChatRoom({ roomId, onOpenSidebar }) {
   const subscribeActiveRoomRealtime = useChatStore((state) => state.subscribeActiveRoomRealtime)
 
   const activeRoomId = roomId || selectedRoomId || ''
-  const activeRoom = useMemo(() => {
-    if (selectedRoom?.id === activeRoomId) return selectedRoom
-    return rooms.find((item) => item.id === activeRoomId) || null
-  }, [activeRoomId, rooms, selectedRoom])
 
   const hasMore = messages.length < total
 
@@ -175,7 +167,6 @@ function ChatRoom({ roomId, onOpenSidebar }) {
 
   return (
     <>
-      <ChatHeader room={activeRoom} onBack={onOpenSidebar} />
       <div className="flex-1 overflow-hidden">
         <MessageList
           messages={messages}

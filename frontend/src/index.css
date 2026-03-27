@@ -1,19 +1,25 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
 :root {
-  --aisya-bg: #f7f7f8;
+  --aisya-bg: #f5f5f7;
   --aisya-surface: #ffffff;
-  --aisya-text: #0f172a;
-  --aisya-muted: #64748b;
+  --aisya-text: #121316;
+  --aisya-muted: #667085;
+  --aisya-border: #e4e7ec;
+  --aisya-shadow-soft: 0 8px 28px rgba(15, 23, 42, 0.08);
 }
 
 body {
   margin: 0;
   min-width: 320px;
-  font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif;
+  font-family: 'Manrope', 'Segoe UI', sans-serif;
   color: var(--aisya-text);
-  background: radial-gradient(circle at top left, #f1f5f9, #f8fafc 35%, #f8fafc 100%);
+  background: radial-gradient(circle at top left, #eef2ff 0%, #f5f5f7 35%, #f5f5f7 100%);
+}
+
+#root {
+  min-height: 100vh;
 }
 
 /* ── Custom scrollbar (WhatsApp-like) ── */
@@ -47,3 +53,57 @@ body {
 }
 .typing-dot:nth-child(2) { animation-delay: 0.2s; }
 .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes menu-pop {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes content-fade {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes message-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.menu-pop {
+  animation: menu-pop 160ms ease-out;
+}
+
+.content-fade {
+  animation: content-fade 180ms ease-out;
+}
+
+.message-enter {
+  animation: message-enter 220ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .menu-pop,
+  .content-fade,
+  .message-enter,
+  .typing-dot {
+    animation: none !important;
+  }
+}

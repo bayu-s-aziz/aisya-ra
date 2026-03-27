@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, 
 
 from app.database import get_supabase_client
 from app.models.chat import (
+    DeleteChatRoomResponse,
     ChatMessagesResponse,
     ChatRoomListResponse,
     CreateChatRoomRequest,
@@ -513,6 +514,47 @@ def list_chat_rooms(current=Depends(get_current_user_profile)):
         ) from exc
 
     return {"success": True, "data": response.data or []}
+
+
+@router.delete("/rooms/{room_id}", response_model=DeleteChatRoomResponse)
+def delete_chat_room(
+    room_id: str,
+    current=Depends(get_current_user_profile),
+):
+    supabase = get_supabase_client()
+    ra_id = current["ra_id"]
+
+    try:
+        room_check = (
+            supabase.table("chat_rooms")
+            .select("id")
+            .eq("id", room_id)
+            .eq("ra_id", ra_id)
+            .limit(1)
+            .execute()
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Gagal memeriksa ruang chat: {exc}",
+        ) from exc
+
+    if not room_check.data:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Ruang chat tidak ditemukan",
+        )
+
+    try:
+        supabase.table("chat_history").delete().eq("room_id", room_id).execute()
+        supabase.table("chat_rooms").delete().eq("id", room_id).eq("ra_id", ra_id).execute()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Gagal menghapus ruang chat: {exc}",
+        ) from exc
+
+    return {"success": True, "message": "Ruang chat berhasil dihapus"}
 
 
 @router.get("/rooms/{room_id}/messages", response_model=ChatMessagesResponse)

@@ -91,15 +91,15 @@ function NewRoomModal({ isOpen, onClose, onRoomCreated }) {
       }}
     >
       {/* Panel */}
-      <div className="w-full max-w-sm rounded-xl bg-white shadow-xl">
+      <div className="w-full max-w-sm rounded-2xl border border-[#e2e8f0] bg-white shadow-xl">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-[#f0f2f5] px-5 py-4">
-          <h2 className="text-[15px] font-semibold text-[#111b21]">Ruang Chat Baru</h2>
+        <div className="flex items-center justify-between border-b border-[#e2e8f0] px-5 py-4">
+          <h2 className="text-[15px] font-semibold text-[#0f172a]">Ruang Chat Baru</h2>
           <button
             type="button"
             aria-label="Tutup"
             onClick={onClose}
-            className="rounded-full p-1.5 text-[#8696a0] transition-colors hover:bg-[#f0f2f5] hover:text-[#111b21]"
+            className="rounded-full p-1.5 text-[#64748b] transition-colors hover:bg-[#f1f5f9] hover:text-[#0f172a]"
           >
             <XMarkIcon className="h-5 w-5" />
           </button>
@@ -108,7 +108,7 @@ function NewRoomModal({ isOpen, onClose, onRoomCreated }) {
         {/* Form */}
         <form onSubmit={handleSubmit} className="px-5 py-5">
           <div className="mb-4">
-            <label htmlFor="room-nama" className="mb-1.5 block text-xs font-medium text-[#667781]">
+            <label htmlFor="room-nama" className="mb-1.5 block text-xs font-medium text-[#64748b]">
               Nama Ruang
             </label>
             <input
@@ -119,20 +119,20 @@ function NewRoomModal({ isOpen, onClose, onRoomCreated }) {
               onChange={(e) => setNama(e.target.value)}
               maxLength={80}
               placeholder="Contoh: Diskusi RPPH Kelompok A"
-              className="w-full rounded-lg border border-[#d1d7db] bg-white px-3 py-2.5 text-sm text-[#111b21] outline-none transition-colors placeholder:text-[#8696a0] focus:border-[#00a884] focus:ring-1 focus:ring-[#00a884]"
+              className="w-full rounded-lg border border-[#d1d5db] bg-white px-3 py-2.5 text-sm text-[#0f172a] outline-none transition-colors placeholder:text-[#94a3b8] focus:border-[#0f172a] focus:ring-1 focus:ring-[#0f172a]"
             />
-            <p className="mt-1 text-right text-[11px] text-[#8696a0]">{nama.length}/80</p>
+            <p className="mt-1 text-right text-[11px] text-[#94a3b8]">{nama.length}/80</p>
           </div>
 
           <div className="mb-5">
-            <label htmlFor="room-tipe" className="mb-1.5 block text-xs font-medium text-[#667781]">
+            <label htmlFor="room-tipe" className="mb-1.5 block text-xs font-medium text-[#64748b]">
               Tipe Ruang
             </label>
             <select
               id="room-tipe"
               value={tipe}
               onChange={(e) => setTipe(e.target.value)}
-              className="w-full rounded-lg border border-[#d1d7db] bg-white px-3 py-2.5 text-sm text-[#111b21] outline-none transition-colors focus:border-[#00a884] focus:ring-1 focus:ring-[#00a884]"
+              className="w-full rounded-lg border border-[#d1d5db] bg-white px-3 py-2.5 text-sm text-[#0f172a] outline-none transition-colors focus:border-[#0f172a] focus:ring-1 focus:ring-[#0f172a]"
             >
               {TIPE_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -151,14 +151,14 @@ function NewRoomModal({ isOpen, onClose, onRoomCreated }) {
               type="button"
               onClick={onClose}
               disabled={loading}
-              className="rounded-full px-4 py-2 text-sm font-medium text-[#54656f] transition-colors hover:bg-[#f0f2f5]"
+              className="rounded-full px-4 py-2 text-sm font-medium text-[#475569] transition-colors hover:bg-[#f1f5f9]"
             >
               Batal
             </button>
             <button
               type="submit"
               disabled={loading || !nama.trim()}
-              className="rounded-full bg-[#00a884] px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-[#017c63] disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-full bg-[#0f172a] px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-[#020617] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {loading ? 'Membuat...' : 'Buat'}
             </button>

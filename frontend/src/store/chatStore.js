@@ -4,6 +4,7 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase'
 
 const ROOM_FETCH_LIMIT = 100
 let activeRoomChannel = null
+const DRAFT_ROOM_PREFIX = 'draft-'
 
 function authHeader() {
   const token = localStorage.getItem('aisya_access_token')
@@ -51,6 +52,30 @@ function upsertRoomPreview(rooms, message) {
   return [updated, ...next]
 }
 
+function isDraftRoomId(roomId) {
+  return String(roomId || '').startsWith(DRAFT_ROOM_PREFIX)
+}
+
+function createDraftRoomName() {
+  return `Percakapan ${new Intl.DateTimeFormat('id-ID', {
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date())}`
+}
+
+async function persistDraftRoom(draftRoom) {
+  const nama = String(draftRoom?.nama || '').trim() || createDraftRoomName()
+  const tipe = draftRoom?.tipe || 'custom'
+  const response = await api.post(
+    '/chat/rooms',
+    { nama, tipe },
+    { headers: authHeader() },
+  )
+  return response?.data?.data || null
+}
+
 export const useChatStore = create((set, get) => ({
   rooms: [],
   roomsLoading: false,
@@ -67,22 +92,30 @@ export const useChatStore = create((set, get) => ({
   realtimeError: '',
 
   setSelectedRoom: (room) => {
+    const previousSelectedRoomId = get().selectedRoomId
     set({
       selectedRoomId: room?.id || '',
       selectedRoom: room,
       incomingMessages: [],
       sendError: '',
+      rooms: isDraftRoomId(previousSelectedRoomId) && previousSelectedRoomId !== room?.id
+        ? get().rooms.filter((item) => item.id !== previousSelectedRoomId)
+        : get().rooms,
     })
   },
 
   setSelectedRoomId: (roomId) => {
     const targetRoomId = roomId || ''
+    const previousSelectedRoomId = get().selectedRoomId
     const room = get().rooms.find((item) => item.id === targetRoomId) || null
     set({
       selectedRoomId: targetRoomId,
       selectedRoom: room,
       incomingMessages: [],
       sendError: '',
+      rooms: isDraftRoomId(previousSelectedRoomId) && previousSelectedRoomId !== targetRoomId
+        ? get().rooms.filter((item) => item.id !== previousSelectedRoomId)
+        : get().rooms,
     })
   },
 
@@ -95,6 +128,64 @@ export const useChatStore = create((set, get) => ({
         rooms: nextRooms,
       }
     })
+  },
+
+  createDraftRoom: () => {
+    const draftRoomId = `${DRAFT_ROOM_PREFIX}${Date.now()}`
+    const draftRoom = {
+      id: draftRoomId,
+      ra_id: '',
+      tipe: 'custom',
+      nama: createDraftRoomName(),
+      isDraft: true,
+      created_at: new Date().toISOString(),
+    }
+
+    set((state) => ({
+      rooms: [
+        draftRoom,
+        ...state.rooms.filter((item) => !isDraftRoomId(item.id)),
+      ],
+      selectedRoomId: draftRoomId,
+      selectedRoom: draftRoom,
+      incomingMessages: [],
+      sendError: '',
+    }))
+  },
+
+  deleteRoom: async (roomId) => {
+    if (!roomId) return { ok: false, error: 'Room tidak valid' }
+
+    const currentRooms = get().rooms
+    const fallbackRoom = currentRooms.find((item) => item.id !== roomId) || null
+
+    if (isDraftRoomId(roomId)) {
+      set((state) => ({
+        rooms: state.rooms.filter((item) => item.id !== roomId),
+        selectedRoomId: state.selectedRoomId === roomId ? (fallbackRoom?.id || '') : state.selectedRoomId,
+        selectedRoom: state.selectedRoomId === roomId ? fallbackRoom : state.selectedRoom,
+        incomingMessages: state.selectedRoomId === roomId ? [] : state.incomingMessages,
+      }))
+      return { ok: true }
+    }
+
+    try {
+      await api.delete(`/chat/rooms/${roomId}`, { headers: authHeader() })
+
+      set((state) => ({
+        rooms: state.rooms.filter((item) => item.id !== roomId),
+        selectedRoomId: state.selectedRoomId === roomId ? (fallbackRoom?.id || '') : state.selectedRoomId,
+        selectedRoom: state.selectedRoomId === roomId ? fallbackRoom : state.selectedRoom,
+        incomingMessages: state.selectedRoomId === roomId ? [] : state.incomingMessages,
+      }))
+
+      return { ok: true }
+    } catch (err) {
+      return {
+        ok: false,
+        error: err?.response?.data?.detail || 'Gagal menghapus ruang chat',
+      }
+    }
   },
 
   refreshRooms: async () => {
@@ -150,15 +241,37 @@ export const useChatStore = create((set, get) => ({
   },
 
   sendMessage: async (content) => {
-    const selectedRoomId = get().selectedRoomId || get().selectedRoom?.id
-    if (!selectedRoomId || !content?.trim()) return
+    const trimmedContent = content?.trim()
+    if (!trimmedContent) return
+
+    let selectedRoomId = get().selectedRoomId || get().selectedRoom?.id
+    const selectedRoom = get().selectedRoom
+    if (!selectedRoomId) return
 
     set({ sending: true, sendError: '' })
 
     try {
+      if (isDraftRoomId(selectedRoomId) || selectedRoom?.isDraft) {
+        const persistedRoom = await persistDraftRoom(selectedRoom)
+        if (!persistedRoom?.id) {
+          throw new Error('Gagal membuat ruang chat baru')
+        }
+
+        set((state) => ({
+          rooms: [
+            persistedRoom,
+            ...state.rooms.filter((item) => item.id !== selectedRoomId),
+          ],
+          selectedRoomId: persistedRoom.id,
+          selectedRoom: persistedRoom,
+        }))
+
+        selectedRoomId = persistedRoom.id
+      }
+
       const response = await api.post(
         `/chat/rooms/${selectedRoomId}/messages`,
-        { content },
+        { content: trimmedContent },
         { headers: authHeader() },
       )
 
@@ -174,12 +287,31 @@ export const useChatStore = create((set, get) => ({
   },
 
   sendVoice: async (audioBlob) => {
-    const selectedRoomId = get().selectedRoomId || get().selectedRoom?.id
+    let selectedRoomId = get().selectedRoomId || get().selectedRoom?.id
+    const selectedRoom = get().selectedRoom
     if (!selectedRoomId || !audioBlob) return
 
     set({ sending: true, sendError: '' })
 
     try {
+      if (isDraftRoomId(selectedRoomId) || selectedRoom?.isDraft) {
+        const persistedRoom = await persistDraftRoom(selectedRoom)
+        if (!persistedRoom?.id) {
+          throw new Error('Gagal membuat ruang chat baru')
+        }
+
+        set((state) => ({
+          rooms: [
+            persistedRoom,
+            ...state.rooms.filter((item) => item.id !== selectedRoomId),
+          ],
+          selectedRoomId: persistedRoom.id,
+          selectedRoom: persistedRoom,
+        }))
+
+        selectedRoomId = persistedRoom.id
+      }
+
       const formData = new FormData()
       formData.append('file', audioBlob, 'voice.webm')
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import api from '../lib/api'
 
 function BuatSuratPage() {
@@ -20,7 +20,7 @@ function BuatSuratPage() {
   const [result, setResult] = useState(null)
 
   const token = localStorage.getItem('aisya_access_token')
-  const headers = { Authorization: `Bearer ${token}` }
+  const headers = useMemo(() => ({ Authorization: `Bearer ${token}` }), [token])
 
   useEffect(() => {
     const fetch = async () => {
@@ -35,7 +35,7 @@ function BuatSuratPage() {
       }
     }
     fetch()
-  }, [])
+  }, [headers])
 
   const extractPlaceholders = (text) => {
     const matches = text.match(/\{\{(\w+)\}\}/g)
@@ -131,7 +131,7 @@ function BuatSuratPage() {
   const label = (s) => s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
 
   return (
-    <div className="min-h-screen bg-slate-50 px-4 py-8">
+    <div className="h-full bg-[#f8fafc] px-4 py-4 md:px-6">
       <div className="mx-auto w-full max-w-4xl">
         <div className="rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
           <h1 className="text-2xl font-semibold text-slate-900">Buat Surat</h1>

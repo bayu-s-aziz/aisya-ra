@@ -2,15 +2,12 @@ import PropTypes from 'prop-types'
 import { MagnifyingGlassIcon, EllipsisVerticalIcon, ArrowLeftIcon } from '@heroicons/react/24/outline'
 
 const AVATAR_COLORS = [
-  'bg-rose-400',
-  'bg-orange-400',
-  'bg-amber-400',
-  'bg-emerald-400',
-  'bg-teal-400',
-  'bg-sky-400',
-  'bg-indigo-400',
-  'bg-violet-400',
-  'bg-fuchsia-400',
+  'bg-slate-500',
+  'bg-slate-600',
+  'bg-zinc-500',
+  'bg-gray-600',
+  'bg-blue-600',
+  'bg-indigo-600',
 ]
 
 function hashText(text) {
@@ -35,10 +32,10 @@ function getInitials(name) {
 
 function ChatHeader({ room, onBack }) {
   const roomName = room?.nama || 'Pilih ruang chat'
-  const roomStatus = room?.status || room?.tipe || 'online'
+  const roomStatus = room?.status || room?.tipe || 'aktif'
 
   return (
-    <header className="flex items-center justify-between border-b border-[#e5e7eb] bg-white px-4 py-3 md:px-6">
+    <header className="flex items-center justify-between border-b border-[#e4e7ec] bg-white/90 px-4 py-3 backdrop-blur md:px-6">
       <div className="flex min-w-0 items-center gap-3">
         {onBack ? (
           <button
@@ -60,7 +57,7 @@ function ChatHeader({ room, onBack }) {
 
         <div className="min-w-0">
           <p className="truncate text-[15px] font-semibold text-[#0f172a]">{roomName}</p>
-          <p className="truncate text-xs text-[#64748b]">{roomStatus}</p>
+          <p className="truncate text-xs capitalize text-[#98a2b3]">{roomStatus}</p>
         </div>
       </div>
 

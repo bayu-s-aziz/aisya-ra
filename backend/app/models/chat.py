@@ -25,6 +25,11 @@ class ChatRoomListResponse(BaseModel):
     data: list[ChatRoomItem]
 
 
+class DeleteChatRoomResponse(BaseModel):
+    success: bool
+    message: str
+
+
 class ChatMessageItem(BaseModel):
     id: str
     user_id: str

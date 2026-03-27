@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import PropTypes from 'prop-types'
 import MessageBubble from './MessageBubble'
 
@@ -66,7 +66,7 @@ function formatDateLabel(dateKey) {
 function DateDivider({ label }) {
   return (
     <div className="my-4 flex w-full justify-center">
-      <span className="rounded-full border border-[#d1d5db] bg-white px-3 py-1 text-[11px] font-medium leading-none text-[#64748b]">
+      <span className="rounded-full border border-[#d1d5db] bg-white px-3 py-1 text-[11px] font-medium leading-none text-[#667085] shadow-sm">
         {label}
       </span>
     </div>
@@ -114,21 +114,21 @@ function MessageList({ messages, isBotTyping, loadingInitial, loadingMore, error
     const rows = []
     let currentDateKey = ''
 
-    sortedMessages.forEach((message) => {
+    sortedMessages.forEach((message, index) => {
       const messageDateKey = getDateKey(message?.timestamp)
       if (messageDateKey !== currentDateKey) {
         currentDateKey = messageDateKey
         rows.push({ type: 'divider', key: `divider-${messageDateKey}`, label: formatDateLabel(messageDateKey) })
       }
 
-      rows.push({ type: 'message', key: `msg-${message?.id || Math.random()}`, message })
+      rows.push({ type: 'message', key: `msg-${message?.id || `fallback-${index}`}`, message })
     })
 
     return rows
   }, [sortedMessages])
 
   return (
-    <div className="relative flex h-full flex-col bg-white">
+    <div className="relative flex h-full flex-col bg-[#f7f7f8]">
       <div
         ref={containerRef}
         className="flex-1 overflow-y-auto px-3 py-4 md:px-6"
@@ -139,11 +139,11 @@ function MessageList({ messages, isBotTyping, loadingInitial, loadingMore, error
           }
         }}
       >
-        <div className="mx-auto w-full max-w-3xl">
+        <div className="mx-auto w-full max-w-[52rem]">
           <div className="h-2 w-full" />
 
           {loadingMore ? (
-            <div className="mb-2 text-center text-xs text-[#64748b]">Memuat pesan lama...</div>
+            <div className="mb-2 text-center text-xs text-[#64748b]">Memuat pesan lebih lama...</div>
           ) : null}
 
           {error ? (
@@ -155,7 +155,9 @@ function MessageList({ messages, isBotTyping, loadingInitial, loadingMore, error
           ) : null}
 
           {!loadingInitial && sortedMessages.length === 0 ? (
-            <div className="py-6 text-center text-sm text-[#64748b]">Belum ada pesan.</div>
+            <div className="rounded-2xl border border-dashed border-[#cbd5e1] bg-white py-8 text-center text-sm text-[#667085]">
+              Belum ada pesan. Mulai percakapan pertama Anda.
+            </div>
           ) : null}
 
           {groupedMessages.map((row) => {

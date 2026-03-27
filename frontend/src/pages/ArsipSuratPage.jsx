@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import api from '../lib/api'
 
 function ArsipSuratPage() {
@@ -7,9 +7,9 @@ function ArsipSuratPage() {
   const [error, setError] = useState('')
 
   const token = localStorage.getItem('aisya_access_token')
-  const headers = { Authorization: `Bearer ${token}` }
+  const headers = useMemo(() => ({ Authorization: `Bearer ${token}` }), [token])
 
-  const fetchSurat = async () => {
+  const fetchSurat = useCallback(async () => {
     setLoading(true)
     setError('')
     try {
@@ -20,9 +20,11 @@ function ArsipSuratPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [headers])
 
-  useEffect(() => { fetchSurat() }, [])
+  useEffect(() => {
+    fetchSurat()
+  }, [fetchSurat])
 
   const downloadPdf = async (surat) => {
     try {
@@ -60,7 +62,7 @@ function ArsipSuratPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 px-4 py-8">
+    <div className="h-full bg-[#f8fafc] px-4 py-4 md:px-6">
       <div className="mx-auto w-full max-w-5xl">
         <div className="rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
           <div className="flex items-center justify-between">

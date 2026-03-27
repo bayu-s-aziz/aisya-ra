@@ -74,9 +74,9 @@ function KnowledgeBaseSidebar({ selectedDocId, onSelectDocId, onDocumentsLoaded,
   }, [documents, onSelectDocId, selectedExists])
 
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-[#323847] bg-[#202634]">
-      <div className="border-b border-[#323847] px-4 py-3">
-        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#9ca3af]">Knowledge Base</p>
+    <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-[#e2e8f0] bg-white">
+      <div className="border-b border-[#e2e8f0] px-4 py-3">
+        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#64748b]">Knowledge Base</p>
         <p className="mt-1 text-xs text-[#94a3b8]">Pilih dokumen untuk lihat detail</p>
         <button
           type="button"
@@ -102,11 +102,11 @@ function KnowledgeBaseSidebar({ selectedDocId, onSelectDocId, onDocumentsLoaded,
                 onCloseSidebar?.()
               }}
               className={[
-                'w-full border-b border-[#323847] px-4 py-3 text-left transition-colors',
-                isActive ? 'bg-[#111827]' : 'bg-transparent hover:bg-[#2a3140]',
+                'w-full border-b border-[#eef2f7] px-4 py-3 text-left transition-colors',
+                isActive ? 'bg-[#f1f5f9]' : 'bg-transparent hover:bg-[#f8fafc]',
               ].join(' ')}
             >
-              <p className="line-clamp-1 text-sm font-medium text-[#e2e8f0]">{doc.nama_file}</p>
+              <p className="line-clamp-1 text-sm font-medium text-[#0f172a]">{doc.nama_file}</p>
               <p className="mt-1 text-xs text-[#94a3b8]">{formatUploadDate(doc)}</p>
             </button>
           )

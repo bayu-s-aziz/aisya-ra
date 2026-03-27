@@ -31,7 +31,7 @@ function ChatInput({ onSend, disabled }) {
     }
   }
 
-  const handleSend = useCallback(() => {
+  const handleSend = () => {
     const trimmed = text.trim()
     if (!trimmed || disabled) return
     onSend(trimmed)
@@ -42,35 +42,40 @@ function ChatInput({ onSend, disabled }) {
         textareaRef.current.focus()
       }
     })
-  }, [text, disabled, onSend])
+  }
 
   return (
-    <div className="border-t border-[#e5e7eb] bg-white px-4 py-4">
-      <div className="flex items-end gap-3">
-        <div className="flex-1 rounded-lg border border-[#d1d5db] bg-white px-3 py-2 focus-within:border-[#007aff] focus-within:ring-1 focus-within:ring-[#007aff]">
-          <textarea
-            ref={textareaRef}
-            value={text}
-            onInput={handleInput}
-            onChange={handleInput}
-            onKeyDown={handleKeyDown}
-            disabled={disabled}
-            rows={1}
-            placeholder="Message AISYA Assistant..."
-            className="w-full resize-none bg-transparent text-sm text-[#111827] outline-none placeholder:text-[#9ca3af] disabled:opacity-60"
-            style={{ height: 'auto' }}
-          />
-        </div>
+    <div className="border-t border-[#e4e7ec] bg-white/95 px-3 py-3 backdrop-blur md:px-6 md:py-4">
+      <div className="mx-auto w-full max-w-3xl">
+        <div className="rounded-[28px] border border-[#dbe0e6] bg-white p-2 shadow-sm transition-colors focus-within:border-[#98a2b3]">
+          <div className="flex items-end gap-2">
+            <div className="min-w-0 flex-1 px-2 py-1">
+              <textarea
+                ref={textareaRef}
+                value={text}
+                onInput={handleInput}
+                onChange={handleInput}
+                onKeyDown={handleKeyDown}
+                disabled={disabled}
+                rows={1}
+                placeholder="Tanyakan apa saja ke AISYA"
+                className="w-full resize-none bg-transparent text-sm text-[#0f172a] outline-none placeholder:text-[#94a3b8] disabled:opacity-60"
+                style={{ height: 'auto' }}
+              />
+            </div>
 
-        <button
-          type="button"
-          aria-label="Kirim pesan"
-          onClick={handleSend}
-          disabled={disabled || !hasText}
-          className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#007aff] text-white transition-colors hover:bg-[#0056cc] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-[#007aff]"
-        >
-          <PaperAirplaneIcon className="h-5 w-5" />
-        </button>
+            <button
+              type="button"
+              aria-label="Kirim pesan"
+              onClick={handleSend}
+              disabled={disabled || !hasText}
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-[#111827] text-white transition-colors hover:bg-[#1f2937] disabled:cursor-not-allowed disabled:bg-[#cbd5e1]"
+            >
+              <PaperAirplaneIcon className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+        <p className="mt-2 px-2 text-xs text-[#98a2b3]">Enter untuk kirim, Shift+Enter untuk baris baru.</p>
       </div>
     </div>
   )
