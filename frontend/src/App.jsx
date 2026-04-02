@@ -9,7 +9,20 @@ const LoginPage = lazy(() => import('./pages/LoginPage'))
 const RegisterSchoolPage = lazy(() => import('./pages/RegisterSchoolPage'))
 
 function RouteLoadingFallback() {
-  return <div className="min-h-screen bg-white" />
+  return (
+    <div className="auth-shell min-h-screen px-4 py-8 md:px-6 md:py-10">
+      <div className="mx-auto w-full max-w-4xl">
+        <div className="rounded-3xl border border-[#d7dbe2] bg-white/92 p-6 shadow-[0_18px_42px_rgba(15,23,42,0.09)]">
+          <div className="space-y-3">
+            <div className="page-skeleton h-4 w-40 rounded-full" />
+            <div className="page-skeleton h-12 w-full rounded-2xl" />
+            <div className="page-skeleton h-12 w-full rounded-2xl" />
+            <div className="page-skeleton h-12 w-1/3 rounded-2xl" />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 function RequireAuth({ children }) {

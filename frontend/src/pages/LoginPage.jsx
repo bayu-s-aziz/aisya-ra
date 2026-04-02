@@ -58,28 +58,71 @@ function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 px-4 py-10">
-      <div className="mx-auto w-full max-w-md rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200 md:p-8">
-        <h1 className="text-2xl font-semibold text-slate-900">Login</h1>
-        <p className="mt-1 text-sm text-slate-500">Masuk sebagai admin RA</p>
+    <div className="auth-shell auth-page-enter min-h-[100dvh] px-4 py-8 md:px-6 md:py-10 lg:min-h-0 lg:py-14">
+      <div className="mx-auto w-full max-w-[980px] lg:rounded-[30px] lg:border lg:border-[#d7dbe2]/75 lg:bg-white/35 lg:p-3 lg:shadow-[0_20px_55px_rgba(15,23,42,0.09)] lg:backdrop-blur-sm">
+        <div className="auth-grid grid w-full gap-5 lg:grid-cols-[1.08fr,1fr]">
+        <section className="auth-brand-panel hidden rounded-3xl border border-[#d7dbe2] bg-white/85 p-8 shadow-[0_18px_42px_rgba(15,23,42,0.09)] backdrop-blur lg:flex lg:flex-col">
+          <div className="inline-flex w-fit items-center gap-2 rounded-full border border-[#d0d5dd] bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.1em] text-[#475467]">
+            <span className="flex h-5 w-5 items-center justify-center rounded-md bg-[#0f172a] text-[10px] font-bold text-white">AI</span>
+            AISYA-RA
+          </div>
+          <h1 className="mt-5 text-3xl font-semibold leading-tight text-[#0f172a]">Masuk ke aplikasi AISYA-RA.</h1>
+          <p className="mt-3 max-w-md text-sm leading-relaxed text-[#64748b]">
+            Chat dan kelola data sekolah dari satu ruang kerja.
+          </p>
+        </section>
 
-        {error ? <div className="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div> : null}
+        <section className="auth-card auth-card-enter rounded-3xl border border-[#d7dbe2] bg-white/92 p-6 shadow-[0_18px_42px_rgba(15,23,42,0.09)] backdrop-blur md:p-8">
+          <div className="mb-6">
+            <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[#64748b]">Autentikasi</p>
+            <h2 className="mt-2 text-2xl font-semibold text-[#0f172a]">Login</h2>
+            <p className="mt-1 text-sm text-[#667085]">Masuk menggunakan akun yang terdaftar.</p>
+          </div>
 
-        <form className="mt-6 space-y-4" onSubmit={onSubmit}>
-          <input className="w-full rounded-md border border-slate-300 px-3 py-2" type="email" placeholder="Email" value={email} onChange={(event) => setEmail(event.target.value)} required />
-          <input className="w-full rounded-md border border-slate-300 px-3 py-2" type="password" placeholder="Password" value={password} onChange={(event) => setPassword(event.target.value)} required />
+          {error ? <div className="mb-4 rounded-xl border border-red-100 bg-red-50 p-3 text-sm text-red-700">{error}</div> : null}
 
-          <button type="submit" disabled={loading} className="w-full rounded-md bg-slate-900 px-4 py-2 text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60">
-            {loading ? 'Memproses...' : 'Login'}
-          </button>
-        </form>
+          <form className="space-y-4" onSubmit={onSubmit}>
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Email</label>
+              <input
+                className="w-full rounded-xl border border-[#cbd5e1] bg-white px-3 py-2.5 text-sm text-[#0f172a] outline-none transition-colors focus:border-[#0f172a]"
+                type="email"
+                placeholder="nama@email.com"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                required
+              />
+            </div>
 
-        <p className="mt-4 text-sm text-slate-600">
-          Belum punya akun?{' '}
-          <Link className="font-medium text-slate-900 underline" to="/register-school">
-            Registrasi sekolah
-          </Link>
-        </p>
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Password</label>
+              <input
+                className="w-full rounded-xl border border-[#cbd5e1] bg-white px-3 py-2.5 text-sm text-[#0f172a] outline-none transition-colors focus:border-[#0f172a]"
+                type="password"
+                placeholder="Masukkan password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                required
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full rounded-xl bg-[#0f172a] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#020617] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {loading ? 'Memproses...' : 'Login'}
+            </button>
+          </form>
+
+          <p className="mt-5 text-sm text-[#667085]">
+            Belum punya akun?{' '}
+            <Link className="font-semibold text-[#0f172a] underline decoration-[#94a3b8] underline-offset-4" to="/register-school">
+              Registrasi sekolah
+            </Link>
+          </p>
+        </section>
+        </div>
       </div>
     </div>
   )

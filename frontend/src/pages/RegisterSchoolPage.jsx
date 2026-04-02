@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import api from '../lib/api'
 
 function RegisterSchoolPage() {
@@ -80,44 +80,83 @@ function RegisterSchoolPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 px-4 py-10">
-      <div className="mx-auto w-full max-w-2xl rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200 md:p-8">
-        <h1 className="text-2xl font-semibold text-slate-900">Registrasi Sekolah RA</h1>
-        <p className="mt-1 text-sm text-slate-500">Langkah {step} dari 2</p>
+    <div className="auth-shell auth-page-enter min-h-[100dvh] px-4 py-8 md:px-6 md:py-10 lg:min-h-0 lg:py-14">
+      <div className="mx-auto w-full max-w-[980px] lg:rounded-[30px] lg:border lg:border-[#d7dbe2]/75 lg:bg-white/35 lg:p-3 lg:shadow-[0_20px_55px_rgba(15,23,42,0.09)] lg:backdrop-blur-sm">
+        <div className="auth-grid grid w-full gap-5 lg:grid-cols-[1.08fr,1fr]">
+        <section className="auth-brand-panel hidden rounded-3xl border border-[#d7dbe2] bg-white/85 p-8 shadow-[0_18px_42px_rgba(15,23,42,0.09)] backdrop-blur lg:flex lg:flex-col">
+          <div className="inline-flex w-fit items-center gap-2 rounded-full border border-[#d0d5dd] bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.1em] text-[#475467]">
+            <span className="flex h-5 w-5 items-center justify-center rounded-md bg-[#0f172a] text-[10px] font-bold text-white">AI</span>
+            AISYA-RA
+          </div>
+          <h1 className="mt-5 text-3xl font-semibold leading-tight text-[#0f172a]">Daftarkan RA agar siap dipakai dalam hitungan menit.</h1>
+          <p className="mt-3 max-w-md text-sm leading-relaxed text-[#64748b]">
+            Isi data sekolah dan akun admin, lalu langsung masuk ke dashboard untuk mulai bekerja.
+          </p>
+        </section>
 
-        {error ? <div className="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div> : null}
-        {success ? <div className="mt-4 rounded-md bg-emerald-50 p-3 text-sm text-emerald-700">{success}</div> : null}
+        <section className="auth-card auth-card-enter rounded-3xl border border-[#d7dbe2] bg-white/92 p-6 shadow-[0_18px_42px_rgba(15,23,42,0.09)] backdrop-blur md:p-8">
+          <div className="mb-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[#64748b]">Registrasi</p>
+            <h2 className="mt-2 text-2xl font-semibold text-[#0f172a]">Registrasi RA</h2>
 
-        {step === 1 ? (
-          <form className="mt-6 space-y-4" onSubmit={toStepTwo}>
-            <input className="w-full rounded-md border border-slate-300 px-3 py-2" name="nama_ra" placeholder="Nama RA" value={form.nama_ra} onChange={onChange} />
-            <textarea className="w-full rounded-md border border-slate-300 px-3 py-2" name="alamat" placeholder="Alamat" rows={3} value={form.alamat} onChange={onChange} />
-            <input className="w-full rounded-md border border-slate-300 px-3 py-2" name="nomor_statistik" placeholder="Nomor Statistik Madrasah" value={form.nomor_statistik} onChange={onChange} />
-            <input className="w-full rounded-md border border-slate-300 px-3 py-2" name="tahun_ajaran" placeholder="Tahun Ajaran (contoh: 2026/2027)" value={form.tahun_ajaran} onChange={onChange} />
-
-            <div>
-              <label className="mb-1 block text-sm text-slate-600">Upload Logo (opsional)</label>
-              <input className="w-full rounded-md border border-slate-300 px-3 py-2" type="file" accept="image/*" onChange={onLogoChange} />
+            <div className="mt-3 flex items-center gap-2">
+              <span className={[
+                'rounded-full px-2.5 py-1 text-xs font-semibold',
+                step === 1 ? 'bg-[#0f172a] text-white' : 'border border-[#cbd5e1] text-[#64748b]',
+              ].join(' ')}>
+                1. Data RA
+              </span>
+              <span className={[
+                'rounded-full px-2.5 py-1 text-xs font-semibold',
+                step === 2 ? 'bg-[#0f172a] text-white' : 'border border-[#cbd5e1] text-[#64748b]',
+              ].join(' ')}>
+                2. Admin
+              </span>
             </div>
+          </div>
 
-            <button type="submit" className="w-full rounded-md bg-slate-900 px-4 py-2 text-white hover:bg-slate-800">Lanjut ke Data Admin</button>
-          </form>
-        ) : (
-          <form className="mt-6 space-y-4" onSubmit={onSubmit}>
-            <input className="w-full rounded-md border border-slate-300 px-3 py-2" name="admin_nama" placeholder="Nama Kepala RA" value={form.admin_nama} onChange={onChange} required />
-            <input className="w-full rounded-md border border-slate-300 px-3 py-2" name="admin_email" placeholder="Email" type="email" value={form.admin_email} onChange={onChange} required />
-            <input className="w-full rounded-md border border-slate-300 px-3 py-2" name="admin_password" placeholder="Password" type="password" value={form.admin_password} onChange={onChange} required />
+          {error ? <div className="mb-4 rounded-xl border border-red-100 bg-red-50 p-3 text-sm text-red-700">{error}</div> : null}
+          {success ? <div className="mb-4 rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-sm text-emerald-700">{success}</div> : null}
 
-            <div className="grid grid-cols-2 gap-3">
-              <button type="button" className="rounded-md border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-100" onClick={() => setStep(1)}>
-                Kembali
-              </button>
-              <button type="submit" disabled={loading} className="rounded-md bg-slate-900 px-4 py-2 text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60">
-                {loading ? 'Memproses...' : 'Daftar'}
-              </button>
-            </div>
-          </form>
-        )}
+          {step === 1 ? (
+            <form key="step-1" className="auth-step-enter space-y-4" onSubmit={toStepTwo}>
+              <input className="w-full rounded-xl border border-[#cbd5e1] bg-white px-3 py-2.5 text-sm text-[#0f172a] outline-none transition-colors focus:border-[#0f172a]" name="nama_ra" placeholder="Nama RA" value={form.nama_ra} onChange={onChange} />
+              <textarea className="w-full rounded-xl border border-[#cbd5e1] bg-white px-3 py-2.5 text-sm text-[#0f172a] outline-none transition-colors focus:border-[#0f172a]" name="alamat" placeholder="Alamat" rows={3} value={form.alamat} onChange={onChange} />
+              <input className="w-full rounded-xl border border-[#cbd5e1] bg-white px-3 py-2.5 text-sm text-[#0f172a] outline-none transition-colors focus:border-[#0f172a]" name="nomor_statistik" placeholder="Nomor Statistik Madrasah" value={form.nomor_statistik} onChange={onChange} />
+              <input className="w-full rounded-xl border border-[#cbd5e1] bg-white px-3 py-2.5 text-sm text-[#0f172a] outline-none transition-colors focus:border-[#0f172a]" name="tahun_ajaran" placeholder="Tahun Ajaran (contoh: 2026/2027)" value={form.tahun_ajaran} onChange={onChange} />
+
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Upload logo (opsional)</label>
+                <input className="w-full rounded-xl border border-[#cbd5e1] bg-white px-3 py-2.5 text-sm text-[#0f172a] outline-none transition-colors focus:border-[#0f172a]" type="file" accept="image/*" onChange={onLogoChange} />
+              </div>
+
+              <button type="submit" className="w-full rounded-xl bg-[#0f172a] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#020617]">Lanjut ke Data Admin</button>
+            </form>
+          ) : (
+            <form key="step-2" className="auth-step-enter space-y-4" onSubmit={onSubmit}>
+              <input className="w-full rounded-xl border border-[#cbd5e1] bg-white px-3 py-2.5 text-sm text-[#0f172a] outline-none transition-colors focus:border-[#0f172a]" name="admin_nama" placeholder="Nama Kepala RA" value={form.admin_nama} onChange={onChange} required />
+              <input className="w-full rounded-xl border border-[#cbd5e1] bg-white px-3 py-2.5 text-sm text-[#0f172a] outline-none transition-colors focus:border-[#0f172a]" name="admin_email" placeholder="Email" type="email" value={form.admin_email} onChange={onChange} required />
+              <input className="w-full rounded-xl border border-[#cbd5e1] bg-white px-3 py-2.5 text-sm text-[#0f172a] outline-none transition-colors focus:border-[#0f172a]" name="admin_password" placeholder="Password" type="password" value={form.admin_password} onChange={onChange} required />
+
+              <div className="grid grid-cols-2 gap-3">
+                <button type="button" className="rounded-xl border border-[#cbd5e1] px-4 py-2.5 text-sm font-medium text-[#334155] transition-colors hover:bg-[#f8fafc]" onClick={() => setStep(1)}>
+                  Kembali
+                </button>
+                <button type="submit" disabled={loading} className="rounded-xl bg-[#0f172a] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#020617] disabled:cursor-not-allowed disabled:opacity-60">
+                  {loading ? 'Memproses...' : 'Daftar'}
+                </button>
+              </div>
+            </form>
+          )}
+
+          <p className="mt-5 text-sm text-[#667085]">
+            Sudah punya akun?{' '}
+            <Link className="font-semibold text-[#0f172a] underline decoration-[#94a3b8] underline-offset-4" to="/login">
+              Kembali ke login
+            </Link>
+          </p>
+        </section>
+        </div>
       </div>
     </div>
   )
