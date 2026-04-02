@@ -6,11 +6,15 @@ const loadStudentsManagementPanel = () => import('../components/Settings/Student
 const loadUsersManagementPanel = () => import('../components/Settings/UsersManagementPanel')
 const loadKelompokManagementPanel = () => import('../components/Settings/KelompokManagementPanel')
 const loadPresensiManagementPanel = () => import('../components/Settings/PresensiManagementPanel')
+const loadKnowledgeBaseView = () => import('./KnowledgeBaseView')
+const loadSuratView = () => import('./SuratView')
 
 const StudentsManagementPanel = lazy(loadStudentsManagementPanel)
 const UsersManagementPanel = lazy(loadUsersManagementPanel)
 const KelompokManagementPanel = lazy(loadKelompokManagementPanel)
 const PresensiManagementPanel = lazy(loadPresensiManagementPanel)
+const KnowledgeBaseView = lazy(loadKnowledgeBaseView)
+const SuratView = lazy(loadSuratView)
 
 const PANEL_LABELS = {
   ringkasan: 'Dashboard',
@@ -18,6 +22,8 @@ const PANEL_LABELS = {
   'manajemen-pengguna': 'Manajemen Pengguna',
   'manajemen-kelompok': 'Manajemen Kelompok',
   'manajemen-presensi': 'Manajemen Presensi',
+  'manajemen-berkas-dokumen': 'Manajemen Berkas - Dokumen',
+  'manajemen-berkas-surat': 'Manajemen Berkas - Surat',
 }
 
 function StatCard({ label, value, hint, toneClass }) {
@@ -39,6 +45,8 @@ function prefetchPanelById(panelId) {
   if (panelId === 'manajemen-pengguna') return loadUsersManagementPanel()
   if (panelId === 'manajemen-kelompok') return loadKelompokManagementPanel()
   if (panelId === 'manajemen-presensi') return loadPresensiManagementPanel()
+  if (panelId === 'manajemen-berkas-dokumen') return loadKnowledgeBaseView()
+  if (panelId === 'manajemen-berkas-surat') return loadSuratView()
   return Promise.resolve()
 }
 
@@ -54,7 +62,15 @@ StatCard.defaultProps = {
   toneClass: 'text-[#64748b]',
 }
 
-function DashboardView({ role, activePanel }) {
+function DashboardView({
+  role,
+  activePanel,
+  selectedDocId,
+  selectedDoc,
+  onSelectDocId,
+  onDocumentsLoaded,
+  onDocDeleted,
+}) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [data, setData] = useState(null)
@@ -236,6 +252,32 @@ function DashboardView({ role, activePanel }) {
             </Suspense>
           </section>
         ) : null}
+
+        {activePanel === 'manajemen-berkas-dokumen' ? (
+          <section className="rounded-2xl border border-[#e2e8f0] bg-white p-4 shadow-sm">
+            <div className="min-h-[620px] overflow-hidden rounded-2xl border border-[#e2e8f0] bg-[#f8fafc]">
+              <Suspense fallback={<PanelLoadingFallback />}>
+                <KnowledgeBaseView
+                  selectedDocId={selectedDocId}
+                  selectedDoc={selectedDoc}
+                  onSelectDocId={onSelectDocId}
+                  onDocumentsLoaded={onDocumentsLoaded}
+                  onDocDeleted={onDocDeleted}
+                />
+              </Suspense>
+            </div>
+          </section>
+        ) : null}
+
+        {activePanel === 'manajemen-berkas-surat' ? (
+          <section className="rounded-2xl border border-[#e2e8f0] bg-white p-4 shadow-sm">
+            <div className="min-h-[620px] overflow-hidden rounded-2xl border border-[#e2e8f0] bg-[#f8fafc]">
+              <Suspense fallback={<PanelLoadingFallback />}>
+                <SuratView />
+              </Suspense>
+            </div>
+          </section>
+        ) : null}
       </div>
     </div>
   )
@@ -243,12 +285,34 @@ function DashboardView({ role, activePanel }) {
 
 DashboardView.propTypes = {
   role: PropTypes.string,
-  activePanel: PropTypes.oneOf(['ringkasan', 'manajemen-siswa', 'manajemen-pengguna', 'manajemen-kelompok', 'manajemen-presensi']),
+  activePanel: PropTypes.oneOf([
+    'ringkasan',
+    'manajemen-siswa',
+    'manajemen-pengguna',
+    'manajemen-kelompok',
+    'manajemen-presensi',
+    'manajemen-berkas-dokumen',
+    'manajemen-berkas-surat',
+  ]),
+  selectedDocId: PropTypes.string,
+  selectedDoc: PropTypes.shape({
+    id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    nama_file: PropTypes.string,
+    total_chunks: PropTypes.number,
+  }),
+  onSelectDocId: PropTypes.func,
+  onDocumentsLoaded: PropTypes.func,
+  onDocDeleted: PropTypes.func,
 }
 
 DashboardView.defaultProps = {
   role: '',
   activePanel: 'ringkasan',
+  selectedDocId: '',
+  selectedDoc: null,
+  onSelectDocId: undefined,
+  onDocumentsLoaded: undefined,
+  onDocDeleted: undefined,
 }
 
 export default DashboardView

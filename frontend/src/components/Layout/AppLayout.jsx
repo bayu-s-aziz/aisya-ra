@@ -7,7 +7,6 @@ import {
   BookOpenIcon,
   CalendarDaysIcon,
   ChatBubbleLeftEllipsisIcon,
-  DocumentTextIcon,
   HomeIcon,
   UserGroupIcon,
   UserIcon,
@@ -46,22 +45,10 @@ const APP_MENU_ITEMS = [
     icon: ChatBubbleLeftEllipsisIcon,
   },
   {
-    id: 'knowledge',
-    title: 'Knowledge Base',
-    description: 'Upload dan kelola dokumen pengetahuan',
-    icon: BookOpenIcon,
-  },
-  {
     id: 'rpph',
     title: 'RPPH',
     description: 'Riwayat dan unduh dokumen RPPH',
     icon: CalendarDaysIcon,
-  },
-  {
-    id: 'surat',
-    title: 'Surat',
-    description: 'Buat surat, arsip, dan template',
-    icon: DocumentTextIcon,
   },
   {
     id: 'presensi',
@@ -117,6 +104,21 @@ const DASHBOARD_MENUS = [
     id: 'manajemen-presensi',
     label: 'Manajemen Presensi',
     icon: ClipboardDocumentListIcon,
+  },
+  {
+    id: 'manajemen-berkas',
+    label: 'Manajemen Berkas',
+    icon: BookOpenIcon,
+    children: [
+      {
+        id: 'manajemen-berkas-dokumen',
+        label: 'Dokumen',
+      },
+      {
+        id: 'manajemen-berkas-surat',
+        label: 'Surat',
+      },
+    ],
   },
   {
     id: 'manajemen-pengguna',
@@ -216,9 +218,12 @@ function AppLayout() {
   const canManageRaProfile = KEPALA_ROLES.includes(userRole)
 
   const selectedDoc = useMemo(() => {
-    if (currentView !== 'knowledge' || !selectedDocId) return null
+    const canResolveSelectedDoc = currentView === 'knowledge'
+      || (currentView === 'dashboard' && dashboardPanel === 'manajemen-berkas-dokumen')
+
+    if (!canResolveSelectedDoc || !selectedDocId) return null
     return documents.find((doc) => String(doc.id) === String(selectedDocId)) || null
-  }, [documents, selectedDocId, currentView])
+  }, [documents, selectedDocId, currentView, dashboardPanel])
 
   const dashboardMenus = useMemo(() => {
     return DASHBOARD_MENUS.filter((item) => !item.adminOnly || canManageRaProfile)
@@ -389,7 +394,23 @@ function AppLayout() {
     if (currentView === 'dashboard') {
       return (
         <Suspense fallback={<ContentLoadingFallback />}>
-          <DashboardView role={userRole} activePanel={dashboardPanel} />
+          <DashboardView
+            role={userRole}
+            activePanel={dashboardPanel}
+            selectedDocId={selectedDocId || ''}
+            selectedDoc={selectedDoc}
+            onSelectDocId={(docId) => setSelectedDocId(docId)}
+            onDocumentsLoaded={(nextDocs) => setDocuments(nextDocs)}
+            onDocDeleted={(deletedId) => {
+              const nextDocs = documents.filter((doc) => String(doc.id) !== String(deletedId))
+              setDocuments(nextDocs)
+              if (nextDocs.length > 0) {
+                setSelectedDocId(String(nextDocs[0].id))
+              } else {
+                setSelectedDocId('')
+              }
+            }}
+          />
         </Suspense>
       )
     }

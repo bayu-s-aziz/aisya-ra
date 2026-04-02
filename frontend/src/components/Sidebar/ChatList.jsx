@@ -24,6 +24,7 @@ function ChatList({
   const [query, setQuery] = useState('')
   const [createError, setCreateError] = useState('')
   const [deletingRoomId, setDeletingRoomId] = useState('')
+  const [expandedCustomMenus, setExpandedCustomMenus] = useState({})
   const rooms = useChatStore((state) => state.rooms)
   const roomsLoading = useChatStore((state) => state.roomsLoading)
   const roomsError = useChatStore((state) => state.roomsError)
@@ -228,23 +229,62 @@ function ChatList({
         {isCustomMode
           ? customItems.map((item) => {
             const Icon = item.icon
-            const isActive = activeCustomItemId === item.id
+            const childItems = Array.isArray(item.children) ? item.children : []
+            const activeChild = childItems.find((child) => child.id === activeCustomItemId)
+            const isExpanded = childItems.length > 0
+              ? expandedCustomMenus[item.id] ?? true
+              : false
+            const isActive = activeCustomItemId === item.id || Boolean(activeChild) || isExpanded
 
             return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => onCustomItemClick?.(item.id)}
-                className={[
-                  'mx-2 mb-1 inline-flex w-[calc(100%-16px)] items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm transition-colors',
-                  isActive
-                    ? 'bg-[#e5e7eb] font-semibold text-[#111827]'
-                    : 'font-medium text-[#344054] hover:bg-white',
-                ].join(' ')}
-              >
-                <Icon className="h-4 w-4" />
-                {item.label}
-              </button>
+              <div key={item.id} className="mx-2 mb-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (childItems.length > 0) {
+                      setExpandedCustomMenus((prev) => ({
+                        ...prev,
+                        [item.id]: !(prev[item.id] ?? true),
+                      }))
+                      return
+                    }
+
+                    onCustomItemClick?.(item.id)
+                  }}
+                  className={[
+                    'inline-flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm transition-colors',
+                    isActive
+                      ? 'bg-[#e5e7eb] font-semibold text-[#111827]'
+                      : 'font-medium text-[#344054] hover:bg-white',
+                  ].join(' ')}
+                >
+                  <Icon className="h-4 w-4" />
+                  {item.label}
+                </button>
+
+                {childItems.length > 0 && isExpanded ? (
+                  <div className="mt-1 ml-6 space-y-1 border-l border-[#e5e7eb] pl-2">
+                    {childItems.map((child) => {
+                      const isChildActive = child.id === activeCustomItemId
+                      return (
+                        <button
+                          key={child.id}
+                          type="button"
+                          onClick={() => onCustomItemClick?.(child.id)}
+                          className={[
+                            'block w-full rounded-lg px-2 py-1.5 text-left text-sm transition-colors',
+                            isChildActive
+                              ? 'bg-[#eef2f6] font-semibold text-[#111827]'
+                              : 'text-[#475467] hover:bg-white hover:text-[#111827]',
+                          ].join(' ')}
+                        >
+                          {child.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                ) : null}
+              </div>
             )
           })
           : filteredRooms.map((room) => (
