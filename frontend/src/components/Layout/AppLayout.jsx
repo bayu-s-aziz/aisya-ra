@@ -78,6 +78,7 @@ const APP_MENU_ITEMS = [
 ]
 
 const KEPALA_ROLES = ['kepala_ra', 'kepala', 'admin', 'admin_ra']
+const DEFAULT_FAVICON = '/vite.svg'
 
 const VIEW_LOADING_LABELS = {
   chat: 'Menyiapkan ruang chat...',
@@ -163,6 +164,19 @@ function getInitials(name) {
     .join('')
 }
 
+function setFaviconHref(href) {
+  const nextHref = String(href || DEFAULT_FAVICON).trim() || DEFAULT_FAVICON
+  let iconLink = document.querySelector("link[rel='icon']")
+
+  if (!iconLink) {
+    iconLink = document.createElement('link')
+    iconLink.setAttribute('rel', 'icon')
+    document.head.appendChild(iconLink)
+  }
+
+  iconLink.setAttribute('href', nextHref)
+}
+
 function AppLayout() {
   const token = localStorage.getItem('aisya_access_token')
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
@@ -237,6 +251,11 @@ function AppLayout() {
     const namaRa = (raProfile?.nama_ra || '').trim()
     document.title = namaRa ? `AISYA RA | ${namaRa}` : 'AISYA RA'
   }, [raProfile?.nama_ra])
+
+  useEffect(() => {
+    const logoUrl = String(raProfile?.logo_url || '').trim()
+    setFaviconHref(logoUrl || DEFAULT_FAVICON)
+  }, [raProfile?.logo_url])
 
   useEffect(() => {
     if (!isUserMenuOpen) return
