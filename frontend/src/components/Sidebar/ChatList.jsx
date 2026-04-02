@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ChevronDownIcon,
   MagnifyingGlassIcon,
@@ -34,31 +34,42 @@ function ChatList({
   const createDraftRoom = useChatStore((state) => state.createDraftRoom)
   const deleteRoom = useChatStore((state) => state.deleteRoom)
 
+  const onSelectAppRef = useRef(onSelectApp)
+  const currentViewRef = useRef(currentView)
+
+  useEffect(() => {
+    onSelectAppRef.current = onSelectApp
+  }, [onSelectApp])
+
+  useEffect(() => {
+    currentViewRef.current = currentView
+  }, [currentView])
+
   useEffect(() => {
     let active = true
 
-    const bootstrapInitialChat = async () => {
+    const initializeSidebarChatState = async () => {
       const token = localStorage.getItem('aisya_access_token')
       if (!token) return
-
-      if (sessionStorage.getItem(CHAT_BOOTSTRAP_KEY) === '1') return
 
       await refreshRooms()
       if (!active) return
 
+      if (sessionStorage.getItem(CHAT_BOOTSTRAP_KEY) === '1') return
+
       sessionStorage.setItem(CHAT_BOOTSTRAP_KEY, '1')
       createDraftRoom()
-      if (currentView !== 'chat') {
-        onSelectApp?.('chat')
+      if (currentViewRef.current !== 'chat') {
+        onSelectAppRef.current?.('chat')
       }
     }
 
-    bootstrapInitialChat()
+    initializeSidebarChatState()
 
     return () => {
       active = false
     }
-  }, [createDraftRoom, currentView, onSelectApp, refreshRooms])
+  }, [createDraftRoom, refreshRooms])
 
   const sortedRooms = useMemo(() => {
     return [...rooms].sort((first, second) => {
