@@ -25,6 +25,11 @@ function RouteLoadingFallback() {
   )
 }
 
+function isLikelyJwtToken(token) {
+  if (!token || typeof token !== 'string') return false
+  return token.split('.').length === 3
+}
+
 function RequireAuth({ children }) {
   const token = localStorage.getItem('aisya_access_token')
   const [isChecking, setIsChecking] = useState(Boolean(token))
@@ -35,6 +40,16 @@ function RequireAuth({ children }) {
 
     const validate = async () => {
       if (!token) {
+        if (active) {
+          setIsValid(false)
+          setIsChecking(false)
+        }
+        return
+      }
+
+      if (!isLikelyJwtToken(token)) {
+        localStorage.removeItem('aisya_access_token')
+        localStorage.removeItem('aisya_refresh_token')
         if (active) {
           setIsValid(false)
           setIsChecking(false)
@@ -93,6 +108,16 @@ function PublicOnly({ children }) {
 
     const validate = async () => {
       if (!token) {
+        if (active) {
+          setIsValid(false)
+          setIsChecking(false)
+        }
+        return
+      }
+
+      if (!isLikelyJwtToken(token)) {
+        localStorage.removeItem('aisya_access_token')
+        localStorage.removeItem('aisya_refresh_token')
         if (active) {
           setIsValid(false)
           setIsChecking(false)

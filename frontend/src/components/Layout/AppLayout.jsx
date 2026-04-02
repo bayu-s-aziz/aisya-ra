@@ -526,7 +526,7 @@ function AppLayout() {
             )}
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold text-[#0f172a]">{shortName || 'Pengguna AISYA'}</p>
-              <p className="truncate text-xs text-[#667085]">Free</p>
+              <p className="truncate text-xs text-[#667085]">{profile?.jabatan || 'User'}</p>
             </div>
             <ChevronDownIcon className="h-4 w-4 text-[#64748b]" />
           </button>
@@ -551,7 +551,7 @@ function AppLayout() {
                 className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-[#374151] hover:bg-[#f8fafc]"
               >
                 <UserIcon className="h-4 w-4" />
-                Lihat Profil
+                Profil
               </button>
               <div className="border-t border-[#e4e7ec]" />
               <button

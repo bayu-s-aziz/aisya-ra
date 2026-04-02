@@ -508,19 +508,26 @@ def list_chat_rooms(current=Depends(get_current_user_profile)):
     supabase = get_supabase_client()
     ra_id = current["ra_id"]
 
-    try:
-        response = (
-            supabase.table("chat_rooms")
-            .select("id,ra_id,tipe,nama")
-            .eq("ra_id", ra_id)
-            .order("nama")
-            .execute()
-        )
-    except Exception as exc:
+    response = None
+    last_error = None
+    for _ in range(2):
+        try:
+            response = (
+                supabase.table("chat_rooms")
+                .select("id,ra_id,tipe,nama")
+                .eq("ra_id", ra_id)
+                .order("nama")
+                .execute()
+            )
+            break
+        except Exception as exc:
+            last_error = exc
+
+    if response is None:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Gagal mengambil daftar ruang chat: {exc}",
-        ) from exc
+            detail=f"Gagal mengambil daftar ruang chat: {last_error}",
+        ) from last_error
 
     return {"success": True, "data": response.data or []}
 

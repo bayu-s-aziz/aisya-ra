@@ -5,6 +5,9 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase'
 const ROOM_FETCH_LIMIT = 100
 let activeRoomChannel = null
 const DRAFT_ROOM_PREFIX = 'draft-'
+const ROOMS_REFRESH_COOLDOWN_MS = 1500
+let roomsRefreshPromise = null
+let roomsLastFetchedAt = 0
 
 function authHeader() {
   const token = localStorage.getItem('aisya_access_token')
@@ -215,47 +218,70 @@ export const useChatStore = create((set, get) => ({
       return
     }
 
+    // Avoid burst requests when multiple components trigger refresh concurrently.
+    if (roomsRefreshPromise) {
+      await roomsRefreshPromise
+      return
+    }
+
+    const now = Date.now()
+    if (
+      now - roomsLastFetchedAt < ROOMS_REFRESH_COOLDOWN_MS
+      && Array.isArray(get().rooms)
+      && get().rooms.length > 0
+    ) {
+      return
+    }
+
     set({ roomsLoading: true, roomsError: '' })
 
-    try {
-      const response = await api.get('/chat/rooms', {
-        headers: authHeader(),
-        params: { limit: ROOM_FETCH_LIMIT },
-      })
+    roomsRefreshPromise = (async () => {
+      try {
+        const response = await api.get('/chat/rooms', {
+          headers: authHeader(),
+          params: { limit: ROOM_FETCH_LIMIT },
+        })
 
-      const fetchedRooms = Array.isArray(response?.data?.data) ? response.data.data : []
-      const currentSelectedRoom = get().selectedRoom
-      const selectedRoomId = get().selectedRoomId || currentSelectedRoom?.id
+        const fetchedRooms = Array.isArray(response?.data?.data) ? response.data.data : []
+        const currentSelectedRoom = get().selectedRoom
+        const selectedRoomId = get().selectedRoomId || currentSelectedRoom?.id
 
-      if (isDraftRoomId(selectedRoomId) && currentSelectedRoom?.isDraft) {
+        if (isDraftRoomId(selectedRoomId) && currentSelectedRoom?.isDraft) {
+          set({
+            rooms: [
+              currentSelectedRoom,
+              ...fetchedRooms,
+            ],
+            selectedRoomId,
+            selectedRoom: currentSelectedRoom,
+            roomsLoading: false,
+          })
+          roomsLastFetchedAt = Date.now()
+          return
+        }
+
+        const selectedFromFetch = selectedRoomId
+          ? fetchedRooms.find((room) => room.id === selectedRoomId) || null
+          : null
+
         set({
-          rooms: [
-            currentSelectedRoom,
-            ...fetchedRooms,
-          ],
-          selectedRoomId,
-          selectedRoom: currentSelectedRoom,
+          rooms: fetchedRooms,
+          selectedRoomId: selectedFromFetch?.id || fetchedRooms[0]?.id || '',
+          selectedRoom: selectedFromFetch || fetchedRooms[0] || null,
           roomsLoading: false,
         })
-        return
+        roomsLastFetchedAt = Date.now()
+      } catch (err) {
+        set({
+          roomsLoading: false,
+          roomsError: err?.response?.data?.detail || 'Gagal memuat daftar room',
+        })
+      } finally {
+        roomsRefreshPromise = null
       }
+    })()
 
-      const selectedFromFetch = selectedRoomId
-        ? fetchedRooms.find((room) => room.id === selectedRoomId) || null
-        : null
-
-      set({
-        rooms: fetchedRooms,
-        selectedRoomId: selectedFromFetch?.id || fetchedRooms[0]?.id || '',
-        selectedRoom: selectedFromFetch || fetchedRooms[0] || null,
-        roomsLoading: false,
-      })
-    } catch (err) {
-      set({
-        roomsLoading: false,
-        roomsError: err?.response?.data?.detail || 'Gagal memuat daftar room',
-      })
-    }
+    await roomsRefreshPromise
   },
 
   pushIncomingMessages: (messages) => {
