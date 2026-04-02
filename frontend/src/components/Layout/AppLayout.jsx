@@ -79,6 +79,28 @@ const APP_MENU_ITEMS = [
 
 const KEPALA_ROLES = ['kepala_ra', 'kepala', 'admin', 'admin_ra']
 
+const VIEW_LOADING_LABELS = {
+  chat: 'Menyiapkan ruang chat...',
+  dashboard: 'Memuat dashboard...',
+  knowledge: 'Membuka knowledge base...',
+  rpph: 'Memuat halaman RPPH...',
+  surat: 'Memuat halaman surat...',
+  presensi: 'Menyiapkan data presensi...',
+  notifikasi: 'Memuat notifikasi...',
+  profile: 'Memuat profil...',
+}
+
+const VIEW_TRANSITION_CLASS = {
+  chat: 'page-enter-chat',
+  dashboard: 'page-enter-dashboard',
+  knowledge: 'page-enter-knowledge',
+  rpph: 'page-enter-rpph',
+  surat: 'page-enter-surat',
+  presensi: 'page-enter-presensi',
+  notifikasi: 'page-enter-notifikasi',
+  profile: 'page-enter-profile',
+}
+
 const DASHBOARD_MENUS = [
   {
     id: 'ringkasan',
@@ -120,7 +142,12 @@ function SidebarLoadingFallback() {
 function ContentLoadingFallback() {
   return (
     <div className="flex h-full items-center justify-center bg-[#f8fafc] px-4">
-      <p className="text-sm text-[#64748b]">Memuat konten...</p>
+      <div className="w-full max-w-3xl space-y-3">
+        <div className="h-4 w-44 rounded-full bg-[#e2e8f0] page-skeleton" />
+        <div className="h-20 w-full rounded-2xl bg-[#e2e8f0] page-skeleton" />
+        <div className="h-20 w-full rounded-2xl bg-[#e2e8f0] page-skeleton" />
+        <p className="pt-1 text-sm text-[#64748b]">Memuat konten...</p>
+      </div>
     </div>
   )
 }
@@ -150,6 +177,7 @@ function AppLayout() {
   const [isSwitchingView, setIsSwitchingView] = useState(false)
 
   const userMenuRef = useRef(null)
+  const switchTimerRef = useRef(null)
 
   const {
     selectedRoomId: contextSelectedRoomId,
@@ -181,6 +209,14 @@ function AppLayout() {
   const dashboardMenus = useMemo(() => {
     return DASHBOARD_MENUS.filter((item) => !item.adminOnly || canManageRaProfile)
   }, [canManageRaProfile])
+
+  const viewLoadingLabel = useMemo(() => {
+    return VIEW_LOADING_LABELS[currentView] || 'Memuat halaman...'
+  }, [currentView])
+
+  const viewTransitionClass = useMemo(() => {
+    return VIEW_TRANSITION_CLASS[currentView] || 'page-transition-enter'
+  }, [currentView])
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -249,6 +285,23 @@ function AppLayout() {
     }
   }, [currentView])
 
+  useEffect(() => {
+    return () => {
+      if (switchTimerRef.current) {
+        window.clearTimeout(switchTimerRef.current)
+      }
+    }
+  }, [])
+
+  const finishViewSwitchSoon = useCallback(() => {
+    if (switchTimerRef.current) {
+      window.clearTimeout(switchTimerRef.current)
+    }
+    switchTimerRef.current = window.setTimeout(() => {
+      setIsSwitchingView(false)
+    }, 240)
+  }, [])
+
   const handleViewChange = (view) => {
     setIsSwitchingView(true)
     setShellError('')
@@ -257,21 +310,25 @@ function AppLayout() {
       setProfileViewMode('overview')
     }
     setIsUserMenuOpen(false)
-    setTimeout(() => setIsSwitchingView(false), 120)
+    finishViewSwitchSoon()
   }
 
   const openDashboardFromMenu = () => {
+    setIsSwitchingView(true)
     setShellError('')
     setCurrentView('dashboard')
     setDashboardPanel('ringkasan')
     setIsUserMenuOpen(false)
+    finishViewSwitchSoon()
   }
 
   const openProfileOverview = () => {
+    setIsSwitchingView(true)
     setShellError('')
     setCurrentView('profile')
     setProfileViewMode('overview')
     setIsUserMenuOpen(false)
+    finishViewSwitchSoon()
   }
 
   const handleProfileUpdated = useCallback((updates) => {
@@ -507,9 +564,22 @@ function AppLayout() {
           </div>
         ) : null}
 
+        {isSwitchingView ? (
+          <div className="page-switch-overlay pointer-events-none absolute inset-0 z-10 flex items-start justify-center bg-white/45 pt-10 backdrop-blur-[1px]">
+            <div className="page-switch-chip inline-flex items-center gap-2 rounded-full border border-[#d0d5dd] bg-white px-3 py-1.5 shadow-sm">
+              <span className="h-2 w-2 rounded-full bg-[#0f172a] page-loader-dot" />
+              <span className="h-2 w-2 rounded-full bg-[#334155] page-loader-dot page-loader-dot-delay-1" />
+              <span className="h-2 w-2 rounded-full bg-[#64748b] page-loader-dot page-loader-dot-delay-2" />
+              <span className="ml-1 text-xs font-medium text-[#475467]">{viewLoadingLabel}</span>
+            </div>
+          </div>
+        ) : null}
+
         <div
+          key={currentView}
           className={[
-            'content-fade min-h-0 flex-1 transition-opacity duration-150',
+            'content-fade min-h-0 flex-1 transition-opacity duration-200',
+            viewTransitionClass,
             isSwitchingView ? 'opacity-70' : 'opacity-100',
           ].join(' ')}
         >

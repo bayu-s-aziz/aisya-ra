@@ -87,6 +87,127 @@ body {
   }
 }
 
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.995);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes page-enter-chat {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes page-enter-dashboard {
+  from {
+    opacity: 0;
+    transform: translateX(-14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes page-enter-knowledge {
+  from {
+    opacity: 0;
+    transform: translateX(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes page-enter-rpph {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes page-enter-surat {
+  from {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes page-enter-presensi {
+  from {
+    opacity: 0;
+    transform: translateY(8px) rotateX(2deg);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) rotateX(0);
+  }
+}
+
+@keyframes page-enter-notifikasi {
+  from {
+    opacity: 0;
+    transform: translateX(10px) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) translateY(0);
+  }
+}
+
+@keyframes page-enter-profile {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.996);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes page-loader-dot {
+  0%,
+  70%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.45;
+  }
+  35% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
+
+@keyframes page-skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
 .menu-pop {
   animation: menu-pop 160ms ease-out;
 }
@@ -99,11 +220,119 @@ body {
   animation: message-enter 220ms ease-out;
 }
 
+.page-transition-enter {
+  animation: page-enter 220ms ease-out;
+}
+
+.page-enter-chat {
+  animation: page-enter-chat 240ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.page-enter-dashboard {
+  animation: page-enter-dashboard 220ms ease-out;
+}
+
+.page-enter-knowledge {
+  animation: page-enter-knowledge 230ms ease-out;
+}
+
+.page-enter-rpph {
+  animation: page-enter-rpph 220ms ease-out;
+}
+
+.page-enter-surat {
+  animation: page-enter-surat 220ms ease-out;
+}
+
+.page-enter-presensi {
+  animation: page-enter-presensi 220ms ease-out;
+  transform-origin: top center;
+}
+
+.page-enter-notifikasi {
+  animation: page-enter-notifikasi 220ms ease-out;
+}
+
+.page-enter-profile {
+  animation: page-enter-profile 220ms ease-out;
+}
+
+.page-loader-dot {
+  animation: page-loader-dot 1s ease-in-out infinite;
+}
+
+.page-loader-dot-delay-1 {
+  animation-delay: 0.15s;
+}
+
+.page-loader-dot-delay-2 {
+  animation-delay: 0.3s;
+}
+
+.page-skeleton {
+  background: linear-gradient(90deg, #e2e8f0 20%, #f1f5f9 50%, #e2e8f0 80%);
+  background-size: 220% 100%;
+  animation: page-skeleton-shimmer 1.25s ease infinite;
+}
+
+@media (max-width: 768px) {
+  .content-fade {
+    animation-duration: 130ms;
+  }
+
+  .message-enter {
+    animation-duration: 170ms;
+  }
+
+  .page-transition-enter,
+  .page-enter-chat,
+  .page-enter-dashboard,
+  .page-enter-knowledge,
+  .page-enter-rpph,
+  .page-enter-surat,
+  .page-enter-presensi,
+  .page-enter-notifikasi,
+  .page-enter-profile {
+    animation-duration: 160ms;
+    animation-timing-function: ease-out;
+  }
+
+  .page-switch-overlay {
+    background-color: rgba(255, 255, 255, 0.24) !important;
+    backdrop-filter: blur(0.6px) !important;
+    padding-top: 20px;
+  }
+
+  .page-switch-chip {
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+    padding: 0.3rem 0.6rem;
+  }
+
+  .page-loader-dot {
+    animation-duration: 0.82s;
+  }
+
+  .page-skeleton {
+    animation-duration: 1s;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .menu-pop,
   .content-fade,
   .message-enter,
-  .typing-dot {
+  .typing-dot,
+  .page-transition-enter,
+  .page-enter-chat,
+  .page-enter-dashboard,
+  .page-enter-knowledge,
+  .page-enter-rpph,
+  .page-enter-surat,
+  .page-enter-presensi,
+  .page-enter-notifikasi,
+  .page-enter-profile,
+  .page-loader-dot,
+  .page-skeleton {
     animation: none !important;
   }
 }
