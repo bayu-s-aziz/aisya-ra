@@ -44,6 +44,8 @@ function LoginPage() {
         headers: { Authorization: `Bearer ${accessToken}` },
       })
 
+      sessionStorage.removeItem('aisya_chat_bootstrap_done')
+
       navigate('/', { replace: true })
     } catch (submitError) {
       localStorage.removeItem('aisya_access_token')

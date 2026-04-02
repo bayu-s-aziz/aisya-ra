@@ -224,7 +224,21 @@ export const useChatStore = create((set, get) => ({
       })
 
       const fetchedRooms = Array.isArray(response?.data?.data) ? response.data.data : []
-      const selectedRoomId = get().selectedRoomId || get().selectedRoom?.id
+      const currentSelectedRoom = get().selectedRoom
+      const selectedRoomId = get().selectedRoomId || currentSelectedRoom?.id
+
+      if (isDraftRoomId(selectedRoomId) && currentSelectedRoom?.isDraft) {
+        set({
+          rooms: [
+            currentSelectedRoom,
+            ...fetchedRooms,
+          ],
+          selectedRoomId,
+          selectedRoom: currentSelectedRoom,
+          roomsLoading: false,
+        })
+        return
+      }
 
       const selectedFromFetch = selectedRoomId
         ? fetchedRooms.find((room) => room.id === selectedRoomId) || null

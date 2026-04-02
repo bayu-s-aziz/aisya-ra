@@ -359,6 +359,7 @@ function AppLayout() {
     localStorage.removeItem('aisya_refresh_token')
     localStorage.removeItem('aisya_user_name')
     localStorage.removeItem('aisya_user_email')
+    sessionStorage.removeItem('aisya_chat_bootstrap_done')
     window.location.assign('/login')
   }
 

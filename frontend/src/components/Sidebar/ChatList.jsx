@@ -8,6 +8,8 @@ import {
 import ChatListItem from './ChatListItem'
 import { useChatStore } from '../../store/chatStore'
 
+const CHAT_BOOTSTRAP_KEY = 'aisya_chat_bootstrap_done'
+
 function ChatList({
   appMenuItems,
   currentView,
@@ -33,8 +35,30 @@ function ChatList({
   const deleteRoom = useChatStore((state) => state.deleteRoom)
 
   useEffect(() => {
-    refreshRooms()
-  }, [refreshRooms])
+    let active = true
+
+    const bootstrapInitialChat = async () => {
+      const token = localStorage.getItem('aisya_access_token')
+      if (!token) return
+
+      if (sessionStorage.getItem(CHAT_BOOTSTRAP_KEY) === '1') return
+
+      await refreshRooms()
+      if (!active) return
+
+      sessionStorage.setItem(CHAT_BOOTSTRAP_KEY, '1')
+      createDraftRoom()
+      if (currentView !== 'chat') {
+        onSelectApp?.('chat')
+      }
+    }
+
+    bootstrapInitialChat()
+
+    return () => {
+      active = false
+    }
+  }, [createDraftRoom, currentView, onSelectApp, refreshRooms])
 
   const sortedRooms = useMemo(() => {
     return [...rooms].sort((first, second) => {
