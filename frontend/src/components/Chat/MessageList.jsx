@@ -4,9 +4,13 @@ import MessageBubble from './MessageBubble'
 
 function TypingBubble() {
   return (
-    <div className="mb-2 flex w-full justify-start">
-      <div className="rounded-2xl border border-[#e5e7eb] bg-white px-4 py-3 shadow-sm">
-        <div className="flex items-center gap-1">
+    <div className="mb-6 flex w-full justify-start">
+      <div className="w-full max-w-[52rem]">
+        <div className="mb-2 flex items-center gap-2">
+          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-[#0f172a] text-[11px] font-bold text-white">AI</div>
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[#667085]">AISYA</p>
+        </div>
+        <div className="inline-flex items-center gap-1 rounded-2xl border border-[#d0d5dd] bg-white px-4 py-3 shadow-sm">
           <span className="typing-dot" />
           <span className="typing-dot" />
           <span className="typing-dot" />
@@ -66,7 +70,7 @@ function formatDateLabel(dateKey) {
 function DateDivider({ label }) {
   return (
     <div className="my-4 flex w-full justify-center">
-      <span className="rounded-full border border-[#d1d5db] bg-white px-3 py-1 text-[11px] font-medium leading-none text-[#667085] shadow-sm">
+      <span className="rounded-full border border-[#d1d5db] bg-white/90 px-3 py-1 text-[11px] font-medium leading-none text-[#667085] shadow-sm backdrop-blur">
         {label}
       </span>
     </div>
@@ -127,8 +131,14 @@ function MessageList({ messages, isBotTyping, loadingInitial, loadingMore, error
     return rows
   }, [sortedMessages])
 
+  const quickIdeas = [
+    'Bantu susun RPPH tema minggu ini',
+    'Ringkas poin penting dari percakapan terakhir',
+    'Buatkan draft pengumuman untuk orang tua',
+  ]
+
   return (
-    <div className="relative flex h-full flex-col bg-[#f7f7f8]">
+    <div className="relative flex h-full flex-col bg-[radial-gradient(circle_at_top,_#eef2ff_0%,_#f7f7f8_35%,_#f7f7f8_100%)]">
       <div
         ref={containerRef}
         className="flex-1 overflow-y-auto px-3 py-4 md:px-6"
@@ -155,8 +165,19 @@ function MessageList({ messages, isBotTyping, loadingInitial, loadingMore, error
           ) : null}
 
           {!loadingInitial && sortedMessages.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-[#cbd5e1] bg-white py-8 text-center text-sm text-[#667085]">
-              Belum ada pesan. Mulai percakapan pertama Anda.
+            <div className="rounded-3xl border border-[#dbe3ec] bg-white/90 px-6 py-8 text-center shadow-sm backdrop-blur">
+              <p className="text-lg font-semibold text-[#0f172a]">Mulai percakapan dengan AISYA</p>
+              <p className="mt-2 text-sm text-[#667085]">Tulis pertanyaan Anda, lalu AI akan membantu dengan jawaban yang terstruktur.</p>
+              <div className="mt-5 grid gap-2 text-left">
+                {quickIdeas.map((idea) => (
+                  <div
+                    key={idea}
+                    className="rounded-xl border border-[#e4e7ec] bg-white px-3 py-2 text-sm text-[#344054]"
+                  >
+                    {idea}
+                  </div>
+                ))}
+              </div>
             </div>
           ) : null}
 

@@ -1,5 +1,5 @@
 import PropTypes from 'prop-types'
-import { MagnifyingGlassIcon, EllipsisVerticalIcon, ArrowLeftIcon } from '@heroicons/react/24/outline'
+import { ArrowLeftIcon } from '@heroicons/react/24/outline'
 
 const AVATAR_COLORS = [
   'bg-slate-500',
@@ -30,12 +30,12 @@ function getInitials(name) {
   return parts.map((part) => part[0]?.toUpperCase()).join('')
 }
 
-function ChatHeader({ room, onBack }) {
+function ChatHeader({ room, onBack, isTyping }) {
   const roomName = room?.nama || 'Pilih ruang chat'
-  const roomStatus = room?.status || room?.tipe || 'aktif'
+  const roomStatus = isTyping ? 'AISYA sedang mengetik...' : (room?.status || room?.tipe || 'siap membantu')
 
   return (
-    <header className="flex items-center justify-between border-b border-[#e4e7ec] bg-white/90 px-4 py-3 backdrop-blur md:px-6">
+    <header className="flex items-center justify-between border-b border-[#e4e7ec] bg-white/95 px-4 py-3 backdrop-blur md:px-6">
       <div className="flex min-w-0 items-center gap-3">
         {onBack ? (
           <button
@@ -47,11 +47,7 @@ function ChatHeader({ room, onBack }) {
             <ArrowLeftIcon className="h-5 w-5" />
           </button>
         ) : null}
-        <div
-          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white ${getAvatarColorSeed(
-            roomName,
-          )}`}
-        >
+        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-semibold text-white ${getAvatarColorSeed(roomName)}`}>
           {getInitials(roomName)}
         </div>
 
@@ -61,22 +57,10 @@ function ChatHeader({ room, onBack }) {
         </div>
       </div>
 
-      <div className="flex items-center gap-1 text-[#64748b]">
-        <button
-          type="button"
-          aria-label="Cari di chat"
-          className="rounded-full p-2 transition-colors hover:bg-[#f1f5f9]"
-        >
-          <MagnifyingGlassIcon className="h-5 w-5" />
-        </button>
-
-        <button
-          type="button"
-          aria-label="Menu chat"
-          className="rounded-full p-2 transition-colors hover:bg-[#f1f5f9]"
-        >
-          <EllipsisVerticalIcon className="h-5 w-5" />
-        </button>
+      <div className="hidden items-center gap-2 md:flex">
+        <span className="rounded-full border border-[#d0d5dd] bg-white px-2.5 py-1 text-[11px] font-medium text-[#475467]">
+          AISYA GPT
+        </span>
       </div>
     </header>
   )
@@ -89,11 +73,13 @@ ChatHeader.propTypes = {
     tipe: PropTypes.string,
   }),
   onBack: PropTypes.func,
+  isTyping: PropTypes.bool,
 }
 
 ChatHeader.defaultProps = {
   room: null,
   onBack: null,
+  isTyping: false,
 }
 
 export default ChatHeader

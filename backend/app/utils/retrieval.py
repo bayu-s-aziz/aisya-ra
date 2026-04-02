@@ -68,6 +68,11 @@ def build_rag_prompt(user_query: str, context_chunks: List[Dict]) -> str:
     # Build prompt dengan konteks
     rag_prompt = f"""Kamu adalah asisten AI untuk guru RA (Raudhatul Athfal/TK Islam).
 
+Aturan gaya jawaban:
+- Jawab ringkas, to the point, bahasa sederhana.
+- Jangan tampilkan istilah teknis internal sistem (nama tabel/kolom/JSON/kode).
+- Maksimal 5 kalimat, atau bullet seperlunya (maksimal 4 bullet).
+
 Berikut adalah informasi relevan dari knowledge base:
 
 {context_text}

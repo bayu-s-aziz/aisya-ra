@@ -22,6 +22,20 @@ function normalizeMessage(row) {
     timestamp: row.timestamp || row.created_at || new Date().toISOString(),
     media_type: row.media_type || null,
     media_url: row.media_url || null,
+    status: row.status || 'sent',
+  }
+}
+
+function createOptimisticMessage({ role, content, roomId }) {
+  return {
+    id: `${role}-temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    room_id: roomId,
+    role_msg: role,
+    content,
+    timestamp: new Date().toISOString(),
+    media_type: null,
+    media_url: null,
+    status: 'pending',
   }
 }
 
@@ -63,6 +77,12 @@ function createDraftRoomName() {
     hour: '2-digit',
     minute: '2-digit',
   }).format(new Date())}`
+}
+
+function createDraftRoomTitleFromMessage(messageText) {
+  const cleaned = String(messageText || '').replace(/\s+/g, ' ').trim()
+  if (!cleaned) return createDraftRoomName()
+  return cleaned.length > 52 ? `${cleaned.slice(0, 52).trimEnd()}...` : cleaned
 }
 
 async function persistDraftRoom(draftRoom) {
@@ -245,13 +265,39 @@ export const useChatStore = create((set, get) => ({
     if (!trimmedContent) return
 
     let selectedRoomId = get().selectedRoomId || get().selectedRoom?.id
-    const selectedRoom = get().selectedRoom
+    let selectedRoom = get().selectedRoom
     if (!selectedRoomId) return
 
+    const optimisticUserMessage = createOptimisticMessage({
+      role: 'user',
+      content: trimmedContent,
+      roomId: selectedRoomId,
+    })
+
     set({ sending: true, sendError: '' })
+    get().pushIncomingMessages([optimisticUserMessage])
 
     try {
       if (isDraftRoomId(selectedRoomId) || selectedRoom?.isDraft) {
+        const nextDraftName = createDraftRoomTitleFromMessage(trimmedContent)
+        if (selectedRoom?.nama !== nextDraftName) {
+          set((state) => ({
+            rooms: state.rooms.map((item) =>
+              item.id === selectedRoomId
+                ? { ...item, nama: nextDraftName }
+                : item,
+            ),
+            selectedRoom: state.selectedRoom?.id === selectedRoomId
+              ? { ...state.selectedRoom, nama: nextDraftName }
+              : state.selectedRoom,
+          }))
+
+          selectedRoom = {
+            ...(selectedRoom || {}),
+            nama: nextDraftName,
+          }
+        }
+
         const persistedRoom = await persistDraftRoom(selectedRoom)
         if (!persistedRoom?.id) {
           throw new Error('Gagal membuat ruang chat baru')
@@ -264,6 +310,11 @@ export const useChatStore = create((set, get) => ({
           ],
           selectedRoomId: persistedRoom.id,
           selectedRoom: persistedRoom,
+          incomingMessages: state.incomingMessages.map((message) =>
+            message.id === optimisticUserMessage.id
+              ? { ...message, room_id: persistedRoom.id }
+              : message,
+          ),
         }))
 
         selectedRoomId = persistedRoom.id
@@ -276,10 +327,38 @@ export const useChatStore = create((set, get) => ({
       )
 
       const { user_message, bot_message } = response?.data?.data || {}
-      const batch = [user_message, bot_message].filter(Boolean)
+      const normalizedUserMessage = normalizeMessage(user_message)
+      const normalizedBotMessage = normalizeMessage(bot_message)
 
-      get().pushIncomingMessages(batch)
+      set((state) => ({
+        incomingMessages: state.incomingMessages.map((message) => {
+          if (message.id !== optimisticUserMessage.id) return message
+
+          if (!normalizedUserMessage) {
+            return { ...message, status: 'sent' }
+          }
+
+          // Keep local optimistic ID to prevent visual duplicate in current session.
+          return {
+            ...message,
+            ...normalizedUserMessage,
+            id: message.id,
+            status: 'sent',
+          }
+        }),
+      }))
+
+      if (normalizedBotMessage) {
+        get().pushIncomingMessages([normalizedBotMessage])
+      }
     } catch (err) {
+      set((state) => ({
+        incomingMessages: state.incomingMessages.map((message) =>
+          message.id === optimisticUserMessage.id
+            ? { ...message, status: 'failed' }
+            : message,
+        ),
+      }))
       set({ sendError: err?.response?.data?.detail || 'Gagal mengirim pesan' })
     } finally {
       set({ sending: false })

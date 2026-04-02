@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 import re
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 
@@ -28,6 +29,14 @@ router = APIRouter()
 
 
 VALID_TIPE = {'utama', 'rpph', 'anekdot', 'surat', 'presensi', 'custom', 'dashboard'}
+
+
+def _is_valid_uuid(value: str) -> bool:
+    try:
+        UUID(str(value))
+        return True
+    except Exception:
+        return False
 
 
 def _build_dashboard_text_from_endpoint(current: dict, refreshed: bool) -> str:
@@ -564,6 +573,12 @@ def get_chat_messages(
     limit: int = Query(default=20, ge=1, le=100),
     current=Depends(get_current_user_profile),
 ):
+    if not _is_valid_uuid(room_id):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Ruang chat tidak ditemukan",
+        )
+
     supabase = get_supabase_client()
     ra_id = current["ra_id"]
 
@@ -662,6 +677,12 @@ def send_chat_message(
     payload: SendMessageRequest,
     current=Depends(get_current_user_profile),
 ):
+    if not _is_valid_uuid(room_id):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Ruang chat tidak ditemukan",
+        )
+
     supabase = get_supabase_client()
     ra_id = current["ra_id"]
     user_id = current["profile"]["id"]
@@ -773,7 +794,9 @@ def send_chat_message(
             f"{enhanced_prompt}\n\n"
             "KONTEKS DATA INTERNAL SISTEM (SUMBER UTAMA):\n"
             f"{system_data_context}\n\n"
-            "Instruksi tambahan: Jika pertanyaan user terkait data operasional RA, utamakan konteks data internal sistem ini."
+            "Instruksi tambahan: Jika pertanyaan user terkait data operasional RA, utamakan konteks data internal sistem ini. "
+            "Saat menjawab user, gunakan bahasa non-teknis, ringkas, dan jangan menampilkan label/field mentah "
+            "seperti [PRESENSI], total_siswa, belum_dicatat, nama tabel, atau format JSON."
         )
 
     try:
@@ -821,6 +844,12 @@ async def send_voice_message(
     file: UploadFile = File(...),
     current=Depends(get_current_user_profile),
 ):
+    if not _is_valid_uuid(room_id):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Ruang chat tidak ditemukan",
+        )
+
     supabase = get_supabase_client()
     ra_id = current["ra_id"]
     user_id = current["profile"]["id"]

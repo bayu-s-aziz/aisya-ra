@@ -7,6 +7,8 @@ RUN apt-get update && \
 
 WORKDIR /app
 
+ENV PYTHONPATH=/app
+
 # Install system dependencies untuk WeasyPrint
 RUN apt-get update && apt-get install -y \
     libcairo2 \

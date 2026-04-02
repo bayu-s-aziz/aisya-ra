@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import PropTypes from 'prop-types'
-import { PaperAirplaneIcon } from '@heroicons/react/24/outline'
+import { PaperAirplaneIcon } from '@heroicons/react/24/solid'
 
 function ChatInput({ onSend, disabled }) {
   const [text, setText] = useState('')
@@ -45,9 +45,9 @@ function ChatInput({ onSend, disabled }) {
   }
 
   return (
-    <div className="border-t border-[#e4e7ec] bg-white/95 px-3 py-3 backdrop-blur md:px-6 md:py-4">
-      <div className="mx-auto w-full max-w-3xl">
-        <div className="rounded-[28px] border border-[#dbe0e6] bg-white p-2 shadow-sm transition-colors focus-within:border-[#98a2b3]">
+    <div className="border-t border-[#e4e7ec] bg-white/90 px-3 py-3 backdrop-blur md:px-6 md:py-4">
+      <div className="mx-auto w-full max-w-4xl">
+        <div className="rounded-[26px] border border-[#d0d5dd] bg-white p-2 shadow-[0_8px_28px_rgba(15,23,42,0.08)] transition-colors focus-within:border-[#98a2b3]">
           <div className="flex items-end gap-2">
             <div className="min-w-0 flex-1 px-2 py-1">
               <textarea
@@ -58,8 +58,8 @@ function ChatInput({ onSend, disabled }) {
                 onKeyDown={handleKeyDown}
                 disabled={disabled}
                 rows={1}
-                placeholder="Tanyakan apa saja ke AISYA"
-                className="w-full resize-none bg-transparent text-sm text-[#0f172a] outline-none placeholder:text-[#94a3b8] disabled:opacity-60"
+                placeholder={disabled ? 'AISYA sedang menyiapkan jawaban...' : 'Tanyakan apa saja ke AISYA'}
+                className="w-full resize-none bg-transparent text-sm leading-relaxed text-[#0f172a] outline-none placeholder:text-[#94a3b8] disabled:opacity-70"
                 style={{ height: 'auto' }}
               />
             </div>
@@ -75,7 +75,10 @@ function ChatInput({ onSend, disabled }) {
             </button>
           </div>
         </div>
-        <p className="mt-2 px-2 text-xs text-[#98a2b3]">Enter untuk kirim, Shift+Enter untuk baris baru.</p>
+        <div className="mt-2 flex items-center justify-between px-2 text-xs text-[#98a2b3]">
+          <p>Enter untuk kirim, Shift+Enter untuk baris baru.</p>
+          <p>{text.length}/4000</p>
+        </div>
       </div>
     </div>
   )

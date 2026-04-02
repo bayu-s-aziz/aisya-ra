@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   AcademicCapIcon,
   Bars3Icon,
@@ -142,8 +142,7 @@ function AppLayout() {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const [currentView, setCurrentView] = useState('chat')
   const [dashboardPanel, setDashboardPanel] = useState('ringkasan')
-  const [openUserSettingsSignal, setOpenUserSettingsSignal] = useState(0)
-  const [openRaSettingsSignal, setOpenRaSettingsSignal] = useState(0)
+  const [profileViewMode, setProfileViewMode] = useState('overview')
 
   const [profile, setProfile] = useState(null)
   const [raProfile, setRaProfile] = useState(null)
@@ -254,6 +253,9 @@ function AppLayout() {
     setIsSwitchingView(true)
     setShellError('')
     setCurrentView(view)
+    if (view === 'profile') {
+      setProfileViewMode('overview')
+    }
     setIsUserMenuOpen(false)
     setTimeout(() => setIsSwitchingView(false), 120)
   }
@@ -268,22 +270,27 @@ function AppLayout() {
   const openUserProfileSettings = () => {
     setShellError('')
     setCurrentView('profile')
-    setOpenUserSettingsSignal((prev) => prev + 1)
+    setProfileViewMode('user-settings')
     setIsUserMenuOpen(false)
   }
 
   const openRaProfileSettings = () => {
     setShellError('')
     setCurrentView('profile')
-    setOpenRaSettingsSignal((prev) => prev + 1)
+    setProfileViewMode('school-settings')
     setIsUserMenuOpen(false)
   }
 
   const openProfileOverview = () => {
     setShellError('')
     setCurrentView('profile')
+    setProfileViewMode('overview')
     setIsUserMenuOpen(false)
   }
+
+  const handleProfileUpdated = useCallback((updates) => {
+    setProfile((prev) => ({ ...prev, ...updates }))
+  }, [])
 
   const handleLogout = () => {
     localStorage.removeItem('aisya_access_token')
@@ -397,9 +404,10 @@ function AppLayout() {
       <Suspense fallback={<ContentLoadingFallback />}>
         <ProfileView
           profile={profile}
-          openUserSettingsSignal={openUserSettingsSignal}
-          openRaSettingsSignal={openRaSettingsSignal}
-          onProfileUpdated={(updates) => setProfile((prev) => ({ ...prev, ...updates }))}
+          viewMode={profileViewMode}
+          canManageRaProfile={canManageRaProfile}
+          onChangeViewMode={setProfileViewMode}
+          onProfileUpdated={handleProfileUpdated}
         />
       </Suspense>
     )
