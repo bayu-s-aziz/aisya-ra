@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
+  createManagedUser,
   deleteManagedUser,
   fetchManagedUsers,
   importGuruFromGtkFile,
@@ -40,6 +41,17 @@ function UsersManagementPanel() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [roleFilter, setRoleFilter] = useState('all')
+
+  const [createForm, setCreateForm] = useState({
+    nama: '',
+    email: '',
+    password: '',
+    role: 'guru',
+    telepon: '',
+    jabatan: '',
+  })
 
   const [editingId, setEditingId] = useState(null)
   const [editForm, setEditForm] = useState({
@@ -74,6 +86,73 @@ function UsersManagementPanel() {
   useEffect(() => {
     loadUsers()
   }, [])
+
+  const filteredUsers = useMemo(() => {
+    const search = searchQuery.trim().toLowerCase()
+    return users.filter((user) => {
+      const matchRole = roleFilter === 'all' ? true : user.role === roleFilter
+      const matchSearch = !search
+        ? true
+        : `${user.nama || ''} ${user.email || ''} ${user.jabatan || ''}`
+          .toLowerCase()
+          .includes(search)
+
+      return matchRole && matchSearch
+    })
+  }, [users, roleFilter, searchQuery])
+
+  const summary = useMemo(() => {
+    const total = users.length
+    const kepala = users.filter((user) => user.role === 'kepala_ra').length
+    return {
+      total,
+      guru: total - kepala,
+      kepala,
+      tampil: filteredUsers.length,
+    }
+  }, [users, filteredUsers])
+
+  const resetCreateForm = () => {
+    setCreateForm({
+      nama: '',
+      email: '',
+      password: '',
+      role: 'guru',
+      telepon: '',
+      jabatan: '',
+    })
+  }
+
+  const handleCreate = async () => {
+    if (!createForm.nama.trim() || !createForm.email.trim() || !createForm.password.trim()) {
+      setError('Nama, email, dan password awal wajib diisi')
+      return
+    }
+
+    const token = localStorage.getItem('aisya_access_token')
+    if (!token) return
+
+    setSaving(true)
+    setError('')
+    setSuccess('')
+    try {
+      await createManagedUser(token, {
+        nama: createForm.nama.trim(),
+        email: createForm.email.trim(),
+        password: createForm.password.trim(),
+        role: createForm.role,
+        telepon: createForm.telepon.trim() || undefined,
+        jabatan: createForm.jabatan.trim() || undefined,
+      })
+      setSuccess('Pengguna baru berhasil ditambahkan')
+      resetCreateForm()
+      await loadUsers()
+    } catch (err) {
+      setError(getErrorMessage(err, 'Gagal menambah pengguna'))
+    } finally {
+      setSaving(false)
+    }
+  }
 
   const startEdit = (user) => {
     setEditingId(user.id)
@@ -191,6 +270,98 @@ function UsersManagementPanel() {
       {error ? <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div> : null}
 
       <div className="rounded-2xl border border-[#e2e8f0] bg-white p-4 shadow-sm">
+        <p className="text-sm font-semibold text-[#0f172a]">Tambah Pengguna Manual</p>
+        <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-4">
+          <input
+            className={inputClass}
+            value={createForm.nama}
+            onChange={(ev) => setCreateForm((prev) => ({ ...prev, nama: ev.target.value }))}
+            placeholder="Nama lengkap"
+          />
+          <input
+            className={inputClass}
+            type="email"
+            value={createForm.email}
+            onChange={(ev) => setCreateForm((prev) => ({ ...prev, email: ev.target.value }))}
+            placeholder="Email"
+          />
+          <input
+            className={inputClass}
+            type="password"
+            value={createForm.password}
+            onChange={(ev) => setCreateForm((prev) => ({ ...prev, password: ev.target.value }))}
+            placeholder="Password awal"
+          />
+          <select
+            className={inputClass}
+            value={createForm.role}
+            onChange={(ev) => setCreateForm((prev) => ({ ...prev, role: ev.target.value }))}
+          >
+            <option value="guru">Guru</option>
+            <option value="kepala_ra">Kepala RA</option>
+          </select>
+
+          <input
+            className={inputClass}
+            value={createForm.jabatan}
+            onChange={(ev) => setCreateForm((prev) => ({ ...prev, jabatan: ev.target.value }))}
+            placeholder="Jabatan (opsional)"
+          />
+          <input
+            className={inputClass}
+            value={createForm.telepon}
+            onChange={(ev) => setCreateForm((prev) => ({ ...prev, telepon: ev.target.value }))}
+            placeholder="Telepon (opsional)"
+          />
+          <button
+            type="button"
+            onClick={handleCreate}
+            disabled={saving}
+            className="rounded-full bg-[#0f172a] px-4 py-2 text-sm font-medium text-white hover:bg-[#020617] disabled:opacity-60"
+          >
+            {saving ? 'Menyimpan...' : 'Tambah Pengguna'}
+          </button>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-[#e2e8f0] bg-white p-4 shadow-sm">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+          <input
+            className={inputClass}
+            value={searchQuery}
+            onChange={(ev) => setSearchQuery(ev.target.value)}
+            placeholder="Cari nama, email, atau jabatan"
+          />
+          <select
+            className={inputClass}
+            value={roleFilter}
+            onChange={(ev) => setRoleFilter(ev.target.value)}
+          >
+            <option value="all">Semua Role</option>
+            <option value="guru">Guru</option>
+            <option value="kepala_ra">Kepala RA</option>
+          </select>
+          <button
+            type="button"
+            onClick={() => {
+              setSearchQuery('')
+              setRoleFilter('all')
+            }}
+            className="rounded-full border border-[#cbd5e1] px-4 py-2 text-sm text-[#334155] hover:bg-[#f8fafc]"
+          >
+            Reset Filter
+          </button>
+        </div>
+
+        <div className="mt-3 flex flex-wrap gap-2 text-xs">
+          <span className="rounded-full bg-slate-100 px-3 py-1 text-[#334155]">Total: {summary.total}</span>
+          <span className="rounded-full bg-blue-50 px-3 py-1 text-blue-700">Guru: {summary.guru}</span>
+          <span className="rounded-full bg-amber-50 px-3 py-1 text-amber-700">Kepala RA: {summary.kepala}</span>
+          <span className="rounded-full bg-emerald-50 px-3 py-1 text-emerald-700">Tampil: {summary.tampil}</span>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-[#e2e8f0] bg-white p-4 shadow-sm">
         <p className="text-sm font-semibold text-[#0f172a]">Import Guru dari GTK (CSV)</p>
         <p className="mt-1 text-xs text-[#64748b]">Gunakan kolom seperti: Nama Lengkap, NIK, NUPTK, Status Kepegawaian, NIP, Jenis Kelamin, Tempat/Tanggal Lahir, Nomor Handphone, Email, Email Akun Madrasah Digital, Password Awal, Tugas, Mata Pelajaran, Penempatan, Total JTM.</p>
         <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -231,7 +402,7 @@ function UsersManagementPanel() {
               </tr>
             ) : null}
 
-            {!loading && users.length === 0 ? (
+            {!loading && filteredUsers.length === 0 ? (
               <tr>
                 <td className="px-3 py-3" colSpan={5}>
                   Belum ada data pengguna.
@@ -240,7 +411,7 @@ function UsersManagementPanel() {
             ) : null}
 
             {!loading
-              ? users.map((user) => {
+              ? filteredUsers.map((user) => {
                   const isEditing = editingId === user.id
                   return (
                     <tr key={user.id}>

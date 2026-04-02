@@ -21,6 +21,7 @@ function PresensiManagementPanel() {
   const [kelompokList, setKelompokList] = useState([])
   const [selectedKelompokId, setSelectedKelompokId] = useState('')
   const [selectedDate, setSelectedDate] = useState(getTodayIsoDate())
+  const [searchQuery, setSearchQuery] = useState('')
 
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -91,6 +92,42 @@ function PresensiManagementPanel() {
       .map(([siswaId, status]) => ({ siswa_id: siswaId, status }))
   }, [statusMap])
 
+  const filteredDetail = useMemo(() => {
+    const detail = rekap?.detail || []
+    const search = searchQuery.trim().toLowerCase()
+    if (!search) return detail
+
+    return detail.filter((item) => (item.nama || '').toLowerCase().includes(search))
+  }, [rekap, searchQuery])
+
+  const statusSummary = useMemo(() => {
+    const summaryMap = {
+      hadir: 0,
+      sakit: 0,
+      izin: 0,
+      alpha: 0,
+      belum_dicatat: 0,
+    }
+
+    ;(rekap?.detail || []).forEach((item) => {
+      const currentStatus = statusMap[item.siswa_id] || 'belum_dicatat'
+      summaryMap[currentStatus] = (summaryMap[currentStatus] || 0) + 1
+    })
+
+    return summaryMap
+  }, [rekap, statusMap])
+
+  const handleBulkStatus = (statusValue) => {
+    if (!rekap?.detail || filteredDetail.length === 0) return
+    setStatusMap((prev) => {
+      const next = { ...prev }
+      filteredDetail.forEach((item) => {
+        next[item.siswa_id] = statusValue
+      })
+      return next
+    })
+  }
+
   const handleSave = async () => {
     if (!selectedKelompokId || !selectedDate) {
       setError('Pilih tanggal dan kelompok terlebih dahulu')
@@ -119,7 +156,7 @@ function PresensiManagementPanel() {
   }
 
   const summary = rekap
-    ? `Hadir: ${rekap.hadir} | Sakit: ${rekap.sakit} | Izin: ${rekap.izin} | Alpha: ${rekap.alpha} | Belum dicatat: ${rekap.belum_dicatat}`
+    ? `Hadir: ${statusSummary.hadir} | Sakit: ${statusSummary.sakit} | Izin: ${statusSummary.izin} | Alpha: ${statusSummary.alpha} | Belum dicatat: ${statusSummary.belum_dicatat}`
     : ''
 
   return (
@@ -168,6 +205,39 @@ function PresensiManagementPanel() {
             {saving ? 'Menyimpan...' : 'Simpan Presensi'}
           </button>
         </div>
+
+        <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-4">
+          <input
+            className={inputClass}
+            value={searchQuery}
+            onChange={(ev) => setSearchQuery(ev.target.value)}
+            placeholder="Cari nama siswa"
+          />
+          <button
+            type="button"
+            onClick={() => handleBulkStatus('hadir')}
+            disabled={!rekap || filteredDetail.length === 0}
+            className="rounded-full border border-emerald-200 px-4 py-2 text-sm text-emerald-700 hover:bg-emerald-50 disabled:opacity-60"
+          >
+            Tandai Semua Hadir
+          </button>
+          <button
+            type="button"
+            onClick={() => handleBulkStatus('izin')}
+            disabled={!rekap || filteredDetail.length === 0}
+            className="rounded-full border border-amber-200 px-4 py-2 text-sm text-amber-700 hover:bg-amber-50 disabled:opacity-60"
+          >
+            Tandai Semua Izin
+          </button>
+          <button
+            type="button"
+            onClick={() => handleBulkStatus('belum_dicatat')}
+            disabled={!rekap || filteredDetail.length === 0}
+            className="rounded-full border border-[#cbd5e1] px-4 py-2 text-sm text-[#334155] hover:bg-[#f8fafc] disabled:opacity-60"
+          >
+            Kosongkan Status
+          </button>
+        </div>
       </div>
 
       {rekap ? (
@@ -192,14 +262,14 @@ function PresensiManagementPanel() {
               </tr>
             ) : null}
 
-            {!loading && (!rekap?.detail || rekap.detail.length === 0) ? (
+            {!loading && filteredDetail.length === 0 ? (
               <tr>
                 <td className="px-3 py-3" colSpan={2}>Belum ada data presensi untuk filter ini.</td>
               </tr>
             ) : null}
 
-            {!loading && rekap?.detail
-              ? rekap.detail.map((item) => (
+            {!loading && filteredDetail.length > 0
+              ? filteredDetail.map((item) => (
                   <tr key={item.siswa_id}>
                     <td className="px-3 py-2">{item.nama}</td>
                     <td className="px-3 py-2">
