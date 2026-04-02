@@ -267,20 +267,6 @@ function AppLayout() {
     setIsUserMenuOpen(false)
   }
 
-  const openUserProfileSettings = () => {
-    setShellError('')
-    setCurrentView('profile')
-    setProfileViewMode('user-settings')
-    setIsUserMenuOpen(false)
-  }
-
-  const openRaProfileSettings = () => {
-    setShellError('')
-    setCurrentView('profile')
-    setProfileViewMode('school-settings')
-    setIsUserMenuOpen(false)
-  }
-
   const openProfileOverview = () => {
     setShellError('')
     setCurrentView('profile')
@@ -482,24 +468,6 @@ function AppLayout() {
                 <HomeIcon className="h-4 w-4" />
                 Dashboard
               </button>
-              <button
-                type="button"
-                onClick={openUserProfileSettings}
-                className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-[#374151] hover:bg-[#f8fafc]"
-              >
-                <UserIcon className="h-4 w-4" />
-                Pengaturan Profil Pengguna
-              </button>
-              {canManageRaProfile ? (
-                <button
-                  type="button"
-                  onClick={openRaProfileSettings}
-                  className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-[#374151] hover:bg-[#f8fafc]"
-                >
-                  <UserIcon className="h-4 w-4" />
-                  Pengaturan Profil RA
-                </button>
-              ) : null}
               <button
                 type="button"
                 onClick={openProfileOverview}
