@@ -84,7 +84,7 @@ function StudentsManagementPanel() {
       {error ? <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div> : null}
 
       <div className="rounded-2xl border border-[#e2e8f0] bg-white p-4 shadow-sm">
-        <p className="text-sm font-semibold text-[#0f172a]">Import Siswa dari EMIS (CSV/XLSX)</p>
+        <p className="text-sm font-semibold text-[#0f172a]">Import Data Siswa (CSV/XLSX)</p>
         <p className="mt-1 text-xs text-[#64748b]">Gunakan kolom seperti: Nama Lengkap, NISN, NIK, Tempat Lahir, Tanggal Lahir, Tingkat - Rombel, Status, dan lainnya.</p>
         <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
           <input

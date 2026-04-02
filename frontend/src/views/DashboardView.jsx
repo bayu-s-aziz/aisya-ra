@@ -13,7 +13,7 @@ const KelompokManagementPanel = lazy(loadKelompokManagementPanel)
 const PresensiManagementPanel = lazy(loadPresensiManagementPanel)
 
 const PANEL_LABELS = {
-  ringkasan: 'Ringkasan Dashboard',
+  ringkasan: 'Dashboard',
   'manajemen-siswa': 'Manajemen Siswa',
   'manajemen-pengguna': 'Manajemen Pengguna',
   'manajemen-kelompok': 'Manajemen Kelompok',

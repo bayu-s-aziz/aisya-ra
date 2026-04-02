@@ -158,8 +158,6 @@ function ProfileView({ profile, viewMode, canManageRaProfile, onChangeViewMode, 
         <section className="rounded-2xl border border-[#e2e8f0] bg-white p-5 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#64748b]">Pusat Profil</p>
           <h2 className="mt-1 text-2xl font-semibold text-[#0f172a]">Profil Pengguna dan Profil Sekolah</h2>
-          <p className="mt-2 text-sm text-[#64748b]">Halaman profil dipisah agar data akun pengguna dan data sekolah tidak tercampur.</p>
-
           <div className="mt-4 flex flex-wrap gap-2">
             <ModeButton
               label="Lihat Profil"

@@ -105,7 +105,7 @@ const VIEW_TRANSITION_CLASS = {
 const DASHBOARD_MENUS = [
   {
     id: 'ringkasan',
-    label: 'Ringkasan Dashboard',
+    label: 'Dashboard',
     icon: HomeIcon,
   },
   {

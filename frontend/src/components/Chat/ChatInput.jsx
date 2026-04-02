@@ -45,7 +45,7 @@ function ChatInput({ onSend, disabled }) {
   }
 
   return (
-    <div className="border-t border-[#e4e7ec] bg-white/90 px-3 py-3 backdrop-blur md:px-6 md:py-4">
+    <div className="px-3 py-3 backdrop-blur md:px-6 md:py-4">
       <div className="mx-auto w-full max-w-4xl">
         <div className="rounded-[26px] border border-[#d0d5dd] bg-white p-2 shadow-[0_8px_28px_rgba(15,23,42,0.08)] transition-colors focus-within:border-[#98a2b3]">
           <div className="flex items-end gap-2">
