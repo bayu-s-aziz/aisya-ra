@@ -60,13 +60,21 @@ function ChatList({
   const isCustomMode = Array.isArray(customItems) && customItems.length > 0
   const hasAppMenuItems = Array.isArray(appMenuItems) && appMenuItems.length > 0
 
+  const ensureChatView = () => {
+    if (currentView !== 'chat') {
+      onSelectApp?.('chat')
+    }
+  }
+
   const handleRoomSelect = (room) => {
     setSelectedRoomId(room?.id || '')
+    ensureChatView()
   }
 
   const handleCreateNewChat = () => {
     setCreateError('')
     createDraftRoom()
+    ensureChatView()
   }
 
   const handleDeleteRoom = async (room) => {
