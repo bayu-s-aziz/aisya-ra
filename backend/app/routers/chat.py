@@ -540,6 +540,14 @@ def _parse_json_object(text: str) -> dict | None:
 def _detect_admin_action_intent(query: str) -> str | None:
     normalized = _normalize_text(query)
 
+    transfer_student = (
+        _contains_any(normalized, ["siswa", "murid", "peserta didik"])
+        and _contains_any(normalized, ["pindah", "mutasi", "geser"])
+        and _contains_any(normalized, ["kelompok", "kelas", "rombel"])
+    )
+    if transfer_student:
+        return "transfer_student"
+
     create_student = (
         _contains_any(normalized, ["siswa", "murid", "peserta didik"])
         and _contains_any(normalized, ["tambah", "tambahkan", "daftarkan", "input", "masukkan", "buat"])
@@ -728,6 +736,61 @@ Output JSON saja:"""
                 "nama_kelompok": nama_kelompok,
                 "nisn": ((item.get("nisn") or "").strip() or None),
                 "jenis_kelamin": ((item.get("jenis_kelamin") or "").strip() or None),
+            }
+        )
+
+    return normalized_records
+
+
+def _extract_transfer_students(query: str) -> list[dict]:
+    extraction_prompt = f"""Ekstrak data pemindahan siswa antar kelompok dari pesan user menjadi JSON.
+
+Aturan:
+- Fokus hanya pada aksi pindah/mutasi siswa.
+- Jangan mengarang nama siswa atau nama kelompok.
+- Jika kelompok asal tidak disebut, isi null.
+
+Format output WAJIB persis JSON object:
+{{
+  "records": [
+    {{
+      "nama_siswa": "...",
+      "kelompok_tujuan": "...",
+      "kelompok_asal": "...|null"
+    }}
+  ]
+}}
+
+Jika tidak ada data yang jelas, kembalikan: {{"records": []}}
+
+Pesan user: {query}
+Output JSON saja:"""
+
+    try:
+        raw = generate_response(extraction_prompt)
+    except Exception:
+        return []
+
+    parsed = _parse_json_object(raw) or {}
+    records = parsed.get("records") if isinstance(parsed, dict) else None
+    if not isinstance(records, list):
+        return []
+
+    normalized_records = []
+    for item in records:
+        if not isinstance(item, dict):
+            continue
+
+        nama_siswa = (item.get("nama_siswa") or "").strip()
+        kelompok_tujuan = (item.get("kelompok_tujuan") or "").strip()
+        if not nama_siswa:
+            continue
+
+        normalized_records.append(
+            {
+                "nama_siswa": nama_siswa,
+                "kelompok_tujuan": kelompok_tujuan,
+                "kelompok_asal": ((item.get("kelompok_asal") or "").strip() or None),
             }
         )
 
@@ -927,6 +990,128 @@ def _try_execute_create_student_action(supabase, current: dict, query: str) -> s
     return "Belum ada siswa yang berhasil ditambahkan:\n" + "\n".join(issue_lines[:6])
 
 
+def _try_execute_transfer_student_action(supabase, current: dict, query: str) -> str:
+    ra_id = current["ra_id"]
+    user_id = current["profile"]["id"]
+    tahun_ajaran_id = get_active_academic_year(supabase, ra_id, created_by=user_id)["id"]
+
+    try:
+        kelompok_rows = (
+            supabase.table("kelompok")
+            .select("id,nama_kelompok")
+            .eq("ra_id", ra_id)
+            .eq("tahun_ajaran_id", tahun_ajaran_id)
+            .order("nama_kelompok")
+            .execute()
+        ).data or []
+    except Exception as exc:
+        return f"Gagal mengambil daftar kelompok: {exc}"
+
+    if not kelompok_rows:
+        return "Belum ada kelompok pada tahun ajaran aktif."
+
+    records = _extract_transfer_students(query)
+    if not records:
+        return (
+            "Saya siap memindahkan siswa, tapi datanya belum lengkap. "
+            "Contoh: 'Pindahkan Budi dari Kelompok A ke Kelompok B'."
+        )
+
+    success_lines = []
+    issue_lines = []
+    available_kelompok = ", ".join([(item.get("nama_kelompok") or "-") for item in kelompok_rows[:10]])
+
+    for record in records:
+        nama_siswa = record.get("nama_siswa") or ""
+        tujuan_name = record.get("kelompok_tujuan") or ""
+        asal_name = record.get("kelompok_asal") or ""
+
+        if not tujuan_name:
+            issue_lines.append(f"- {nama_siswa}: kelompok tujuan belum disebut.")
+            continue
+
+        tujuan_row, tujuan_candidates = _resolve_kelompok_by_name(kelompok_rows, tujuan_name)
+        if not tujuan_row:
+            kandidat_text = ", ".join(tujuan_candidates) if tujuan_candidates else available_kelompok
+            issue_lines.append(
+                f"- {nama_siswa}: kelompok tujuan '{tujuan_name}' tidak ditemukan. Pilihan: {kandidat_text}."
+            )
+            continue
+
+        asal_id = None
+        if asal_name:
+            asal_row, _ = _resolve_kelompok_by_name(kelompok_rows, asal_name)
+            if not asal_row:
+                issue_lines.append(f"- {nama_siswa}: kelompok asal '{asal_name}' tidak ditemukan.")
+                continue
+            asal_id = asal_row.get("id")
+
+        try:
+            siswa_row, error_kind, candidates = _resolve_student_for_action(
+                supabase,
+                ra_id,
+                tahun_ajaran_id,
+                nama_siswa,
+                kelompok_id=asal_id,
+            )
+        except Exception as exc:
+            issue_lines.append(f"- {nama_siswa}: gagal mencari data siswa ({exc}).")
+            continue
+
+        if error_kind == "not_found":
+            issue_lines.append(f"- {nama_siswa}: siswa tidak ditemukan.")
+            continue
+
+        if error_kind == "ambiguous":
+            daftar = ", ".join(candidates) if candidates else "nama serupa"
+            issue_lines.append(f"- {nama_siswa}: ada beberapa nama serupa ({daftar}).")
+            continue
+
+        if not isinstance(siswa_row, dict):
+            issue_lines.append(f"- {nama_siswa}: format data siswa tidak valid.")
+            continue
+
+        siswa_id = siswa_row.get("id")
+        if not isinstance(siswa_id, str) or not siswa_id:
+            issue_lines.append(f"- {nama_siswa}: ID siswa tidak valid.")
+            continue
+
+        current_kelompok_id = siswa_row.get("kelompok_id")
+        if isinstance(current_kelompok_id, str) and current_kelompok_id == tujuan_row.get("id"):
+            issue_lines.append(
+                f"- {nama_siswa}: sudah berada di {tujuan_row.get('nama_kelompok') or tujuan_name}."
+            )
+            continue
+
+        try:
+            supabase.table("siswa").update(
+                {
+                    "kelompok_id": tujuan_row.get("id"),
+                    "tingkat_rombel": tujuan_row.get("nama_kelompok"),
+                }
+            ).eq("id", siswa_id).eq("ra_id", ra_id).eq("tahun_ajaran_id", tahun_ajaran_id).execute()
+
+            siswa_nama = siswa_row.get("nama") if isinstance(siswa_row.get("nama"), str) else nama_siswa
+            success_lines.append(
+                f"- {siswa_nama}: dipindahkan ke {tujuan_row.get('nama_kelompok') or tujuan_name}."
+            )
+        except Exception as exc:
+            issue_lines.append(f"- {nama_siswa}: gagal memindahkan siswa ({exc}).")
+
+    if success_lines and not issue_lines:
+        return "Pemindahan siswa berhasil diproses:\n" + "\n".join(success_lines)
+
+    if success_lines and issue_lines:
+        return (
+            f"Pemindahan siswa diproses sebagian. Berhasil: {len(success_lines)}, perlu perbaikan: {len(issue_lines)}.\n"
+            + "\n".join(success_lines[:6])
+            + "\n"
+            + "\n".join(issue_lines[:6])
+        )
+
+    return "Belum ada siswa yang berhasil dipindahkan:\n" + "\n".join(issue_lines[:6])
+
+
 def _try_execute_admin_action(supabase, current: dict, query: str) -> str | None:
     intent = _detect_admin_action_intent(query)
     if not intent:
@@ -938,10 +1123,145 @@ def _try_execute_admin_action(supabase, current: dict, query: str) -> str | None
     if intent == "create_student":
         return _try_execute_create_student_action(supabase, current, query)
 
+    if intent == "transfer_student":
+        return _try_execute_transfer_student_action(supabase, current, query)
+
     return None
 
 
-def _build_grounded_ai_response(supabase, current: dict, query: str) -> str:
+def _build_operational_query_response(supabase, current: dict, query: str) -> str | None:
+    normalized = _normalize_text(query)
+    ra_id = current["ra_id"]
+    user_id = current["profile"]["id"]
+    tahun_ajaran_id = get_active_academic_year(supabase, ra_id, created_by=user_id)["id"]
+
+    presensi_query = _contains_any(
+        normalized,
+        ["rekap presensi", "presensi hari ini", "berapa yang hadir", "belum dicatat", "kehadiran hari ini"],
+    )
+    if presensi_query:
+        today = date.today().isoformat()
+        try:
+            siswa_rows = (
+                supabase.table("siswa")
+                .select("id")
+                .eq("ra_id", ra_id)
+                .eq("tahun_ajaran_id", tahun_ajaran_id)
+                .eq("status_aktif", True)
+                .execute()
+            ).data or []
+            siswa_ids = [item.get("id") for item in siswa_rows if isinstance(item, dict) and item.get("id")]
+
+            if not siswa_ids:
+                return "Belum ada siswa aktif pada tahun ajaran berjalan."
+
+            presensi_rows = (
+                supabase.table("presensi")
+                .select("status")
+                .eq("tanggal", today)
+                .eq("tahun_ajaran_id", tahun_ajaran_id)
+                .in_("siswa_id", siswa_ids)
+                .execute()
+            ).data or []
+        except Exception as exc:
+            return f"Gagal mengambil rekap presensi: {exc}"
+
+        hadir = sum(1 for row in presensi_rows if isinstance(row, dict) and row.get("status") == "hadir")
+        sakit = sum(1 for row in presensi_rows if isinstance(row, dict) and row.get("status") == "sakit")
+        izin = sum(1 for row in presensi_rows if isinstance(row, dict) and row.get("status") == "izin")
+        alpha = sum(1 for row in presensi_rows if isinstance(row, dict) and row.get("status") == "alpha")
+        belum = max(len(siswa_ids) - len(presensi_rows), 0)
+
+        return (
+            f"Rekap presensi {today}: dari {len(siswa_ids)} siswa aktif, "
+            f"hadir {hadir}, sakit {sakit}, izin {izin}, alpha {alpha}, belum dicatat {belum}."
+        )
+
+    siswa_kelompok_query = _contains_any(
+        normalized,
+        ["jumlah siswa per kelompok", "siswa per kelompok", "berapa siswa di kelompok", "rekap siswa kelompok"],
+    )
+    if siswa_kelompok_query:
+        try:
+            kelompok_rows = (
+                supabase.table("kelompok")
+                .select("id,nama_kelompok")
+                .eq("ra_id", ra_id)
+                .eq("tahun_ajaran_id", tahun_ajaran_id)
+                .order("nama_kelompok")
+                .execute()
+            ).data or []
+            siswa_rows = (
+                supabase.table("siswa")
+                .select("kelompok_id")
+                .eq("ra_id", ra_id)
+                .eq("tahun_ajaran_id", tahun_ajaran_id)
+                .eq("status_aktif", True)
+                .execute()
+            ).data or []
+        except Exception as exc:
+            return f"Gagal mengambil data siswa per kelompok: {exc}"
+
+        if not kelompok_rows:
+            return "Belum ada kelompok pada tahun ajaran aktif."
+
+        counts: dict[str, int] = {}
+        for row in siswa_rows:
+            if isinstance(row, dict):
+                key = row.get("kelompok_id")
+                if isinstance(key, str) and key:
+                    counts[key] = counts.get(key, 0) + 1
+
+        lines = []
+        total = 0
+        for kelompok in kelompok_rows:
+            if not isinstance(kelompok, dict):
+                continue
+            kelompok_id = kelompok.get("id")
+            if not isinstance(kelompok_id, str):
+                continue
+            jumlah = counts.get(kelompok_id, 0)
+            total += jumlah
+            lines.append(f"- {kelompok.get('nama_kelompok') or '-'}: {jumlah} siswa")
+
+        if not lines:
+            return "Belum ada data kelompok untuk ditampilkan."
+
+        return "Jumlah siswa aktif per kelompok:\n" + "\n".join(lines[:12]) + f"\nTotal siswa aktif: {total}."
+
+    return None
+
+
+def _build_recent_chat_context(supabase, room_id: str, max_messages: int = 10) -> str | None:
+    try:
+        rows = (
+            supabase.table("chat_history")
+            .select("role_msg,content,timestamp")
+            .eq("room_id", room_id)
+            .order("timestamp", desc=True)
+            .limit(max_messages)
+            .execute()
+        ).data or []
+    except Exception:
+        return None
+
+    if not rows:
+        return None
+
+    chronological = [row for row in reversed(rows) if isinstance(row, dict)]
+    lines = []
+    for row in chronological:
+        role = "User" if row.get("role_msg") == "user" else "Asisten"
+        content = (row.get("content") or "").strip()
+        if not content:
+            continue
+        clipped = content[:280] + "..." if len(content) > 280 else content
+        lines.append(f"{role}: {clipped}")
+
+    return "\n".join(lines) if lines else None
+
+
+def _build_grounded_ai_response(supabase, current: dict, query: str, room_id: str | None = None) -> str:
     ra_id = current["ra_id"]
 
     context_chunks = retrieve_relevant_context(
@@ -973,6 +1293,15 @@ def _build_grounded_ai_response(supabase, current: dict, query: str) -> str:
         )
     else:
         enhanced_prompt = f"{enhanced_prompt}\n\n{grounding_rule}"
+
+    recent_chat_context = _build_recent_chat_context(supabase, room_id, max_messages=10) if room_id else None
+    if recent_chat_context:
+        enhanced_prompt = (
+            f"{enhanced_prompt}\n\n"
+            "RIWAYAT PERCAKAPAN TERBARU (GUNAKAN JIKA RELEVAN):\n"
+            f"{recent_chat_context}\n\n"
+            "Gunakan riwayat percakapan untuk menjaga konteks, tetapi tetap prioritaskan kebenaran data sistem saat ini."
+        )
 
     return generate_response(enhanced_prompt)
 
@@ -1341,8 +1670,27 @@ def send_chat_message(
             },
         }
 
+    operational_result_text = _build_operational_query_response(supabase, current, payload.content)
+    if operational_result_text:
+        bot_message = _save_assistant_message(
+            supabase,
+            user_id,
+            room_id,
+            operational_result_text,
+            "Gagal menyimpan respons query operasional",
+        )
+
+        return {
+            "success": True,
+            "message": "Query operasional berhasil diproses",
+            "data": {
+                "user_message": user_message,
+                "bot_message": bot_message,
+            },
+        }
+
     try:
-        ai_response_text = _build_grounded_ai_response(supabase, current, payload.content)
+        ai_response_text = _build_grounded_ai_response(supabase, current, payload.content, room_id=room_id)
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -1485,13 +1833,17 @@ async def send_voice_message(
     if action_result_text:
         ai_response_text = action_result_text
     else:
-        try:
-            ai_response_text = _build_grounded_ai_response(supabase, current, transcription)
-        except Exception as exc:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Gagal menghasilkan respons AI: {exc}",
-            ) from exc
+        operational_result_text = _build_operational_query_response(supabase, current, transcription)
+        if operational_result_text:
+            ai_response_text = operational_result_text
+        else:
+            try:
+                ai_response_text = _build_grounded_ai_response(supabase, current, transcription, room_id=room_id)
+            except Exception as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=f"Gagal menghasilkan respons AI: {exc}",
+                ) from exc
 
     bot_message = _save_assistant_message(
         supabase,
