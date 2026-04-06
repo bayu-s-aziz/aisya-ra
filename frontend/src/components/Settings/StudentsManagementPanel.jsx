@@ -22,6 +22,8 @@ function StudentsManagementPanel() {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [isDeactivateConfirmOpen, setIsDeactivateConfirmOpen] = useState(false)
+  const [targetSiswaStatus, setTargetSiswaStatus] = useState(null)
 
   const [editingId, setEditingId] = useState(null)
   const [createForm, setCreateForm] = useState({
@@ -306,14 +308,9 @@ function StudentsManagementPanel() {
     }
   }
 
-  const handleToggleStatus = async (siswa) => {
+  const runToggleStatus = async (siswa) => {
     const token = localStorage.getItem('aisya_access_token')
     if (!token) return
-
-    if (siswa.status_aktif) {
-      const agree = window.confirm(`Nonaktifkan siswa ${siswa.nama}?`)
-      if (!agree) return
-    }
 
     setSaving(true)
     setError('')
@@ -335,6 +332,25 @@ function StudentsManagementPanel() {
     } finally {
       setSaving(false)
     }
+  }
+
+  const handleToggleStatus = async (siswa) => {
+    if (siswa.status_aktif) {
+      setTargetSiswaStatus(siswa)
+      setIsDeactivateConfirmOpen(true)
+      return
+    }
+
+    await runToggleStatus(siswa)
+  }
+
+  const handleConfirmDeactivate = async () => {
+    if (!targetSiswaStatus) return
+
+    const selectedSiswa = targetSiswaStatus
+    setIsDeactivateConfirmOpen(false)
+    setTargetSiswaStatus(null)
+    await runToggleStatus(selectedSiswa)
   }
 
   const handleImport = async () => {
@@ -539,6 +555,40 @@ function StudentsManagementPanel() {
           </tbody>
         </table>
       </div>
+
+      <AppModal
+        isOpen={isDeactivateConfirmOpen}
+        onClose={() => {
+          if (!saving) {
+            setIsDeactivateConfirmOpen(false)
+            setTargetSiswaStatus(null)
+          }
+        }}
+        title="Konfirmasi Nonaktifkan Siswa"
+        description={`Status siswa ${targetSiswaStatus?.nama || ''} akan diubah menjadi nonaktif.`}
+      >
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setIsDeactivateConfirmOpen(false)
+              setTargetSiswaStatus(null)
+            }}
+            disabled={saving}
+            className="rounded-full border border-[#cbd5e1] px-4 py-2 text-sm text-[#334155] hover:bg-[#f8fafc] disabled:opacity-50"
+          >
+            Batal
+          </button>
+          <button
+            type="button"
+            onClick={handleConfirmDeactivate}
+            disabled={saving || !targetSiswaStatus}
+            className="rounded-full border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-100 disabled:opacity-60"
+          >
+            {saving ? 'Memproses...' : 'Ya, Nonaktifkan'}
+          </button>
+        </div>
+      </AppModal>
 
       <AppModal
         isOpen={isImportModalOpen}
