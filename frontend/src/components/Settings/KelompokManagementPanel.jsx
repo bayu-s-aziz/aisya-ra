@@ -18,11 +18,25 @@ function KelompokManagementPanel() {
 
   const [namaKelompok, setNamaKelompok] = useState('')
   const [waliKelasId, setWaliKelasId] = useState('')
+  const [kodeRombel, setKodeRombel] = useState('')
+  const [tingkat, setTingkat] = useState('')
+  const [semester, setSemester] = useState('')
+  const [kurikulum, setKurikulum] = useState('')
+  const [ruangKelas, setRuangKelas] = useState('')
+  const [kapasitas, setKapasitas] = useState('')
+  const [statusRombel, setStatusRombel] = useState('aktif')
 
   const [editingId, setEditingId] = useState(null)
   const [editForm, setEditForm] = useState({
     nama_kelompok: '',
     wali_kelas_id: '',
+    kode_rombel: '',
+    tingkat: '',
+    semester: '',
+    kurikulum: '',
+    ruang_kelas: '',
+    kapasitas: '',
+    status_rombel: 'aktif',
   })
 
   const inputClass = 'rounded-xl border border-[#cbd5e1] bg-white px-3 py-2 text-sm text-[#0f172a] outline-none transition-colors focus:border-[#0f172a]'
@@ -58,7 +72,7 @@ function KelompokManagementPanel() {
 
     return kelompokList.filter((item) => {
       const waliName = guruList.find((guru) => guru.id === item.wali_kelas_id)?.nama || ''
-      return `${item.nama_kelompok || ''} ${waliName}`.toLowerCase().includes(search)
+      return `${item.nama_kelompok || ''} ${item.kode_rombel || ''} ${item.tingkat || ''} ${waliName}`.toLowerCase().includes(search)
     })
   }, [kelompokList, guruList, searchQuery])
 
@@ -90,10 +104,24 @@ function KelompokManagementPanel() {
       await createKelompok(token, {
         nama_kelompok: namaKelompok.trim(),
         wali_kelas_id: waliKelasId || null,
+        kode_rombel: kodeRombel.trim() || null,
+        tingkat: tingkat.trim() || null,
+        semester: semester.trim() || null,
+        kurikulum: kurikulum.trim() || null,
+        ruang_kelas: ruangKelas.trim() || null,
+        kapasitas: kapasitas ? Number(kapasitas) : null,
+        status_rombel: statusRombel || null,
       })
       setSuccess('Kelompok berhasil ditambahkan')
       setNamaKelompok('')
       setWaliKelasId('')
+      setKodeRombel('')
+      setTingkat('')
+      setSemester('')
+      setKurikulum('')
+      setRuangKelas('')
+      setKapasitas('')
+      setStatusRombel('aktif')
       await loadData()
     } catch (err) {
       setError(err?.response?.data?.detail || err?.message || 'Gagal menambah kelompok')
@@ -107,6 +135,13 @@ function KelompokManagementPanel() {
     setEditForm({
       nama_kelompok: item.nama_kelompok || '',
       wali_kelas_id: item.wali_kelas_id || '',
+      kode_rombel: item.kode_rombel || '',
+      tingkat: item.tingkat || '',
+      semester: item.semester || '',
+      kurikulum: item.kurikulum || '',
+      ruang_kelas: item.ruang_kelas || '',
+      kapasitas: item.kapasitas ? String(item.kapasitas) : '',
+      status_rombel: item.status_rombel || 'aktif',
     })
     setError('')
     setSuccess('')
@@ -114,7 +149,17 @@ function KelompokManagementPanel() {
 
   const cancelEdit = () => {
     setEditingId(null)
-    setEditForm({ nama_kelompok: '', wali_kelas_id: '' })
+    setEditForm({
+      nama_kelompok: '',
+      wali_kelas_id: '',
+      kode_rombel: '',
+      tingkat: '',
+      semester: '',
+      kurikulum: '',
+      ruang_kelas: '',
+      kapasitas: '',
+      status_rombel: 'aktif',
+    })
   }
 
   const handleUpdate = async (kelompokId) => {
@@ -133,6 +178,13 @@ function KelompokManagementPanel() {
       await updateKelompok(token, kelompokId, {
         nama_kelompok: editForm.nama_kelompok.trim(),
         wali_kelas_id: editForm.wali_kelas_id || null,
+        kode_rombel: editForm.kode_rombel.trim() || null,
+        tingkat: editForm.tingkat.trim() || null,
+        semester: editForm.semester.trim() || null,
+        kurikulum: editForm.kurikulum.trim() || null,
+        ruang_kelas: editForm.ruang_kelas.trim() || null,
+        kapasitas: editForm.kapasitas ? Number(editForm.kapasitas) : null,
+        status_rombel: editForm.status_rombel || null,
       })
       setSuccess('Kelompok berhasil diperbarui')
       cancelEdit()
@@ -175,12 +227,24 @@ function KelompokManagementPanel() {
 
       <div className="rounded-2xl border border-[#e2e8f0] bg-white p-4 shadow-sm">
         <p className="text-sm font-semibold text-[#0f172a]">Buat Kelompok Baru</p>
-        <form className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3" onSubmit={handleCreate}>
+        <form className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-4" onSubmit={handleCreate}>
           <input
             className={inputClass}
             placeholder="Nama kelompok"
             value={namaKelompok}
             onChange={(ev) => setNamaKelompok(ev.target.value)}
+          />
+          <input
+            className={inputClass}
+            placeholder="Kode rombel"
+            value={kodeRombel}
+            onChange={(ev) => setKodeRombel(ev.target.value)}
+          />
+          <input
+            className={inputClass}
+            placeholder="Tingkat"
+            value={tingkat}
+            onChange={(ev) => setTingkat(ev.target.value)}
           />
           <select className={inputClass} value={waliKelasId} onChange={(ev) => setWaliKelasId(ev.target.value)}>
             <option value="">Pilih wali kelas (opsional)</option>
@@ -190,10 +254,40 @@ function KelompokManagementPanel() {
               </option>
             ))}
           </select>
+          <input
+            className={inputClass}
+            placeholder="Semester"
+            value={semester}
+            onChange={(ev) => setSemester(ev.target.value)}
+          />
+          <input
+            className={inputClass}
+            placeholder="Kurikulum"
+            value={kurikulum}
+            onChange={(ev) => setKurikulum(ev.target.value)}
+          />
+          <input
+            className={inputClass}
+            placeholder="Ruang kelas"
+            value={ruangKelas}
+            onChange={(ev) => setRuangKelas(ev.target.value)}
+          />
+          <input
+            className={inputClass}
+            type="number"
+            placeholder="Kapasitas"
+            value={kapasitas}
+            onChange={(ev) => setKapasitas(ev.target.value)}
+          />
+          <select className={inputClass} value={statusRombel} onChange={(ev) => setStatusRombel(ev.target.value)}>
+            <option value="aktif">Aktif</option>
+            <option value="nonaktif">Nonaktif</option>
+            <option value="arsip">Arsip</option>
+          </select>
           <button
             type="submit"
             disabled={saving}
-            className="rounded-full bg-[#0f172a] px-4 py-2 text-sm font-medium text-white hover:bg-[#020617] disabled:opacity-60"
+            className="rounded-full bg-[#0f172a] px-4 py-2 text-sm font-medium text-white hover:bg-[#020617] disabled:opacity-60 md:col-span-2"
           >
             {saving ? 'Menyimpan...' : 'Tambah Kelompok'}
           </button>
@@ -232,13 +326,14 @@ function KelompokManagementPanel() {
             <tr className="text-left text-xs uppercase tracking-wide text-[#64748b]">
               <th className="px-3 py-2">Kelompok</th>
               <th className="px-3 py-2">Wali Kelas</th>
+              <th className="px-3 py-2">Data Rombel</th>
               <th className="px-3 py-2">Aksi</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#edf2f7] bg-white text-sm text-[#0f172a]">
             {loading ? (
               <tr>
-                <td className="px-3 py-3" colSpan={3}>
+                <td className="px-3 py-3" colSpan={4}>
                   Memuat data kelompok...
                 </td>
               </tr>
@@ -246,7 +341,7 @@ function KelompokManagementPanel() {
 
             {!loading && filteredKelompokList.length === 0 ? (
               <tr>
-                <td className="px-3 py-3" colSpan={3}>
+                <td className="px-3 py-3" colSpan={4}>
                   Belum ada data kelompok.
                 </td>
               </tr>
@@ -286,6 +381,32 @@ function KelompokManagementPanel() {
                           </select>
                         ) : (
                           waliName
+                        )}
+                      </td>
+                      <td className="px-3 py-2 align-top">
+                        {isEditing ? (
+                          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                            <input className={inputClass} value={editForm.kode_rombel} onChange={(ev) => setEditForm((prev) => ({ ...prev, kode_rombel: ev.target.value }))} placeholder="Kode rombel" />
+                            <input className={inputClass} value={editForm.tingkat} onChange={(ev) => setEditForm((prev) => ({ ...prev, tingkat: ev.target.value }))} placeholder="Tingkat" />
+                            <input className={inputClass} value={editForm.semester} onChange={(ev) => setEditForm((prev) => ({ ...prev, semester: ev.target.value }))} placeholder="Semester" />
+                            <input className={inputClass} value={editForm.kurikulum} onChange={(ev) => setEditForm((prev) => ({ ...prev, kurikulum: ev.target.value }))} placeholder="Kurikulum" />
+                            <input className={inputClass} value={editForm.ruang_kelas} onChange={(ev) => setEditForm((prev) => ({ ...prev, ruang_kelas: ev.target.value }))} placeholder="Ruang kelas" />
+                            <input className={inputClass} type="number" value={editForm.kapasitas} onChange={(ev) => setEditForm((prev) => ({ ...prev, kapasitas: ev.target.value }))} placeholder="Kapasitas" />
+                            <select className={inputClass} value={editForm.status_rombel} onChange={(ev) => setEditForm((prev) => ({ ...prev, status_rombel: ev.target.value }))}>
+                              <option value="aktif">Aktif</option>
+                              <option value="nonaktif">Nonaktif</option>
+                              <option value="arsip">Arsip</option>
+                            </select>
+                          </div>
+                        ) : (
+                          <div className="space-y-1 text-xs text-[#475569]">
+                            <p>Kode: {item.kode_rombel || '-'}</p>
+                            <p>Tingkat: {item.tingkat || '-'}</p>
+                            <p>Semester: {item.semester || '-'}</p>
+                            <p>Kurikulum: {item.kurikulum || '-'}</p>
+                            <p>Ruang/Kapasitas: {item.ruang_kelas || '-'} / {item.kapasitas || '-'}</p>
+                            <p>Status Rombel: {item.status_rombel || '-'}</p>
+                          </div>
                         )}
                       </td>
                       <td className="px-3 py-2">

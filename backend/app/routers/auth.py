@@ -53,6 +53,12 @@ GTK_HEADER_ALIASES = {
 
 PROFILE_BASE_REQUIRED_FIELDS = {"id", "nama", "email", "role", "ra_id"}
 ME_PROFILE_SELECT_FIELDS = "id,nama,email,role,ra_id,telepon,jabatan"
+RA_PROFILE_SELECT_FIELDS = (
+    "id,nama_ra,npsn,nomor_statistik,status_lembaga,bentuk_pendidikan,"
+    "penyelenggara,akreditasi,sk_izin_operasional,tanggal_izin_operasional,"
+    "nama_kepala,alamat,telepon,email_lembaga,website,kelurahan_desa,"
+    "kecamatan,kabupaten_kota,provinsi,kode_pos,logo_url,tahun_ajaran"
+)
 
 
 def _extract_auth_user_id(auth_result) -> str:
@@ -443,7 +449,7 @@ def me(current_user=Depends(_get_current_auth_user)):
         if profile and profile.get("ra_id"):
             ra_response = (
                 supabase.table("ra_profiles")
-                .select("id,nama_ra,alamat,nomor_statistik,logo_url,tahun_ajaran")
+                .select(RA_PROFILE_SELECT_FIELDS)
                 .eq("id", profile["ra_id"])
                 .limit(1)
                 .execute()

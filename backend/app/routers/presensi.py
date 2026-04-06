@@ -64,6 +64,8 @@ async def upsert_presensi_batch(
             supabase.table("presensi").update({
                 "status": record.status.value,
                 "dicatat_oleh": user_id,
+                "keterangan": record.keterangan,
+                "sumber_pencatatan": record.sumber_pencatatan or "manual_panel",
             }).eq("id", existing_response.data[0]["id"]).execute()
             updated += 1
         else:
@@ -72,6 +74,8 @@ async def upsert_presensi_batch(
                 "tanggal": str(payload.tanggal),
                 "status": record.status.value,
                 "dicatat_oleh": user_id,
+                "keterangan": record.keterangan,
+                "sumber_pencatatan": record.sumber_pencatatan or "manual_panel",
             }).execute()
             inserted += 1
 
@@ -194,7 +198,8 @@ Output (hanya JSON, tanpa markdown atau penjelasan):"""
             # Update presensi yang sudah ada
             update_response = supabase.table("presensi").update({
                 "status": status_str,
-                "dicatat_oleh": user_id
+                "dicatat_oleh": user_id,
+                "sumber_pencatatan": "chat"
             }).eq("id", existing_response.data[0]["id"]).execute()
             
             hasil_detail.append({
@@ -209,7 +214,8 @@ Output (hanya JSON, tanpa markdown atau penjelasan):"""
                 "siswa_id": siswa["id"],
                 "tanggal": str(today),
                 "status": status_str,
-                "dicatat_oleh": user_id
+                "dicatat_oleh": user_id,
+                "sumber_pencatatan": "chat"
             }).execute()
             
             hasil_detail.append({
@@ -266,7 +272,7 @@ async def get_rekap_presensi(
     
     # Ambil semua presensi untuk tanggal dan kelompok ini
     presensi_response = supabase.table("presensi").select(
-        "id, siswa_id, status, siswa:siswa_id(nama)"
+        "id, siswa_id, status, keterangan, sumber_pencatatan, siswa:siswa_id(nama)"
     ).eq("tanggal", str(target_date)).in_(
         "siswa_id", [s["id"] for s in siswa_response.data]
     ).execute()
@@ -288,13 +294,17 @@ async def get_rekap_presensi(
             detail.append({
                 "siswa_id": siswa["id"],
                 "nama": siswa["nama"],
-                "status": p["status"]
+                "status": p["status"],
+                "keterangan": p.get("keterangan"),
+                "sumber_pencatatan": p.get("sumber_pencatatan"),
             })
         else:
             detail.append({
                 "siswa_id": siswa["id"],
                 "nama": siswa["nama"],
-                "status": "belum_dicatat"
+                "status": "belum_dicatat",
+                "keterangan": None,
+                "sumber_pencatatan": None,
             })
     
     return RekapPresensiResponse(

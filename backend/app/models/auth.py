@@ -14,8 +14,22 @@ class UpdateRAProfileRequest(BaseModel):
     nama_ra: Optional[str] = None
     npsn: Optional[str] = None
     nomor_statistik: Optional[str] = None
+    status_lembaga: Optional[str] = None
+    bentuk_pendidikan: Optional[str] = None
+    penyelenggara: Optional[str] = None
+    akreditasi: Optional[str] = None
+    sk_izin_operasional: Optional[str] = None
+    tanggal_izin_operasional: Optional[str] = None
+    nama_kepala: Optional[str] = None
     alamat: Optional[str] = None
     telepon: Optional[str] = None
+    email_lembaga: Optional[str] = None
+    website: Optional[str] = None
+    kelurahan_desa: Optional[str] = None
+    kecamatan: Optional[str] = None
+    kabupaten_kota: Optional[str] = None
+    provinsi: Optional[str] = None
+    kode_pos: Optional[str] = None
     tahun_ajaran: Optional[str] = None
     logo_url: Optional[str] = None
 

@@ -23,12 +23,40 @@ function StudentsManagementPanel() {
   const [createForm, setCreateForm] = useState({
     nama: '',
     nis: '',
+    nisn: '',
+    nik: '',
+    jenis_kelamin: '',
+    tempat_lahir: '',
+    tanggal_lahir: '',
+    tingkat_rombel: '',
+    no_telepon: '',
+    alamat: '',
+    kebutuhan_khusus: '',
+    disabilitas: '',
+    nomor_kip_pip: '',
+    nama_ayah_kandung: '',
+    nama_ibu_kandung: '',
+    nama_wali: '',
     kelompok_id: '',
     status_aktif: true,
   })
   const [editForm, setEditForm] = useState({
     nama: '',
     nis: '',
+    nisn: '',
+    nik: '',
+    jenis_kelamin: '',
+    tempat_lahir: '',
+    tanggal_lahir: '',
+    tingkat_rombel: '',
+    no_telepon: '',
+    alamat: '',
+    kebutuhan_khusus: '',
+    disabilitas: '',
+    nomor_kip_pip: '',
+    nama_ayah_kandung: '',
+    nama_ibu_kandung: '',
+    nama_wali: '',
     kelompok_id: '',
     status_aktif: true,
   })
@@ -76,7 +104,7 @@ function StudentsManagementPanel() {
 
       const matchSearch = !search
         ? true
-        : `${item.nama || ''} ${item.nis || ''} ${kelompokMap.get(item.kelompok_id) || ''}`
+        : `${item.nama || ''} ${item.nis || ''} ${item.nisn || ''} ${item.nik || ''} ${kelompokMap.get(item.kelompok_id) || ''}`
           .toLowerCase()
           .includes(search)
 
@@ -99,6 +127,20 @@ function StudentsManagementPanel() {
     setCreateForm({
       nama: '',
       nis: '',
+      nisn: '',
+      nik: '',
+      jenis_kelamin: '',
+      tempat_lahir: '',
+      tanggal_lahir: '',
+      tingkat_rombel: '',
+      no_telepon: '',
+      alamat: '',
+      kebutuhan_khusus: '',
+      disabilitas: '',
+      nomor_kip_pip: '',
+      nama_ayah_kandung: '',
+      nama_ibu_kandung: '',
+      nama_wali: '',
       kelompok_id: '',
       status_aktif: true,
     })
@@ -109,6 +151,20 @@ function StudentsManagementPanel() {
     setEditForm({
       nama: '',
       nis: '',
+      nisn: '',
+      nik: '',
+      jenis_kelamin: '',
+      tempat_lahir: '',
+      tanggal_lahir: '',
+      tingkat_rombel: '',
+      no_telepon: '',
+      alamat: '',
+      kebutuhan_khusus: '',
+      disabilitas: '',
+      nomor_kip_pip: '',
+      nama_ayah_kandung: '',
+      nama_ibu_kandung: '',
+      nama_wali: '',
       kelompok_id: '',
       status_aktif: true,
     })
@@ -130,6 +186,20 @@ function StudentsManagementPanel() {
       await createSiswa(token, {
         nama: createForm.nama.trim(),
         nis: createForm.nis.trim() || undefined,
+        nisn: createForm.nisn.trim() || undefined,
+        nik: createForm.nik.trim() || undefined,
+        jenis_kelamin: createForm.jenis_kelamin || undefined,
+        tempat_lahir: createForm.tempat_lahir.trim() || undefined,
+        tanggal_lahir: createForm.tanggal_lahir || undefined,
+        tingkat_rombel: createForm.tingkat_rombel.trim() || undefined,
+        no_telepon: createForm.no_telepon.trim() || undefined,
+        alamat: createForm.alamat.trim() || undefined,
+        kebutuhan_khusus: createForm.kebutuhan_khusus.trim() || undefined,
+        disabilitas: createForm.disabilitas.trim() || undefined,
+        nomor_kip_pip: createForm.nomor_kip_pip.trim() || undefined,
+        nama_ayah_kandung: createForm.nama_ayah_kandung.trim() || undefined,
+        nama_ibu_kandung: createForm.nama_ibu_kandung.trim() || undefined,
+        nama_wali: createForm.nama_wali.trim() || undefined,
         kelompok_id: createForm.kelompok_id || undefined,
         status_aktif: createForm.status_aktif,
       })
@@ -148,6 +218,20 @@ function StudentsManagementPanel() {
     setEditForm({
       nama: siswa.nama || '',
       nis: siswa.nis || '',
+      nisn: siswa.nisn || '',
+      nik: siswa.nik || '',
+      jenis_kelamin: siswa.jenis_kelamin || '',
+      tempat_lahir: siswa.tempat_lahir || '',
+      tanggal_lahir: siswa.tanggal_lahir || '',
+      tingkat_rombel: siswa.tingkat_rombel || '',
+      no_telepon: siswa.no_telepon || '',
+      alamat: siswa.alamat || '',
+      kebutuhan_khusus: siswa.kebutuhan_khusus || '',
+      disabilitas: siswa.disabilitas || '',
+      nomor_kip_pip: siswa.nomor_kip_pip || '',
+      nama_ayah_kandung: siswa.nama_ayah_kandung || '',
+      nama_ibu_kandung: siswa.nama_ibu_kandung || '',
+      nama_wali: siswa.nama_wali || '',
       kelompok_id: siswa.kelompok_id || '',
       status_aktif: Boolean(siswa.status_aktif),
     })
@@ -171,6 +255,20 @@ function StudentsManagementPanel() {
       await updateSiswa(token, siswaId, {
         nama: editForm.nama.trim(),
         nis: editForm.nis.trim() || null,
+        nisn: editForm.nisn.trim() || null,
+        nik: editForm.nik.trim() || null,
+        jenis_kelamin: editForm.jenis_kelamin || null,
+        tempat_lahir: editForm.tempat_lahir.trim() || null,
+        tanggal_lahir: editForm.tanggal_lahir || null,
+        tingkat_rombel: editForm.tingkat_rombel.trim() || null,
+        no_telepon: editForm.no_telepon.trim() || null,
+        alamat: editForm.alamat.trim() || null,
+        kebutuhan_khusus: editForm.kebutuhan_khusus.trim() || null,
+        disabilitas: editForm.disabilitas.trim() || null,
+        nomor_kip_pip: editForm.nomor_kip_pip.trim() || null,
+        nama_ayah_kandung: editForm.nama_ayah_kandung.trim() || null,
+        nama_ibu_kandung: editForm.nama_ibu_kandung.trim() || null,
+        nama_wali: editForm.nama_wali.trim() || null,
         kelompok_id: editForm.kelompok_id || null,
         status_aktif: editForm.status_aktif,
       })
@@ -319,6 +417,96 @@ function StudentsManagementPanel() {
           >
             {saving ? 'Menyimpan...' : 'Tambah Siswa'}
           </button>
+
+          <input
+            className={inputClass}
+            value={createForm.nisn}
+            onChange={(ev) => setCreateForm((prev) => ({ ...prev, nisn: ev.target.value }))}
+            placeholder="NISN (opsional)"
+          />
+          <input
+            className={inputClass}
+            value={createForm.nik}
+            onChange={(ev) => setCreateForm((prev) => ({ ...prev, nik: ev.target.value }))}
+            placeholder="NIK (opsional)"
+          />
+          <select
+            className={inputClass}
+            value={createForm.jenis_kelamin}
+            onChange={(ev) => setCreateForm((prev) => ({ ...prev, jenis_kelamin: ev.target.value }))}
+          >
+            <option value="">Jenis Kelamin (opsional)</option>
+            <option value="Laki-laki">Laki-laki</option>
+            <option value="Perempuan">Perempuan</option>
+          </select>
+          <input
+            className={inputClass}
+            value={createForm.tempat_lahir}
+            onChange={(ev) => setCreateForm((prev) => ({ ...prev, tempat_lahir: ev.target.value }))}
+            placeholder="Tempat lahir"
+          />
+          <input
+            className={inputClass}
+            type="date"
+            value={createForm.tanggal_lahir}
+            onChange={(ev) => setCreateForm((prev) => ({ ...prev, tanggal_lahir: ev.target.value }))}
+          />
+
+          <input
+            className={inputClass}
+            value={createForm.tingkat_rombel}
+            onChange={(ev) => setCreateForm((prev) => ({ ...prev, tingkat_rombel: ev.target.value }))}
+            placeholder="Tingkat - Rombel"
+          />
+          <input
+            className={inputClass}
+            value={createForm.no_telepon}
+            onChange={(ev) => setCreateForm((prev) => ({ ...prev, no_telepon: ev.target.value }))}
+            placeholder="No telepon"
+          />
+          <input
+            className={inputClass}
+            value={createForm.nomor_kip_pip}
+            onChange={(ev) => setCreateForm((prev) => ({ ...prev, nomor_kip_pip: ev.target.value }))}
+            placeholder="Nomor KIP/PIP"
+          />
+          <input
+            className={inputClass}
+            value={createForm.kebutuhan_khusus}
+            onChange={(ev) => setCreateForm((prev) => ({ ...prev, kebutuhan_khusus: ev.target.value }))}
+            placeholder="Kebutuhan khusus"
+          />
+          <input
+            className={inputClass}
+            value={createForm.disabilitas}
+            onChange={(ev) => setCreateForm((prev) => ({ ...prev, disabilitas: ev.target.value }))}
+            placeholder="Disabilitas"
+          />
+
+          <input
+            className={inputClass}
+            value={createForm.nama_ayah_kandung}
+            onChange={(ev) => setCreateForm((prev) => ({ ...prev, nama_ayah_kandung: ev.target.value }))}
+            placeholder="Nama ayah kandung"
+          />
+          <input
+            className={inputClass}
+            value={createForm.nama_ibu_kandung}
+            onChange={(ev) => setCreateForm((prev) => ({ ...prev, nama_ibu_kandung: ev.target.value }))}
+            placeholder="Nama ibu kandung"
+          />
+          <input
+            className={inputClass}
+            value={createForm.nama_wali}
+            onChange={(ev) => setCreateForm((prev) => ({ ...prev, nama_wali: ev.target.value }))}
+            placeholder="Nama wali"
+          />
+          <input
+            className="rounded-xl border border-[#cbd5e1] bg-white px-3 py-2 text-sm text-[#0f172a] outline-none transition-colors focus:border-[#0f172a] md:col-span-2"
+            value={createForm.alamat}
+            onChange={(ev) => setCreateForm((prev) => ({ ...prev, alamat: ev.target.value }))}
+            placeholder="Alamat siswa"
+          />
         </div>
       </div>
 
@@ -393,6 +581,7 @@ function StudentsManagementPanel() {
               <th className="px-3 py-2">NIS</th>
               <th className="px-3 py-2">Nama</th>
               <th className="px-3 py-2">Kelompok</th>
+              <th className="px-3 py-2">Data EMIS</th>
               <th className="px-3 py-2">Status</th>
               <th className="px-3 py-2">Aksi</th>
             </tr>
@@ -400,7 +589,7 @@ function StudentsManagementPanel() {
           <tbody className="divide-y divide-[#edf2f7] bg-white text-sm text-[#0f172a]">
             {loading ? (
               <tr>
-                <td className="px-3 py-3" colSpan={5}>
+                <td className="px-3 py-3" colSpan={6}>
                   Memuat data siswa...
                 </td>
               </tr>
@@ -408,7 +597,7 @@ function StudentsManagementPanel() {
 
             {!loading && filteredSiswaList.length === 0 ? (
               <tr>
-                <td className="px-3 py-3" colSpan={5}>
+                <td className="px-3 py-3" colSpan={6}>
                   Belum ada data siswa.
                 </td>
               </tr>
@@ -459,6 +648,39 @@ function StudentsManagementPanel() {
                           </select>
                         ) : (
                           kelompokMap.get(siswa.kelompok_id) || '-'
+                        )}
+                      </td>
+                      <td className="px-3 py-2 align-top">
+                        {isEditing ? (
+                          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                            <input className={inputClass} value={editForm.nisn} onChange={(ev) => setEditForm((prev) => ({ ...prev, nisn: ev.target.value }))} placeholder="NISN" />
+                            <input className={inputClass} value={editForm.nik} onChange={(ev) => setEditForm((prev) => ({ ...prev, nik: ev.target.value }))} placeholder="NIK" />
+                            <select className={inputClass} value={editForm.jenis_kelamin} onChange={(ev) => setEditForm((prev) => ({ ...prev, jenis_kelamin: ev.target.value }))}>
+                              <option value="">Jenis kelamin</option>
+                              <option value="Laki-laki">Laki-laki</option>
+                              <option value="Perempuan">Perempuan</option>
+                            </select>
+                            <input className={inputClass} value={editForm.tingkat_rombel} onChange={(ev) => setEditForm((prev) => ({ ...prev, tingkat_rombel: ev.target.value }))} placeholder="Tingkat rombel" />
+                            <input className={inputClass} value={editForm.tempat_lahir} onChange={(ev) => setEditForm((prev) => ({ ...prev, tempat_lahir: ev.target.value }))} placeholder="Tempat lahir" />
+                            <input className={inputClass} type="date" value={editForm.tanggal_lahir} onChange={(ev) => setEditForm((prev) => ({ ...prev, tanggal_lahir: ev.target.value }))} />
+                            <input className={inputClass} value={editForm.no_telepon} onChange={(ev) => setEditForm((prev) => ({ ...prev, no_telepon: ev.target.value }))} placeholder="No telepon" />
+                            <input className={inputClass} value={editForm.nomor_kip_pip} onChange={(ev) => setEditForm((prev) => ({ ...prev, nomor_kip_pip: ev.target.value }))} placeholder="Nomor KIP/PIP" />
+                            <input className={inputClass} value={editForm.kebutuhan_khusus} onChange={(ev) => setEditForm((prev) => ({ ...prev, kebutuhan_khusus: ev.target.value }))} placeholder="Kebutuhan khusus" />
+                            <input className={inputClass} value={editForm.disabilitas} onChange={(ev) => setEditForm((prev) => ({ ...prev, disabilitas: ev.target.value }))} placeholder="Disabilitas" />
+                            <input className={inputClass} value={editForm.nama_ayah_kandung} onChange={(ev) => setEditForm((prev) => ({ ...prev, nama_ayah_kandung: ev.target.value }))} placeholder="Nama ayah" />
+                            <input className={inputClass} value={editForm.nama_ibu_kandung} onChange={(ev) => setEditForm((prev) => ({ ...prev, nama_ibu_kandung: ev.target.value }))} placeholder="Nama ibu" />
+                            <input className={inputClass} value={editForm.nama_wali} onChange={(ev) => setEditForm((prev) => ({ ...prev, nama_wali: ev.target.value }))} placeholder="Nama wali" />
+                            <input className={inputClass} value={editForm.alamat} onChange={(ev) => setEditForm((prev) => ({ ...prev, alamat: ev.target.value }))} placeholder="Alamat" />
+                          </div>
+                        ) : (
+                          <div className="space-y-1 text-xs text-[#475569]">
+                            <p>NISN: {siswa.nisn || '-'}</p>
+                            <p>NIK: {siswa.nik || '-'}</p>
+                            <p>JK: {siswa.jenis_kelamin || '-'}</p>
+                            <p>TTL: {[siswa.tempat_lahir, siswa.tanggal_lahir].filter(Boolean).join(', ') || '-'}</p>
+                            <p>Ortu: {siswa.nama_ayah_kandung || '-'} / {siswa.nama_ibu_kandung || '-'}</p>
+                            <p>Wali: {siswa.nama_wali || '-'}</p>
+                          </div>
                         )}
                       </td>
                       <td className="px-3 py-2">

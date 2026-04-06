@@ -1,6 +1,8 @@
 import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
 import PropTypes from 'prop-types'
 import api from '../lib/api'
+import RAProfileForm from '../components/Profile/RAProfileForm'
+import { fetchRAProfile, saveRAProfile } from '../lib/raProfile'
 
 const loadStudentsManagementPanel = () => import('../components/Settings/StudentsManagementPanel')
 const loadUsersManagementPanel = () => import('../components/Settings/UsersManagementPanel')
@@ -18,6 +20,7 @@ const SuratView = lazy(loadSuratView)
 
 const PANEL_LABELS = {
   ringkasan: 'Dashboard',
+  'profil-lembaga': 'Profil Lembaga',
   'manajemen-siswa': 'Manajemen Siswa',
   'manajemen-pengguna': 'Manajemen Pengguna',
   'manajemen-kelompok': 'Manajemen Kelompok',
@@ -25,6 +28,8 @@ const PANEL_LABELS = {
   'manajemen-berkas-dokumen': 'Manajemen Berkas - Dokumen',
   'manajemen-berkas-surat': 'Manajemen Berkas - Surat',
 }
+
+const KEPALA_ROLES = ['kepala_ra', 'kepala', 'admin', 'admin_ra']
 
 function StatCard({ label, value, hint, toneClass }) {
   return (
@@ -74,6 +79,17 @@ function DashboardView({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [data, setData] = useState(null)
+  const [raProfile, setRaProfile] = useState(null)
+  const [raLoading, setRaLoading] = useState(false)
+  const [raLoadError, setRaLoadError] = useState('')
+  const [raSaving, setRaSaving] = useState(false)
+  const [raSuccess, setRaSuccess] = useState('')
+  const [raError, setRaError] = useState('')
+
+  const canManageInstitutionProfile = useMemo(() => {
+    const normalizedRole = (role || '').toLowerCase()
+    return KEPALA_ROLES.includes(normalizedRole)
+  }, [role])
 
   useEffect(() => {
     const token = localStorage.getItem('aisya_access_token')
@@ -126,6 +142,29 @@ function DashboardView({
     return undefined
   }, [activePanel])
 
+  useEffect(() => {
+    if (activePanel !== 'profil-lembaga') return
+
+    const token = localStorage.getItem('aisya_access_token')
+    if (!token) return
+
+    const fetchInstitutionProfile = async () => {
+      setRaLoading(true)
+      setRaLoadError('')
+
+      try {
+        const profileData = await fetchRAProfile(token)
+        setRaProfile(profileData || null)
+      } catch (fetchError) {
+        setRaLoadError(fetchError?.response?.data?.detail || fetchError?.message || 'Gagal memuat profil lembaga')
+      } finally {
+        setRaLoading(false)
+      }
+    }
+
+    fetchInstitutionProfile()
+  }, [activePanel])
+
   const summary = useMemo(() => {
     if (!data) {
       return {
@@ -162,10 +201,57 @@ function DashboardView({
     return data.summary_per_kelas.slice(0, 4)
   }, [data])
 
+  const institutionReadonlyItems = useMemo(() => {
+    return [
+      { label: 'Nama Lembaga', value: raProfile?.nama_ra, fullWidth: true },
+      { label: 'NPSN', value: raProfile?.npsn },
+      { label: 'NSM / Nomor Statistik', value: raProfile?.nomor_statistik },
+      { label: 'Bentuk Pendidikan', value: raProfile?.bentuk_pendidikan },
+      { label: 'Status Lembaga', value: raProfile?.status_lembaga },
+      { label: 'Penyelenggara', value: raProfile?.penyelenggara },
+      { label: 'Akreditasi', value: raProfile?.akreditasi },
+      { label: 'SK Izin Operasional', value: raProfile?.sk_izin_operasional, fullWidth: true },
+      { label: 'Tanggal Izin Operasional', value: raProfile?.tanggal_izin_operasional },
+      { label: 'Nama Kepala RA', value: raProfile?.nama_kepala },
+      { label: 'Telepon', value: raProfile?.telepon },
+      { label: 'Email Lembaga', value: raProfile?.email_lembaga },
+      { label: 'Website', value: raProfile?.website },
+      { label: 'Tahun Ajaran', value: raProfile?.tahun_ajaran },
+      { label: 'Kelurahan / Desa', value: raProfile?.kelurahan_desa },
+      { label: 'Kecamatan', value: raProfile?.kecamatan },
+      { label: 'Kabupaten / Kota', value: raProfile?.kabupaten_kota },
+      { label: 'Provinsi', value: raProfile?.provinsi },
+      { label: 'Kode Pos', value: raProfile?.kode_pos },
+      { label: 'Alamat', value: raProfile?.alamat, fullWidth: true },
+    ]
+  }, [raProfile])
+
   const panelTitle = PANEL_LABELS[activePanel] || 'Dashboard'
   const panelSubtitle = activePanel === 'ringkasan'
     ? 'Pantau ringkasan operasional RA secara cepat dari satu layar.'
-    : 'Kelola data operasional RA pada panel aktif di bawah ini.'
+    : activePanel === 'profil-lembaga'
+      ? 'Atur data identitas lembaga langsung dari dashboard AISYA.'
+      : 'Kelola data operasional RA pada panel aktif di bawah ini.'
+
+  const handleSaveInstitutionProfile = async (payload) => {
+    const token = localStorage.getItem('aisya_access_token')
+    if (!token) return
+
+    setRaSaving(true)
+    setRaSuccess('')
+    setRaError('')
+
+    try {
+      await saveRAProfile(token, payload)
+      const latestProfile = await fetchRAProfile(token)
+      setRaProfile(latestProfile || null)
+      setRaSuccess('Profil lembaga berhasil disimpan')
+    } catch (saveError) {
+      setRaError(saveError?.response?.data?.detail || saveError?.message || 'Gagal menyimpan profil lembaga')
+    } finally {
+      setRaSaving(false)
+    }
+  }
 
   return (
     <div className="h-full overflow-y-auto bg-[#f7f7f8] px-3 py-4 md:px-6">
@@ -217,6 +303,45 @@ function DashboardView({
                   </div>
                 </div>
               </>
+            ) : null}
+          </section>
+        ) : null}
+
+        {activePanel === 'profil-lembaga' ? (
+          <section className="rounded-2xl border border-[#e2e8f0] bg-white p-5 shadow-sm">
+            {raLoading ? <p className="text-sm text-[#64748b]">Memuat profil lembaga...</p> : null}
+            {raLoadError ? <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{raLoadError}</p> : null}
+            {raSuccess ? <p className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-700">{raSuccess}</p> : null}
+
+            {!raLoading && !raLoadError ? (
+              canManageInstitutionProfile ? (
+                <RAProfileForm
+                  key={`institution-form-${raProfile?.id || raProfile?.nama_ra || 'default'}`}
+                  initialData={raProfile}
+                  saving={raSaving}
+                  error={raError}
+                  success=""
+                  onSubmit={handleSaveInstitutionProfile}
+                />
+              ) : (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {institutionReadonlyItems.map((item) => (
+                    <div
+                      key={item.label}
+                      className={[
+                        'rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-3 py-2',
+                        item.fullWidth ? 'sm:col-span-2' : 'sm:col-span-1',
+                      ].join(' ')}
+                    >
+                      <p className="text-xs uppercase tracking-[0.08em] text-[#64748b]">{item.label}</p>
+                      <p className="mt-1 text-sm font-medium text-[#0f172a]">{item.value || '-'}</p>
+                    </div>
+                  ))}
+                  <div className="rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-3 py-3 text-sm text-[#64748b] sm:col-span-2">
+                    Profil lembaga hanya bisa diubah oleh role Kepala/Admin.
+                  </div>
+                </div>
+              )
             ) : null}
           </section>
         ) : null}
@@ -287,6 +412,7 @@ DashboardView.propTypes = {
   role: PropTypes.string,
   activePanel: PropTypes.oneOf([
     'ringkasan',
+    'profil-lembaga',
     'manajemen-siswa',
     'manajemen-pengguna',
     'manajemen-kelompok',

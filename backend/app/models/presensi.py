@@ -23,6 +23,8 @@ class PresensiUpdate(BaseModel):
 class PresensiResponse(PresensiBase):
     id: str
     dicatat_oleh: str
+    keterangan: Optional[str] = None
+    sumber_pencatatan: Optional[str] = None
 
 class PresensiFromChatRequest(BaseModel):
     pesan: str
@@ -50,6 +52,8 @@ class RekapPresensiResponse(BaseModel):
 class PresensiBatchItem(BaseModel):
     siswa_id: str
     status: StatusPresensi
+    keterangan: Optional[str] = None
+    sumber_pencatatan: Optional[str] = None
 
 
 class PresensiBatchUpsertRequest(BaseModel):

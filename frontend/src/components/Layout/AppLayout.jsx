@@ -96,6 +96,11 @@ const DASHBOARD_MENUS = [
     icon: HomeIcon,
   },
   {
+    id: 'profil-lembaga',
+    label: 'Profil Lembaga',
+    icon: BuildingLibraryIcon,
+  },
+  {
     id: 'manajemen-siswa',
     label: 'Manajemen Siswa',
     icon: AcademicCapIcon,
@@ -489,7 +494,6 @@ function AppLayout() {
         <ProfileView
           profile={profile}
           viewMode={profileViewMode}
-          canManageRaProfile={canManageRaProfile}
           onChangeViewMode={setProfileViewMode}
           onProfileUpdated={handleProfileUpdated}
         />

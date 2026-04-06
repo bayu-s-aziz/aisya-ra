@@ -20,7 +20,10 @@ def list_kelompok(current=Depends(get_current_user_profile)):
     try:
         response = (
             supabase.table("kelompok")
-            .select("id,ra_id,nama_kelompok,wali_kelas_id")
+            .select(
+                "id,ra_id,nama_kelompok,wali_kelas_id,"
+                "kode_rombel,tingkat,semester,kurikulum,ruang_kelas,kapasitas,status_rombel"
+            )
             .eq("ra_id", ra_id)
             .order("nama_kelompok")
             .execute()
@@ -47,6 +50,13 @@ def create_kelompok(payload: KelompokCreateRequest, current=Depends(get_current_
                     "ra_id": ra_id,
                     "nama_kelompok": payload.nama_kelompok,
                     "wali_kelas_id": payload.wali_kelas_id,
+                    "kode_rombel": payload.kode_rombel,
+                    "tingkat": payload.tingkat,
+                    "semester": payload.semester,
+                    "kurikulum": payload.kurikulum,
+                    "ruang_kelas": payload.ruang_kelas,
+                    "kapasitas": payload.kapasitas,
+                    "status_rombel": payload.status_rombel,
                 }
             )
             .execute()
