@@ -474,7 +474,6 @@ function StudentsManagementPanel() {
               <th className="px-3 py-2">NIS</th>
               <th className="px-3 py-2">Nama</th>
               <th className="px-3 py-2">Kelompok</th>
-              <th className="px-3 py-2">Data EMIS</th>
               <th className="px-3 py-2">Status</th>
               <th className="px-3 py-2">Aksi</th>
             </tr>
@@ -482,7 +481,7 @@ function StudentsManagementPanel() {
           <tbody className="divide-y divide-[#edf2f7] bg-white text-sm text-[#0f172a]">
             {loading ? (
               <tr>
-                <td className="px-3 py-3" colSpan={6}>
+                <td className="px-3 py-3" colSpan={5}>
                   Memuat data siswa...
                 </td>
               </tr>
@@ -490,7 +489,7 @@ function StudentsManagementPanel() {
 
             {!loading && filteredSiswaList.length === 0 ? (
               <tr>
-                <td className="px-3 py-3" colSpan={6}>
+                <td className="px-3 py-3" colSpan={5}>
                   Belum ada data siswa.
                 </td>
               </tr>
@@ -502,16 +501,6 @@ function StudentsManagementPanel() {
                     <td className="px-3 py-2">{siswa.nis || '-'}</td>
                     <td className="px-3 py-2">{siswa.nama}</td>
                     <td className="px-3 py-2">{kelompokMap.get(siswa.kelompok_id) || '-'}</td>
-                    <td className="px-3 py-2 align-top">
-                      <div className="space-y-1 text-xs text-[#475569]">
-                        <p>NISN: {siswa.nisn || '-'}</p>
-                        <p>NIK: {siswa.nik || '-'}</p>
-                        <p>JK: {siswa.jenis_kelamin || '-'}</p>
-                        <p>TTL: {[siswa.tempat_lahir, siswa.tanggal_lahir].filter(Boolean).join(', ') || '-'}</p>
-                        <p>Ortu: {siswa.nama_ayah_kandung || '-'} / {siswa.nama_ibu_kandung || '-'}</p>
-                        <p>Wali: {siswa.nama_wali || '-'}</p>
-                      </div>
-                    </td>
                     <td className="px-3 py-2">
                       {siswa.status_aktif ? (
                         <span className="rounded-full bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700">Aktif</span>

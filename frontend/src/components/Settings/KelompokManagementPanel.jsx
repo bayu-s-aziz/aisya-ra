@@ -305,14 +305,13 @@ function KelompokManagementPanel() {
             <tr className="text-left text-xs uppercase tracking-wide text-[#64748b]">
               <th className="px-3 py-2">Kelompok</th>
               <th className="px-3 py-2">Wali Kelas</th>
-              <th className="px-3 py-2">Data Rombel</th>
               <th className="px-3 py-2">Aksi</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#edf2f7] bg-white text-sm text-[#0f172a]">
             {loading ? (
               <tr>
-                <td className="px-3 py-3" colSpan={4}>
+                <td className="px-3 py-3" colSpan={3}>
                   Memuat data kelompok...
                 </td>
               </tr>
@@ -320,7 +319,7 @@ function KelompokManagementPanel() {
 
             {!loading && filteredKelompokList.length === 0 ? (
               <tr>
-                <td className="px-3 py-3" colSpan={4}>
+                <td className="px-3 py-3" colSpan={3}>
                   Belum ada data kelompok.
                 </td>
               </tr>
@@ -334,16 +333,6 @@ function KelompokManagementPanel() {
                     <tr key={item.id}>
                       <td className="px-3 py-2">{item.nama_kelompok}</td>
                       <td className="px-3 py-2">{waliName}</td>
-                      <td className="px-3 py-2 align-top">
-                        <div className="space-y-1 text-xs text-[#475569]">
-                          <p>Kode: {item.kode_rombel || '-'}</p>
-                          <p>Tingkat: {item.tingkat || '-'}</p>
-                          <p>Semester: {item.semester || '-'}</p>
-                          <p>Kurikulum: {item.kurikulum || '-'}</p>
-                          <p>Ruang/Kapasitas: {item.ruang_kelas || '-'} / {item.kapasitas || '-'}</p>
-                          <p>Status Rombel: {item.status_rombel || '-'}</p>
-                        </div>
-                      </td>
                       <td className="px-3 py-2">
                         <div className="flex gap-2">
                           <button

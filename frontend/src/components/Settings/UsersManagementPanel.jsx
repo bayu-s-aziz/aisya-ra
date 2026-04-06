@@ -457,14 +457,13 @@ function UsersManagementPanel() {
               <th className="px-3 py-2">Email</th>
               <th className="px-3 py-2">Role</th>
               <th className="px-3 py-2">Jabatan</th>
-              <th className="px-3 py-2">Data GTK</th>
               <th className="px-3 py-2">Aksi</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#edf2f7] bg-white text-sm text-[#0f172a]">
             {loading ? (
               <tr>
-                <td className="px-3 py-3" colSpan={6}>
+                <td className="px-3 py-3" colSpan={5}>
                   Memuat data pengguna...
                 </td>
               </tr>
@@ -472,7 +471,7 @@ function UsersManagementPanel() {
 
             {!loading && filteredUsers.length === 0 ? (
               <tr>
-                <td className="px-3 py-3" colSpan={6}>
+                <td className="px-3 py-3" colSpan={5}>
                   Belum ada data pengguna.
                 </td>
               </tr>
@@ -485,18 +484,6 @@ function UsersManagementPanel() {
                     <td className="px-3 py-2">{user.email}</td>
                     <td className="px-3 py-2">{user.role === 'kepala_ra' ? 'Kepala RA' : 'Guru'}</td>
                     <td className="px-3 py-2">{user.jabatan || '-'}</td>
-                    <td className="px-3 py-2 align-top">
-                      <div className="space-y-1 text-xs text-[#475569]">
-                        <p>NIK: {user.nik || '-'}</p>
-                        <p>NUPTK: {user.nuptk || '-'}</p>
-                        <p>NIP: {user.nip || '-'}</p>
-                        <p>JK: {user.jenis_kelamin || '-'}</p>
-                        <p>Tugas: {user.tugas || '-'}</p>
-                        <p>Mapel: {user.mata_pelajaran || '-'}</p>
-                        <p>Penempatan: {user.penempatan || '-'}</p>
-                        <p>Total JTM: {user.total_jtm || '-'}</p>
-                      </div>
-                    </td>
                     <td className="px-3 py-2">
                       <div className="flex gap-2">
                         <button
