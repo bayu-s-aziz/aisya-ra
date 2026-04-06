@@ -1,4 +1,5 @@
-from datetime import datetime, timezone
+import json
+from datetime import date, datetime, timedelta, timezone
 import re
 from uuid import UUID
 
@@ -30,6 +31,7 @@ router = APIRouter()
 
 
 VALID_TIPE = {'utama', 'rpph', 'anekdot', 'surat', 'presensi', 'custom', 'dashboard'}
+VALID_PRESENSI_STATUS = {"hadir", "sakit", "izin", "alpha"}
 
 
 def _is_valid_uuid(value: str) -> bool:
@@ -472,6 +474,552 @@ def _build_system_data_context(supabase, current: dict, query: str) -> str | Non
     return "\n\n".join([f"[{title}]\n{content}" for title, content in sections])
 
 
+def _normalize_presensi_status(value: str | None) -> str | None:
+    normalized = _normalize_text(value or "")
+    if not normalized:
+        return None
+
+    if normalized in VALID_PRESENSI_STATUS:
+        return normalized
+
+    if normalized in {"alfa", "tanpa keterangan", "tidak hadir", "tidak masuk", "absen"}:
+        return "alpha"
+
+    return None
+
+
+def _parse_date_value(value: str | None) -> str | None:
+    normalized = _normalize_text(value or "")
+    if not normalized:
+        return None
+
+    if normalized in {"hari ini", "today", "sekarang"}:
+        return date.today().isoformat()
+    if normalized in {"kemarin", "yesterday"}:
+        return (date.today() - timedelta(days=1)).isoformat()
+
+    raw_value = (value or "").strip()
+    for fmt in ("%Y-%m-%d", "%d-%m-%Y", "%d/%m/%Y", "%Y/%m/%d"):
+        try:
+            return datetime.strptime(raw_value, fmt).date().isoformat()
+        except ValueError:
+            continue
+
+    return None
+
+
+def _parse_json_object(text: str) -> dict | None:
+    if not text:
+        return None
+
+    cleaned = text.strip()
+    cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\s*```$", "", cleaned)
+
+    try:
+        parsed = json.loads(cleaned)
+        if isinstance(parsed, dict):
+            return parsed
+    except Exception:
+        pass
+
+    start = cleaned.find("{")
+    end = cleaned.rfind("}")
+    if start >= 0 and end > start:
+        snippet = cleaned[start:end + 1]
+        try:
+            parsed = json.loads(snippet)
+            if isinstance(parsed, dict):
+                return parsed
+        except Exception:
+            return None
+
+    return None
+
+
+def _detect_admin_action_intent(query: str) -> str | None:
+    normalized = _normalize_text(query)
+
+    create_student = (
+        _contains_any(normalized, ["siswa", "murid", "peserta didik"])
+        and _contains_any(normalized, ["tambah", "tambahkan", "daftarkan", "input", "masukkan", "buat"])
+    )
+    if create_student:
+        return "create_student"
+
+    attendance_action = (
+        _contains_any(normalized, ["presensi", "kehadiran", "tidak hadir", "tidak masuk", "izin", "sakit", "alpha", "alfa"])
+        and _contains_any(normalized, ["catat", "tandai", "input", "set", "ubah", "update", "masukkan", "tolong"])
+    )
+    if attendance_action:
+        return "mark_attendance"
+
+    return None
+
+
+def _resolve_kelompok_by_name(kelompok_rows: list[dict], nama_kelompok: str) -> tuple[dict | None, list[str]]:
+    normalized_target = _normalize_text(nama_kelompok)
+    if not normalized_target:
+        return None, []
+
+    exact = [
+        item
+        for item in kelompok_rows
+        if _normalize_text(item.get("nama_kelompok") or "") == normalized_target
+    ]
+    if len(exact) == 1:
+        return exact[0], []
+
+    partial = [
+        item
+        for item in kelompok_rows
+        if normalized_target in _normalize_text(item.get("nama_kelompok") or "")
+        or _normalize_text(item.get("nama_kelompok") or "") in normalized_target
+    ]
+    if len(partial) == 1:
+        return partial[0], []
+
+    candidates = partial if partial else exact
+    candidate_names = [(item.get("nama_kelompok") or "-") for item in candidates[:6]]
+    return None, candidate_names
+
+
+def _resolve_student_for_action(
+    supabase,
+    ra_id: str,
+    tahun_ajaran_id: str,
+    nama_siswa: str,
+    kelompok_id: str | None = None,
+) -> tuple[dict | None, str | None, list[str]]:
+    query = (
+        supabase.table("siswa")
+        .select("id,nama,kelompok_id,tingkat_rombel")
+        .eq("ra_id", ra_id)
+        .eq("tahun_ajaran_id", tahun_ajaran_id)
+        .eq("status_aktif", True)
+        .ilike("nama", f"%{nama_siswa}%")
+        .limit(20)
+    )
+    if kelompok_id:
+        query = query.eq("kelompok_id", kelompok_id)
+
+    response = query.execute()
+    rows = response.data or []
+
+    if not rows:
+        return None, "not_found", []
+
+    normalized_target = _normalize_text(nama_siswa)
+    exact = [row for row in rows if _normalize_text(row.get("nama") or "") == normalized_target]
+    candidates = exact if exact else rows
+
+    if len(candidates) == 1:
+        return candidates[0], None, []
+
+    candidate_names = [(row.get("nama") or "-") for row in candidates[:6]]
+    return None, "ambiguous", candidate_names
+
+
+def _extract_attendance_records(query: str) -> list[dict]:
+    extraction_prompt = f"""Ekstrak data presensi dari pesan user menjadi JSON.
+
+Aturan:
+- Fokus hanya pada aksi pencatatan presensi/tidak hadir.
+- Jangan membuat data baru yang tidak disebut user.
+- Status valid hanya: sakit, izin, alpha.
+- Jika user hanya bilang "tidak hadir/tidak masuk/absen" tanpa alasan, gunakan status alpha.
+- Tanggal harus format YYYY-MM-DD jika disebut jelas. Jika tidak disebut, isi null.
+
+Format output WAJIB persis JSON object:
+{{
+  "records": [
+    {{"nama_siswa": "...", "status": "sakit|izin|alpha", "tanggal": "YYYY-MM-DD|null", "keterangan": "...|null"}}
+  ]
+}}
+
+Jika tidak ada data yang jelas, kembalikan: {{"records": []}}
+
+Pesan user: {query}
+Output JSON saja:"""
+
+    try:
+        raw = generate_response(extraction_prompt)
+    except Exception:
+        return []
+
+    parsed = _parse_json_object(raw) or {}
+    records = parsed.get("records") if isinstance(parsed, dict) else None
+    if not isinstance(records, list):
+        return []
+
+    normalized_records = []
+    for item in records:
+        if not isinstance(item, dict):
+            continue
+
+        nama_siswa = (item.get("nama_siswa") or "").strip()
+        if not nama_siswa:
+            continue
+
+        status = _normalize_presensi_status(item.get("status"))
+        if not status and _contains_any(query, ["tidak hadir", "tidak masuk", "absen"]):
+            status = "alpha"
+
+        normalized_records.append(
+            {
+                "nama_siswa": nama_siswa,
+                "status": status,
+                "tanggal": _parse_date_value(item.get("tanggal")),
+                "keterangan": ((item.get("keterangan") or "").strip() or None),
+            }
+        )
+
+    return normalized_records
+
+
+def _extract_new_students(query: str) -> list[dict]:
+    extraction_prompt = f"""Ekstrak data siswa baru dari pesan user menjadi JSON.
+
+Aturan:
+- Fokus hanya jika user meminta tambah/daftarkan siswa.
+- Jangan mengarang nama siswa atau kelompok.
+- Jika data tidak disebut, isi null.
+
+Format output WAJIB persis JSON object:
+{{
+  "records": [
+    {{
+      "nama_siswa": "...",
+      "nama_kelompok": "...",
+      "nisn": "...|null",
+      "jenis_kelamin": "...|null"
+    }}
+  ]
+}}
+
+Jika tidak ada data yang jelas, kembalikan: {{"records": []}}
+
+Pesan user: {query}
+Output JSON saja:"""
+
+    try:
+        raw = generate_response(extraction_prompt)
+    except Exception:
+        return []
+
+    parsed = _parse_json_object(raw) or {}
+    records = parsed.get("records") if isinstance(parsed, dict) else None
+    if not isinstance(records, list):
+        return []
+
+    normalized_records = []
+    for item in records:
+        if not isinstance(item, dict):
+            continue
+
+        nama_siswa = (item.get("nama_siswa") or "").strip()
+        nama_kelompok = (item.get("nama_kelompok") or "").strip()
+        if not nama_siswa:
+            continue
+
+        normalized_records.append(
+            {
+                "nama_siswa": nama_siswa,
+                "nama_kelompok": nama_kelompok,
+                "nisn": ((item.get("nisn") or "").strip() or None),
+                "jenis_kelamin": ((item.get("jenis_kelamin") or "").strip() or None),
+            }
+        )
+
+    return normalized_records
+
+
+def _try_execute_attendance_action(supabase, current: dict, query: str) -> str:
+    ra_id = current["ra_id"]
+    user_id = current["profile"]["id"]
+    tahun_ajaran_id = get_active_academic_year(supabase, ra_id, created_by=user_id)["id"]
+    records = _extract_attendance_records(query)
+
+    if not records:
+        return (
+            "Saya siap mencatat ketidakhadiran, tapi datanya belum lengkap. "
+            "Contoh: 'Catat Ani sakit hari ini' atau 'Budi izin 2026-04-07'."
+        )
+
+    success_lines = []
+    issue_lines = []
+
+    for record in records:
+        nama_siswa = record.get("nama_siswa") or ""
+        status_value = record.get("status")
+        tanggal_value = record.get("tanggal") or date.today().isoformat()
+
+        if not status_value:
+            issue_lines.append(f"- {nama_siswa}: status belum jelas (pilih sakit/izin/alpha).")
+            continue
+
+        try:
+            siswa_row, error_kind, candidates = _resolve_student_for_action(
+                supabase,
+                ra_id,
+                tahun_ajaran_id,
+                nama_siswa,
+            )
+        except Exception as exc:
+            issue_lines.append(f"- {nama_siswa}: gagal mencari data siswa ({exc}).")
+            continue
+
+        if error_kind == "not_found":
+            issue_lines.append(f"- {nama_siswa}: siswa tidak ditemukan.")
+            continue
+
+        if error_kind == "ambiguous":
+            daftar = ", ".join(candidates) if candidates else "nama serupa"
+            issue_lines.append(f"- {nama_siswa}: ada beberapa nama serupa ({daftar}).")
+            continue
+
+        if not isinstance(siswa_row, dict):
+            issue_lines.append(f"- {nama_siswa}: format data siswa tidak valid.")
+            continue
+
+        siswa_id = siswa_row.get("id")
+        if not isinstance(siswa_id, str) or not siswa_id:
+            issue_lines.append(f"- {nama_siswa}: ID siswa tidak valid.")
+            continue
+
+        siswa_nama = siswa_row.get("nama") if isinstance(siswa_row.get("nama"), str) else nama_siswa
+
+        try:
+            existing = (
+                supabase.table("presensi")
+                .select("id")
+                .eq("siswa_id", siswa_id)
+                .eq("tanggal", tanggal_value)
+                .eq("tahun_ajaran_id", tahun_ajaran_id)
+                .limit(1)
+                .execute()
+            )
+            action_label = "diperbarui" if (existing.data or []) else "dicatat"
+
+            upsert_payload = {
+                "siswa_id": siswa_id,
+                "tanggal": tanggal_value,
+                "status": status_value,
+                "dicatat_oleh": user_id,
+                "keterangan": record.get("keterangan"),
+                "sumber_pencatatan": "chat_ai_action",
+                "tahun_ajaran_id": tahun_ajaran_id,
+            }
+
+            supabase.table("presensi").upsert(upsert_payload, on_conflict="siswa_id,tanggal").execute()
+            success_lines.append(f"- {siswa_nama}: {status_value} ({tanggal_value}, {action_label}).")
+        except Exception as exc:
+            issue_lines.append(f"- {nama_siswa}: gagal simpan presensi ({exc}).")
+
+    if success_lines and not issue_lines:
+        return "Presensi berhasil diproses:\n" + "\n".join(success_lines)
+
+    if success_lines and issue_lines:
+        return (
+            f"Presensi diproses sebagian. Berhasil: {len(success_lines)} data, perlu perbaikan: {len(issue_lines)} data.\n"
+            + "\n".join(success_lines[:6])
+            + "\n"
+            + "\n".join(issue_lines[:6])
+        )
+
+    return "Presensi belum berhasil diproses:\n" + "\n".join(issue_lines[:6])
+
+
+def _try_execute_create_student_action(supabase, current: dict, query: str) -> str:
+    ra_id = current["ra_id"]
+    user_id = current["profile"]["id"]
+    tahun_ajaran_id = get_active_academic_year(supabase, ra_id, created_by=user_id)["id"]
+
+    try:
+        kelompok_rows = (
+            supabase.table("kelompok")
+            .select("id,nama_kelompok")
+            .eq("ra_id", ra_id)
+            .eq("tahun_ajaran_id", tahun_ajaran_id)
+            .order("nama_kelompok")
+            .execute()
+        ).data or []
+    except Exception as exc:
+        return f"Gagal mengambil daftar kelas/kelompok: {exc}"
+
+    if not kelompok_rows:
+        return "Belum ada kelompok pada tahun ajaran aktif. Buat kelompok dulu sebelum menambah siswa."
+
+    records = _extract_new_students(query)
+    if not records:
+        return (
+            "Saya siap menambah siswa, tapi datanya belum lengkap. "
+            "Contoh: 'Tambahkan siswa Aisyah ke Kelompok B'."
+        )
+
+    success_lines = []
+    issue_lines = []
+    available_kelompok = ", ".join([(item.get("nama_kelompok") or "-") for item in kelompok_rows[:10]])
+
+    for record in records:
+        nama_siswa = record.get("nama_siswa") or ""
+        nama_kelompok = record.get("nama_kelompok") or ""
+        if not nama_kelompok:
+            issue_lines.append(f"- {nama_siswa}: nama kelompok belum disebut.")
+            continue
+
+        kelompok_row, kandidat = _resolve_kelompok_by_name(kelompok_rows, nama_kelompok)
+        if not kelompok_row:
+            kandidat_text = ", ".join(kandidat) if kandidat else available_kelompok
+            issue_lines.append(
+                f"- {nama_siswa}: kelompok '{nama_kelompok}' tidak ditemukan. Pilihan yang tersedia: {kandidat_text}."
+            )
+            continue
+
+        try:
+            existing = (
+                supabase.table("siswa")
+                .select("id,nama")
+                .eq("ra_id", ra_id)
+                .eq("tahun_ajaran_id", tahun_ajaran_id)
+                .eq("kelompok_id", kelompok_row["id"])
+                .ilike("nama", nama_siswa)
+                .limit(1)
+                .execute()
+            )
+            if existing.data:
+                issue_lines.append(
+                    f"- {nama_siswa}: sudah terdaftar di {kelompok_row.get('nama_kelompok') or nama_kelompok}."
+                )
+                continue
+
+            payload = {
+                "ra_id": ra_id,
+                "tahun_ajaran_id": tahun_ajaran_id,
+                "nama": nama_siswa,
+                "kelompok_id": kelompok_row["id"],
+                "tingkat_rombel": kelompok_row.get("nama_kelompok"),
+                "status_aktif": True,
+            }
+            if record.get("nisn"):
+                payload["nisn"] = record["nisn"]
+            if record.get("jenis_kelamin"):
+                payload["jenis_kelamin"] = record["jenis_kelamin"]
+
+            supabase.table("siswa").insert(payload).execute()
+            success_lines.append(
+                f"- {nama_siswa}: berhasil ditambahkan ke {kelompok_row.get('nama_kelompok') or nama_kelompok}."
+            )
+        except Exception as exc:
+            issue_lines.append(f"- {nama_siswa}: gagal menambah siswa ({exc}).")
+
+    if success_lines and not issue_lines:
+        return "Data siswa berhasil diproses:\n" + "\n".join(success_lines)
+
+    if success_lines and issue_lines:
+        return (
+            f"Penambahan siswa diproses sebagian. Berhasil: {len(success_lines)}, perlu perbaikan: {len(issue_lines)}.\n"
+            + "\n".join(success_lines[:6])
+            + "\n"
+            + "\n".join(issue_lines[:6])
+        )
+
+    return "Belum ada siswa yang berhasil ditambahkan:\n" + "\n".join(issue_lines[:6])
+
+
+def _try_execute_admin_action(supabase, current: dict, query: str) -> str | None:
+    intent = _detect_admin_action_intent(query)
+    if not intent:
+        return None
+
+    if intent == "mark_attendance":
+        return _try_execute_attendance_action(supabase, current, query)
+
+    if intent == "create_student":
+        return _try_execute_create_student_action(supabase, current, query)
+
+    return None
+
+
+def _build_grounded_ai_response(supabase, current: dict, query: str) -> str:
+    ra_id = current["ra_id"]
+
+    context_chunks = retrieve_relevant_context(
+        query=query,
+        ra_id=ra_id,
+        top_k=3,
+        similarity_threshold=0.5,
+    )
+
+    if context_chunks and len(context_chunks) > 0:
+        enhanced_prompt = build_rag_prompt(query, context_chunks)
+    else:
+        enhanced_prompt = query
+
+    system_data_context = _build_system_data_context(supabase, current, query)
+    grounding_rule = (
+        "Instruksi tambahan: Jika pertanyaan user terkait data operasional RA, utamakan konteks data internal sistem ini. "
+        "Jika data internal atau knowledge base tidak cukup, katakan data belum ditemukan/tersedia dan jangan menebak. "
+        "Saat menjawab user, gunakan bahasa non-teknis, ringkas, dan jangan menampilkan label/field mentah "
+        "seperti [PRESENSI], total_siswa, belum_dicatat, nama tabel, atau format JSON."
+    )
+
+    if system_data_context:
+        enhanced_prompt = (
+            f"{enhanced_prompt}\n\n"
+            "KONTEKS DATA INTERNAL SISTEM (SUMBER UTAMA):\n"
+            f"{system_data_context}\n\n"
+            f"{grounding_rule}"
+        )
+    else:
+        enhanced_prompt = f"{enhanced_prompt}\n\n{grounding_rule}"
+
+    return generate_response(enhanced_prompt)
+
+
+def _extract_room_tipe(rows) -> str:
+    if not isinstance(rows, list) or not rows:
+        return ""
+
+    first_row = rows[0]
+    if not isinstance(first_row, dict):
+        return ""
+
+    tipe_value = first_row.get("tipe")
+    return tipe_value.lower() if isinstance(tipe_value, str) else ""
+
+
+def _extract_rows_from_response(response) -> list[dict]:
+    rows = getattr(response, "data", None)
+    if not isinstance(rows, list):
+        return []
+
+    return [row for row in rows if isinstance(row, dict)]
+
+
+def _save_assistant_message(supabase, user_id: str, room_id: str, content: str, error_prefix: str) -> dict:
+    try:
+        bot_message_response = (
+            supabase.table("chat_history")
+            .insert(
+                {
+                    "user_id": user_id,
+                    "room_id": room_id,
+                    "role_msg": "assistant",
+                    "content": content,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                }
+            )
+            .execute()
+        )
+        return bot_message_response.data[0] if bot_message_response.data else {}
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"{error_prefix}: {exc}",
+        ) from exc
+
+
 @router.post("/rooms", response_model=CreateChatRoomResponse, status_code=status.HTTP_201_CREATED)
 def create_chat_room(
     payload: CreateChatRoomRequest,
@@ -618,15 +1166,16 @@ def get_chat_messages(
             detail="Ruang chat tidak ditemukan",
         )
 
-    room_tipe = (room_check.data[0].get("tipe") or "").lower()
+    room_tipe = _extract_room_tipe(room_check.data)
     try:
         count_response = (
             supabase.table("chat_history")
-            .select("id", count="exact")
+            .select("id")
             .eq("room_id", room_id)
             .execute()
         )
-        total = count_response.count or 0
+        total = len(_extract_rows_from_response(count_response))
+        messages_data: list[dict] = []
 
         # --- Auto-welcome for dashboard rooms (first open only) ---
         if room_tipe == "dashboard" and total == 0:
@@ -655,13 +1204,13 @@ def get_chat_messages(
                 pass  # fall through to normal fetch if welcome fails
 
         if total == 0:
-            messages_response = type("EmptyResponse", (), {"data": []})()
+            messages_data = []
         else:
             start = max(total - (page * limit), 0)
             end = total - ((page - 1) * limit) - 1
 
             if start > end:
-                messages_response = type("EmptyResponse", (), {"data": []})()
+                messages_data = []
             else:
                 messages_response = (
                     supabase.table("chat_history")
@@ -671,6 +1220,7 @@ def get_chat_messages(
                     .range(start, end)
                     .execute()
                 )
+                messages_data = _extract_rows_from_response(messages_response)
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -679,7 +1229,7 @@ def get_chat_messages(
 
     return {
         "success": True,
-        "data": messages_response.data or [],
+        "data": messages_data,
         "page": page,
         "limit": limit,
         "total": total,
@@ -723,7 +1273,7 @@ def send_chat_message(
             detail="Ruang chat tidak ditemukan",
         )
 
-    room_tipe = (room_check.data[0].get("tipe") or "").lower()
+    room_tipe = _extract_room_tipe(room_check.data)
     timestamp_now = datetime.now(timezone.utc).isoformat()
 
     try:
@@ -758,26 +1308,13 @@ def send_chat_message(
         except Exception as exc:
             stats_text = f"⚠️ Gagal memuat data dashboard: {exc}"
 
-        try:
-            bot_message_response = (
-                supabase.table("chat_history")
-                .insert(
-                    {
-                        "user_id": user_id,
-                        "room_id": room_id,
-                        "role_msg": "assistant",
-                        "content": stats_text,
-                        "timestamp": datetime.now(timezone.utc).isoformat(),
-                    }
-                )
-                .execute()
-            )
-            bot_message = bot_message_response.data[0] if bot_message_response.data else {}
-        except Exception as exc:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Gagal menyimpan respons dashboard: {exc}",
-            ) from exc
+        bot_message = _save_assistant_message(
+            supabase,
+            user_id,
+            room_id,
+            stats_text,
+            "Gagal menyimpan respons dashboard",
+        )
 
         return {
             "success": True,
@@ -785,63 +1322,40 @@ def send_chat_message(
             "data": {"user_message": user_message, "bot_message": bot_message},
         }
 
-    # -----------------------------------------------------------------------
-    # Normal rooms: RAG + Gemini
-    # -----------------------------------------------------------------------
-
-    # Retrieve relevant context from knowledge base (RAG)
-    context_chunks = retrieve_relevant_context(
-        query=payload.content,
-        ra_id=ra_id,
-        top_k=3,
-        similarity_threshold=0.5
-    )
-
-    # Build prompt dengan konteks jika ada
-    if context_chunks and len(context_chunks) > 0:
-        enhanced_prompt = build_rag_prompt(payload.content, context_chunks)
-    else:
-        enhanced_prompt = payload.content
-
-    system_data_context = _build_system_data_context(supabase, current, payload.content)
-    if system_data_context:
-        enhanced_prompt = (
-            f"{enhanced_prompt}\n\n"
-            "KONTEKS DATA INTERNAL SISTEM (SUMBER UTAMA):\n"
-            f"{system_data_context}\n\n"
-            "Instruksi tambahan: Jika pertanyaan user terkait data operasional RA, utamakan konteks data internal sistem ini. "
-            "Saat menjawab user, gunakan bahasa non-teknis, ringkas, dan jangan menampilkan label/field mentah "
-            "seperti [PRESENSI], total_siswa, belum_dicatat, nama tabel, atau format JSON."
+    action_result_text = _try_execute_admin_action(supabase, current, payload.content)
+    if action_result_text:
+        bot_message = _save_assistant_message(
+            supabase,
+            user_id,
+            room_id,
+            action_result_text,
+            "Gagal menyimpan respons aksi admin",
         )
 
+        return {
+            "success": True,
+            "message": "Aksi administrasi berhasil diproses",
+            "data": {
+                "user_message": user_message,
+                "bot_message": bot_message,
+            },
+        }
+
     try:
-        ai_response_text = generate_response(enhanced_prompt)
+        ai_response_text = _build_grounded_ai_response(supabase, current, payload.content)
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Gagal menghasilkan respons AI: {exc}",
         ) from exc
 
-    try:
-        bot_message_response = (
-            supabase.table("chat_history")
-            .insert(
-                {
-                    "user_id": user_id,
-                    "room_id": room_id,
-                    "role_msg": "assistant",
-                    "content": ai_response_text,
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                }
-            )
-            .execute()
-        )
-        bot_message = bot_message_response.data[0] if bot_message_response.data else {}
-    except Exception as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Gagal menyimpan respons bot: {exc}",
-        ) from exc
+    bot_message = _save_assistant_message(
+        supabase,
+        user_id,
+        room_id,
+        ai_response_text,
+        "Gagal menyimpan respons bot",
+    )
 
     return {
         "success": True,
@@ -872,7 +1386,7 @@ async def send_voice_message(
     try:
         room_check = (
             supabase.table("chat_rooms")
-            .select("id")
+            .select("id,tipe")
             .eq("id", room_id)
             .eq("ra_id", ra_id)
             .limit(1)
@@ -939,36 +1453,53 @@ async def send_voice_message(
             detail=f"Gagal menyimpan pesan voice user: {exc}",
         ) from exc
 
-    # Generate AI response
-    try:
-        ai_response_text = generate_response(transcription)
-    except Exception as exc:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Gagal menghasilkan respons AI: {exc}",
-        ) from exc
+    room_tipe = _extract_room_tipe(room_check.data)
 
-    # Save bot response
-    try:
-        bot_message_response = (
-            supabase.table("chat_history")
-            .insert(
-                {
-                    "user_id": user_id,
-                    "room_id": room_id,
-                    "role_msg": "assistant",
-                    "content": ai_response_text,
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                }
-            )
-            .execute()
+    if room_tipe == "dashboard":
+        requested_refresh = is_refresh_command(transcription)
+
+        try:
+            stats_text = _build_dashboard_text_from_endpoint(current, refreshed=requested_refresh)
+        except Exception as exc:
+            stats_text = f"⚠️ Gagal memuat data dashboard: {exc}"
+
+        bot_message = _save_assistant_message(
+            supabase,
+            user_id,
+            room_id,
+            stats_text,
+            "Gagal menyimpan respons dashboard",
         )
-        bot_message = bot_message_response.data[0] if bot_message_response.data else {}
-    except Exception as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Gagal menyimpan respons bot: {exc}",
-        ) from exc
+
+        return {
+            "success": True,
+            "message": "Voice message berhasil diproses",
+            "data": {
+                "user_message": user_message,
+                "bot_message": bot_message,
+            },
+            "transcription": transcription,
+        }
+
+    action_result_text = _try_execute_admin_action(supabase, current, transcription)
+    if action_result_text:
+        ai_response_text = action_result_text
+    else:
+        try:
+            ai_response_text = _build_grounded_ai_response(supabase, current, transcription)
+        except Exception as exc:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Gagal menghasilkan respons AI: {exc}",
+            ) from exc
+
+    bot_message = _save_assistant_message(
+        supabase,
+        user_id,
+        room_id,
+        ai_response_text,
+        "Gagal menyimpan respons bot",
+    )
 
     return {
         "success": True,
