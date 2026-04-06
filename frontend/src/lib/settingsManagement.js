@@ -103,6 +103,18 @@ export async function fetchPresensiRekap(token, kelompokId, tanggal) {
   return response?.data
 }
 
+export async function fetchPresensiRekapPeriode(token, kelompokId, tanggal, mode) {
+  const response = await api.get('/presensi/rekap-periode', {
+    headers: authHeaders(token),
+    params: {
+      kelompok_id: kelompokId,
+      tanggal,
+      mode,
+    },
+  })
+  return response?.data
+}
+
 export async function savePresensiBatch(token, payload) {
   const response = await api.post('/presensi/batch', payload, {
     headers: authHeaders(token),

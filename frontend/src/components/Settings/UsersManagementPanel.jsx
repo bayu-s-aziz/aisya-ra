@@ -6,6 +6,7 @@ import {
   importGuruFromGtkFile,
   updateManagedUser,
 } from '../../lib/settingsManagement'
+import AppModal from '../Modal/AppModal'
 
 function getErrorMessage(err, fallback) {
   const detail = err?.response?.data?.detail
@@ -35,6 +36,10 @@ function getErrorMessage(err, fallback) {
   return err?.message || fallback
 }
 
+function getRoleLabel(roleValue) {
+  return roleValue === 'kepala_ra' ? 'Kepala RA' : 'Guru'
+}
+
 function UsersManagementPanel() {
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(false)
@@ -43,6 +48,9 @@ function UsersManagementPanel() {
   const [success, setSuccess] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [roleFilter, setRoleFilter] = useState('all')
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false)
 
   const [createForm, setCreateForm] = useState({
     nama: '',
@@ -160,7 +168,11 @@ function UsersManagementPanel() {
   }
 
   const handleCreate = async () => {
-    if (!createForm.nama.trim() || !createForm.email.trim() || !createForm.password.trim()) {
+    const nama = createForm.nama.trim()
+    const email = createForm.email.trim()
+    const password = createForm.password.trim()
+
+    if (!nama || !email || !password) {
       setError('Nama, email, dan password awal wajib diisi')
       return
     }
@@ -168,14 +180,19 @@ function UsersManagementPanel() {
     const token = localStorage.getItem('aisya_access_token')
     if (!token) return
 
+    const agree = window.confirm(
+      `Simpan pengguna baru "${nama}" (${getRoleLabel(createForm.role)}) dengan email "${email}"?`,
+    )
+    if (!agree) return
+
     setSaving(true)
     setError('')
     setSuccess('')
     try {
       await createManagedUser(token, {
-        nama: createForm.nama.trim(),
-        email: createForm.email.trim(),
-        password: createForm.password.trim(),
+        nama,
+        email,
+        password,
         role: createForm.role,
         telepon: createForm.telepon.trim() || undefined,
         jabatan: createForm.jabatan.trim() || undefined,
@@ -194,6 +211,7 @@ function UsersManagementPanel() {
       })
       setSuccess('Pengguna baru berhasil ditambahkan')
       resetCreateForm()
+      setIsCreateModalOpen(false)
       await loadUsers()
     } catch (err) {
       setError(getErrorMessage(err, 'Gagal menambah pengguna'))
@@ -224,11 +242,13 @@ function UsersManagementPanel() {
       penempatan: user.penempatan || '',
       total_jtm: user.total_jtm || '',
     })
+    setIsEditModalOpen(true)
     setError('')
     setSuccess('')
   }
 
   const cancelEdit = () => {
+    setIsEditModalOpen(false)
     setEditingId(null)
     setEditForm({
       nama: '',
@@ -256,14 +276,22 @@ function UsersManagementPanel() {
     const token = localStorage.getItem('aisya_access_token')
     if (!token) return
 
-    if (!editForm.nama.trim() || !editForm.email.trim()) {
+    const nama = editForm.nama.trim()
+    const email = editForm.email.trim()
+
+    if (!nama || !email) {
       setError('Nama dan email wajib diisi')
       return
     }
 
+    const agree = window.confirm(
+      `Simpan perubahan pengguna "${nama}" (${getRoleLabel(editForm.role)}) dengan email "${email}"?`,
+    )
+    if (!agree) return
+
     const payload = {
-      nama: editForm.nama.trim(),
-      email: editForm.email.trim(),
+      nama,
+      email,
       role: editForm.role,
       telepon: editForm.telepon.trim() || undefined,
       jabatan: editForm.jabatan.trim() || undefined,
@@ -333,6 +361,9 @@ function UsersManagementPanel() {
     const token = localStorage.getItem('aisya_access_token')
     if (!token) return
 
+    const agree = window.confirm(`Lanjutkan import data guru dari file "${importFile.name}"?`)
+    if (!agree) return
+
     setSaving(true)
     setError('')
     setSuccess('')
@@ -340,6 +371,7 @@ function UsersManagementPanel() {
       const result = await importGuruFromGtkFile(token, importFile)
       setSuccess(result?.message || 'Import data guru berhasil')
       setImportFile(null)
+      setIsImportModalOpen(false)
       await loadUsers()
     } catch (err) {
       setError(getErrorMessage(err, 'Gagal import data guru'))
@@ -354,136 +386,28 @@ function UsersManagementPanel() {
       {error ? <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div> : null}
 
       <div className="rounded-2xl border border-[#e2e8f0] bg-white p-4 shadow-sm">
-        <p className="text-sm font-semibold text-[#0f172a]">Tambah Pengguna Manual</p>
-        <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-4">
-          <input
-            className={inputClass}
-            value={createForm.nama}
-            onChange={(ev) => setCreateForm((prev) => ({ ...prev, nama: ev.target.value }))}
-            placeholder="Nama lengkap"
-          />
-          <input
-            className={inputClass}
-            type="email"
-            value={createForm.email}
-            onChange={(ev) => setCreateForm((prev) => ({ ...prev, email: ev.target.value }))}
-            placeholder="Email"
-          />
-          <input
-            className={inputClass}
-            type="password"
-            value={createForm.password}
-            onChange={(ev) => setCreateForm((prev) => ({ ...prev, password: ev.target.value }))}
-            placeholder="Password awal"
-          />
-          <select
-            className={inputClass}
-            value={createForm.role}
-            onChange={(ev) => setCreateForm((prev) => ({ ...prev, role: ev.target.value }))}
-          >
-            <option value="guru">Guru</option>
-            <option value="kepala_ra">Kepala RA</option>
-          </select>
-
-          <input
-            className={inputClass}
-            value={createForm.jabatan}
-            onChange={(ev) => setCreateForm((prev) => ({ ...prev, jabatan: ev.target.value }))}
-            placeholder="Jabatan"
-          />
-          <input
-            className={inputClass}
-            value={createForm.telepon}
-            onChange={(ev) => setCreateForm((prev) => ({ ...prev, telepon: ev.target.value }))}
-            placeholder="Telepon"
-          />
-          <input
-            className={inputClass}
-            value={createForm.nik}
-            onChange={(ev) => setCreateForm((prev) => ({ ...prev, nik: ev.target.value }))}
-            placeholder="NIK"
-          />
-          <input
-            className={inputClass}
-            value={createForm.nuptk}
-            onChange={(ev) => setCreateForm((prev) => ({ ...prev, nuptk: ev.target.value }))}
-            placeholder="NUPTK"
-          />
-
-          <input
-            className={inputClass}
-            value={createForm.nip}
-            onChange={(ev) => setCreateForm((prev) => ({ ...prev, nip: ev.target.value }))}
-            placeholder="NIP"
-          />
-          <input
-            className={inputClass}
-            value={createForm.status_kepegawaian}
-            onChange={(ev) => setCreateForm((prev) => ({ ...prev, status_kepegawaian: ev.target.value }))}
-            placeholder="Status kepegawaian"
-          />
-          <select
-            className={inputClass}
-            value={createForm.jenis_kelamin}
-            onChange={(ev) => setCreateForm((prev) => ({ ...prev, jenis_kelamin: ev.target.value }))}
-          >
-            <option value="">Jenis kelamin</option>
-            <option value="Laki-laki">Laki-laki</option>
-            <option value="Perempuan">Perempuan</option>
-          </select>
-          <input
-            className={inputClass}
-            value={createForm.tempat_lahir}
-            onChange={(ev) => setCreateForm((prev) => ({ ...prev, tempat_lahir: ev.target.value }))}
-            placeholder="Tempat lahir"
-          />
-
-          <input
-            className={inputClass}
-            type="date"
-            value={createForm.tanggal_lahir}
-            onChange={(ev) => setCreateForm((prev) => ({ ...prev, tanggal_lahir: ev.target.value }))}
-          />
-          <input
-            className={inputClass}
-            type="email"
-            value={createForm.email_akun_madrasah_digital}
-            onChange={(ev) => setCreateForm((prev) => ({ ...prev, email_akun_madrasah_digital: ev.target.value }))}
-            placeholder="Email akun madrasah digital"
-          />
-          <input
-            className={inputClass}
-            value={createForm.tugas}
-            onChange={(ev) => setCreateForm((prev) => ({ ...prev, tugas: ev.target.value }))}
-            placeholder="Tugas"
-          />
-          <input
-            className={inputClass}
-            value={createForm.mata_pelajaran}
-            onChange={(ev) => setCreateForm((prev) => ({ ...prev, mata_pelajaran: ev.target.value }))}
-            placeholder="Mata pelajaran"
-          />
-
-          <input
-            className={inputClass}
-            value={createForm.penempatan}
-            onChange={(ev) => setCreateForm((prev) => ({ ...prev, penempatan: ev.target.value }))}
-            placeholder="Penempatan"
-          />
-          <input
-            className={inputClass}
-            value={createForm.total_jtm}
-            onChange={(ev) => setCreateForm((prev) => ({ ...prev, total_jtm: ev.target.value }))}
-            placeholder="Total JTM"
-          />
-
+        <p className="text-sm font-semibold text-[#0f172a]">Aksi Data Pengguna</p>
+        <p className="mt-1 text-xs text-[#64748b]">Aksi tambah dan ubah pengguna dibuka di modal terpisah dengan konfirmasi sebelum simpan.</p>
+        <div className="mt-3 flex flex-wrap gap-2">
           <button
             type="button"
-            onClick={handleCreate}
-            disabled={saving}
-            className="rounded-full bg-[#0f172a] px-4 py-2 text-sm font-medium text-white hover:bg-[#020617] disabled:opacity-60 md:col-span-2"
+            onClick={() => {
+              resetCreateForm()
+              setIsCreateModalOpen(true)
+            }}
+            className="rounded-full bg-[#0f172a] px-4 py-2 text-sm font-medium text-white hover:bg-[#020617]"
           >
-            {saving ? 'Menyimpan...' : 'Tambah Pengguna'}
+            Tambah Pengguna
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setImportFile(null)
+              setIsImportModalOpen(true)
+            }}
+            className="rounded-full border border-[#cbd5e1] px-4 py-2 text-sm text-[#334155] hover:bg-[#f8fafc]"
+          >
+            Import Guru (CSV)
           </button>
         </div>
       </div>
@@ -525,27 +449,6 @@ function UsersManagementPanel() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-[#e2e8f0] bg-white p-4 shadow-sm">
-        <p className="text-sm font-semibold text-[#0f172a]">Import Guru dari GTK (CSV)</p>
-        <p className="mt-1 text-xs text-[#64748b]">Gunakan kolom seperti: Nama Lengkap, NIK, NUPTK, Status Kepegawaian, NIP, Jenis Kelamin, Tempat/Tanggal Lahir, Nomor Handphone, Email, Email Akun Madrasah Digital, Password Awal, Tugas, Mata Pelajaran, Penempatan, Total JTM.</p>
-        <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
-          <input
-            type="file"
-            accept=".csv"
-            className={inputClass}
-            onChange={(ev) => setImportFile(ev.target.files?.[0] || null)}
-          />
-          <button
-            type="button"
-            onClick={handleImport}
-            disabled={saving}
-            className="rounded-full bg-[#0f172a] px-4 py-2 text-sm font-medium text-white hover:bg-[#020617] disabled:opacity-60"
-          >
-            {saving ? 'Memproses...' : 'Import File Guru'}
-          </button>
-        </div>
-      </div>
-
       <div className="overflow-x-auto rounded-2xl border border-[#e2e8f0] shadow-sm">
         <table className="min-w-full divide-y divide-[#e2e8f0]">
           <thead className="bg-[#f8fafc]">
@@ -576,157 +479,299 @@ function UsersManagementPanel() {
             ) : null}
 
             {!loading
-              ? filteredUsers.map((user) => {
-                  const isEditing = editingId === user.id
-                  return (
-                    <tr key={user.id}>
-                      <td className="px-3 py-2">
-                        {isEditing ? (
-                          <input
-                            className={inputClass}
-                            value={editForm.nama}
-                            onChange={(ev) => setEditForm((prev) => ({ ...prev, nama: ev.target.value }))}
-                          />
-                        ) : (
-                          user.nama
-                        )}
-                      </td>
-                      <td className="px-3 py-2">
-                        {isEditing ? (
-                          <input
-                            className={inputClass}
-                            type="email"
-                            value={editForm.email}
-                            onChange={(ev) => setEditForm((prev) => ({ ...prev, email: ev.target.value }))}
-                          />
-                        ) : (
-                          user.email
-                        )}
-                      </td>
-                      <td className="px-3 py-2">
-                        {isEditing ? (
-                          <select
-                            className={inputClass}
-                            value={editForm.role}
-                            onChange={(ev) => setEditForm((prev) => ({ ...prev, role: ev.target.value }))}
-                          >
-                            <option value="guru">Guru</option>
-                            <option value="kepala_ra">Kepala RA</option>
-                          </select>
-                        ) : user.role === 'kepala_ra' ? (
-                          'Kepala RA'
-                        ) : (
-                          'Guru'
-                        )}
-                      </td>
-                      <td className="px-3 py-2">
-                        {isEditing ? (
-                          <div className="flex flex-col gap-2">
-                            <input
-                              className={inputClass}
-                              value={editForm.jabatan}
-                              onChange={(ev) => setEditForm((prev) => ({ ...prev, jabatan: ev.target.value }))}
-                              placeholder="Jabatan"
-                            />
-                            <input
-                              className={inputClass}
-                              value={editForm.telepon}
-                              onChange={(ev) => setEditForm((prev) => ({ ...prev, telepon: ev.target.value }))}
-                              placeholder="Telepon"
-                            />
-                            <input
-                              className={inputClass}
-                              type="password"
-                              value={editForm.password}
-                              onChange={(ev) => setEditForm((prev) => ({ ...prev, password: ev.target.value }))}
-                              placeholder="Password baru (opsional)"
-                            />
-                          </div>
-                        ) : (
-                          user.jabatan || '-'
-                        )}
-                      </td>
-                      <td className="px-3 py-2 align-top">
-                        {isEditing ? (
-                          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                            <input className={inputClass} value={editForm.nik} onChange={(ev) => setEditForm((prev) => ({ ...prev, nik: ev.target.value }))} placeholder="NIK" />
-                            <input className={inputClass} value={editForm.nuptk} onChange={(ev) => setEditForm((prev) => ({ ...prev, nuptk: ev.target.value }))} placeholder="NUPTK" />
-                            <input className={inputClass} value={editForm.nip} onChange={(ev) => setEditForm((prev) => ({ ...prev, nip: ev.target.value }))} placeholder="NIP" />
-                            <input className={inputClass} value={editForm.status_kepegawaian} onChange={(ev) => setEditForm((prev) => ({ ...prev, status_kepegawaian: ev.target.value }))} placeholder="Status kepegawaian" />
-                            <select className={inputClass} value={editForm.jenis_kelamin} onChange={(ev) => setEditForm((prev) => ({ ...prev, jenis_kelamin: ev.target.value }))}>
-                              <option value="">Jenis kelamin</option>
-                              <option value="Laki-laki">Laki-laki</option>
-                              <option value="Perempuan">Perempuan</option>
-                            </select>
-                            <input className={inputClass} value={editForm.tempat_lahir} onChange={(ev) => setEditForm((prev) => ({ ...prev, tempat_lahir: ev.target.value }))} placeholder="Tempat lahir" />
-                            <input className={inputClass} type="date" value={editForm.tanggal_lahir} onChange={(ev) => setEditForm((prev) => ({ ...prev, tanggal_lahir: ev.target.value }))} />
-                            <input className={inputClass} type="email" value={editForm.email_akun_madrasah_digital} onChange={(ev) => setEditForm((prev) => ({ ...prev, email_akun_madrasah_digital: ev.target.value }))} placeholder="Email madrasah digital" />
-                            <input className={inputClass} value={editForm.tugas} onChange={(ev) => setEditForm((prev) => ({ ...prev, tugas: ev.target.value }))} placeholder="Tugas" />
-                            <input className={inputClass} value={editForm.mata_pelajaran} onChange={(ev) => setEditForm((prev) => ({ ...prev, mata_pelajaran: ev.target.value }))} placeholder="Mata pelajaran" />
-                            <input className={inputClass} value={editForm.penempatan} onChange={(ev) => setEditForm((prev) => ({ ...prev, penempatan: ev.target.value }))} placeholder="Penempatan" />
-                            <input className={inputClass} value={editForm.total_jtm} onChange={(ev) => setEditForm((prev) => ({ ...prev, total_jtm: ev.target.value }))} placeholder="Total JTM" />
-                          </div>
-                        ) : (
-                          <div className="space-y-1 text-xs text-[#475569]">
-                            <p>NIK: {user.nik || '-'}</p>
-                            <p>NUPTK: {user.nuptk || '-'}</p>
-                            <p>NIP: {user.nip || '-'}</p>
-                            <p>JK: {user.jenis_kelamin || '-'}</p>
-                            <p>Tugas: {user.tugas || '-'}</p>
-                            <p>Mapel: {user.mata_pelajaran || '-'}</p>
-                            <p>Penempatan: {user.penempatan || '-'}</p>
-                            <p>Total JTM: {user.total_jtm || '-'}</p>
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-3 py-2">
-                        <div className="flex gap-2">
-                          {isEditing ? (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => handleUpdate(user.id)}
-                                disabled={saving}
-                                className="rounded-full bg-[#0f172a] px-3 py-1 text-xs font-medium text-white hover:bg-[#020617]"
-                              >
-                                Simpan
-                              </button>
-                              <button
-                                type="button"
-                                onClick={cancelEdit}
-                                disabled={saving}
-                                className="rounded-full border border-[#cbd5e1] px-3 py-1 text-xs text-[#334155] hover:bg-[#f8fafc]"
-                              >
-                                Batal
-                              </button>
-                            </>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => startEdit(user)}
-                              className="rounded-full border border-[#cbd5e1] px-3 py-1 text-xs text-[#334155] hover:bg-[#f8fafc]"
-                            >
-                              Edit
-                            </button>
-                          )}
+              ? filteredUsers.map((user) => (
+                  <tr key={user.id}>
+                    <td className="px-3 py-2">{user.nama}</td>
+                    <td className="px-3 py-2">{user.email}</td>
+                    <td className="px-3 py-2">{user.role === 'kepala_ra' ? 'Kepala RA' : 'Guru'}</td>
+                    <td className="px-3 py-2">{user.jabatan || '-'}</td>
+                    <td className="px-3 py-2 align-top">
+                      <div className="space-y-1 text-xs text-[#475569]">
+                        <p>NIK: {user.nik || '-'}</p>
+                        <p>NUPTK: {user.nuptk || '-'}</p>
+                        <p>NIP: {user.nip || '-'}</p>
+                        <p>JK: {user.jenis_kelamin || '-'}</p>
+                        <p>Tugas: {user.tugas || '-'}</p>
+                        <p>Mapel: {user.mata_pelajaran || '-'}</p>
+                        <p>Penempatan: {user.penempatan || '-'}</p>
+                        <p>Total JTM: {user.total_jtm || '-'}</p>
+                      </div>
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => startEdit(user)}
+                          className="rounded-full border border-[#cbd5e1] px-3 py-1 text-xs text-[#334155] hover:bg-[#f8fafc]"
+                        >
+                          Edit
+                        </button>
 
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(user.id)}
-                            disabled={saving}
-                            className="rounded-full border border-red-200 px-3 py-1 text-xs text-red-600 hover:bg-red-50 disabled:opacity-40"
-                          >
-                            Hapus
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(user.id)}
+                          disabled={saving}
+                          className="rounded-full border border-red-200 px-3 py-1 text-xs text-red-600 hover:bg-red-50 disabled:opacity-40"
+                        >
+                          Hapus
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
               : null}
           </tbody>
         </table>
       </div>
+
+      <AppModal
+        isOpen={isImportModalOpen}
+        onClose={() => {
+          if (!saving) {
+            setIsImportModalOpen(false)
+          }
+        }}
+        title="Import Guru dari GTK"
+        description="Pilih file CSV lalu konfirmasi sebelum data diimport."
+      >
+        <div className="space-y-3">
+          <input
+            type="file"
+            accept=".csv"
+            className={inputClass}
+            onChange={(ev) => setImportFile(ev.target.files?.[0] || null)}
+          />
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setIsImportModalOpen(false)}
+              disabled={saving}
+              className="rounded-full border border-[#cbd5e1] px-4 py-2 text-sm text-[#334155] hover:bg-[#f8fafc] disabled:opacity-50"
+            >
+              Batal
+            </button>
+            <button
+              type="button"
+              onClick={handleImport}
+              disabled={saving}
+              className="rounded-full bg-[#0f172a] px-4 py-2 text-sm font-medium text-white hover:bg-[#020617] disabled:opacity-60"
+            >
+              {saving ? 'Memproses...' : 'Import File Guru'}
+            </button>
+          </div>
+        </div>
+      </AppModal>
+
+      <AppModal
+        isOpen={isCreateModalOpen}
+        onClose={() => {
+          if (!saving) {
+            setIsCreateModalOpen(false)
+          }
+        }}
+        title="Tambah Pengguna"
+        description="Lengkapi data pengguna baru, lalu simpan setelah konfirmasi."
+        size="lg"
+      >
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <input
+            className={inputClass}
+            value={createForm.nama}
+            onChange={(ev) => setCreateForm((prev) => ({ ...prev, nama: ev.target.value }))}
+            placeholder="Nama lengkap"
+          />
+          <input
+            className={inputClass}
+            type="email"
+            value={createForm.email}
+            onChange={(ev) => setCreateForm((prev) => ({ ...prev, email: ev.target.value }))}
+            placeholder="Email"
+          />
+          <input
+            className={inputClass}
+            type="password"
+            value={createForm.password}
+            onChange={(ev) => setCreateForm((prev) => ({ ...prev, password: ev.target.value }))}
+            placeholder="Password awal"
+          />
+          <select
+            className={inputClass}
+            value={createForm.role}
+            onChange={(ev) => setCreateForm((prev) => ({ ...prev, role: ev.target.value }))}
+          >
+            <option value="guru">Guru</option>
+            <option value="kepala_ra">Kepala RA</option>
+          </select>
+          <input
+            className={inputClass}
+            value={createForm.jabatan}
+            onChange={(ev) => setCreateForm((prev) => ({ ...prev, jabatan: ev.target.value }))}
+            placeholder="Jabatan"
+          />
+          <input
+            className={inputClass}
+            value={createForm.telepon}
+            onChange={(ev) => setCreateForm((prev) => ({ ...prev, telepon: ev.target.value }))}
+            placeholder="Telepon"
+          />
+          <input
+            className={inputClass}
+            value={createForm.nik}
+            onChange={(ev) => setCreateForm((prev) => ({ ...prev, nik: ev.target.value }))}
+            placeholder="NIK"
+          />
+          <input
+            className={inputClass}
+            value={createForm.nuptk}
+            onChange={(ev) => setCreateForm((prev) => ({ ...prev, nuptk: ev.target.value }))}
+            placeholder="NUPTK"
+          />
+          <input
+            className={inputClass}
+            value={createForm.nip}
+            onChange={(ev) => setCreateForm((prev) => ({ ...prev, nip: ev.target.value }))}
+            placeholder="NIP"
+          />
+          <input
+            className={inputClass}
+            value={createForm.status_kepegawaian}
+            onChange={(ev) => setCreateForm((prev) => ({ ...prev, status_kepegawaian: ev.target.value }))}
+            placeholder="Status kepegawaian"
+          />
+          <select
+            className={inputClass}
+            value={createForm.jenis_kelamin}
+            onChange={(ev) => setCreateForm((prev) => ({ ...prev, jenis_kelamin: ev.target.value }))}
+          >
+            <option value="">Jenis kelamin</option>
+            <option value="Laki-laki">Laki-laki</option>
+            <option value="Perempuan">Perempuan</option>
+          </select>
+          <input
+            className={inputClass}
+            value={createForm.tempat_lahir}
+            onChange={(ev) => setCreateForm((prev) => ({ ...prev, tempat_lahir: ev.target.value }))}
+            placeholder="Tempat lahir"
+          />
+          <input
+            className={inputClass}
+            type="date"
+            value={createForm.tanggal_lahir}
+            onChange={(ev) => setCreateForm((prev) => ({ ...prev, tanggal_lahir: ev.target.value }))}
+          />
+          <input
+            className={inputClass}
+            type="email"
+            value={createForm.email_akun_madrasah_digital}
+            onChange={(ev) => setCreateForm((prev) => ({ ...prev, email_akun_madrasah_digital: ev.target.value }))}
+            placeholder="Email akun madrasah digital"
+          />
+          <input
+            className={inputClass}
+            value={createForm.tugas}
+            onChange={(ev) => setCreateForm((prev) => ({ ...prev, tugas: ev.target.value }))}
+            placeholder="Tugas"
+          />
+          <input
+            className={inputClass}
+            value={createForm.mata_pelajaran}
+            onChange={(ev) => setCreateForm((prev) => ({ ...prev, mata_pelajaran: ev.target.value }))}
+            placeholder="Mata pelajaran"
+          />
+          <input
+            className={inputClass}
+            value={createForm.penempatan}
+            onChange={(ev) => setCreateForm((prev) => ({ ...prev, penempatan: ev.target.value }))}
+            placeholder="Penempatan"
+          />
+          <input
+            className={inputClass}
+            value={createForm.total_jtm}
+            onChange={(ev) => setCreateForm((prev) => ({ ...prev, total_jtm: ev.target.value }))}
+            placeholder="Total JTM"
+          />
+        </div>
+        <div className="mt-4 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => setIsCreateModalOpen(false)}
+            disabled={saving}
+            className="rounded-full border border-[#cbd5e1] px-4 py-2 text-sm text-[#334155] hover:bg-[#f8fafc] disabled:opacity-50"
+          >
+            Batal
+          </button>
+          <button
+            type="button"
+            onClick={handleCreate}
+            disabled={saving}
+            className="rounded-full bg-[#0f172a] px-4 py-2 text-sm font-medium text-white hover:bg-[#020617] disabled:opacity-60"
+          >
+            {saving ? 'Menyimpan...' : 'Simpan Pengguna'}
+          </button>
+        </div>
+      </AppModal>
+
+      <AppModal
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          if (!saving) {
+            cancelEdit()
+          }
+        }}
+        title="Ubah Data Pengguna"
+        description="Perubahan pengguna disimpan setelah Anda konfirmasi."
+        size="lg"
+      >
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <input className={inputClass} value={editForm.nama} onChange={(ev) => setEditForm((prev) => ({ ...prev, nama: ev.target.value }))} placeholder="Nama lengkap" />
+          <input className={inputClass} type="email" value={editForm.email} onChange={(ev) => setEditForm((prev) => ({ ...prev, email: ev.target.value }))} placeholder="Email" />
+          <input className={inputClass} type="password" value={editForm.password} onChange={(ev) => setEditForm((prev) => ({ ...prev, password: ev.target.value }))} placeholder="Password baru (opsional)" />
+          <select className={inputClass} value={editForm.role} onChange={(ev) => setEditForm((prev) => ({ ...prev, role: ev.target.value }))}>
+            <option value="guru">Guru</option>
+            <option value="kepala_ra">Kepala RA</option>
+          </select>
+          <input className={inputClass} value={editForm.jabatan} onChange={(ev) => setEditForm((prev) => ({ ...prev, jabatan: ev.target.value }))} placeholder="Jabatan" />
+          <input className={inputClass} value={editForm.telepon} onChange={(ev) => setEditForm((prev) => ({ ...prev, telepon: ev.target.value }))} placeholder="Telepon" />
+          <input className={inputClass} value={editForm.nik} onChange={(ev) => setEditForm((prev) => ({ ...prev, nik: ev.target.value }))} placeholder="NIK" />
+          <input className={inputClass} value={editForm.nuptk} onChange={(ev) => setEditForm((prev) => ({ ...prev, nuptk: ev.target.value }))} placeholder="NUPTK" />
+          <input className={inputClass} value={editForm.nip} onChange={(ev) => setEditForm((prev) => ({ ...prev, nip: ev.target.value }))} placeholder="NIP" />
+          <input className={inputClass} value={editForm.status_kepegawaian} onChange={(ev) => setEditForm((prev) => ({ ...prev, status_kepegawaian: ev.target.value }))} placeholder="Status kepegawaian" />
+          <select className={inputClass} value={editForm.jenis_kelamin} onChange={(ev) => setEditForm((prev) => ({ ...prev, jenis_kelamin: ev.target.value }))}>
+            <option value="">Jenis kelamin</option>
+            <option value="Laki-laki">Laki-laki</option>
+            <option value="Perempuan">Perempuan</option>
+          </select>
+          <input className={inputClass} value={editForm.tempat_lahir} onChange={(ev) => setEditForm((prev) => ({ ...prev, tempat_lahir: ev.target.value }))} placeholder="Tempat lahir" />
+          <input className={inputClass} type="date" value={editForm.tanggal_lahir} onChange={(ev) => setEditForm((prev) => ({ ...prev, tanggal_lahir: ev.target.value }))} />
+          <input className={inputClass} type="email" value={editForm.email_akun_madrasah_digital} onChange={(ev) => setEditForm((prev) => ({ ...prev, email_akun_madrasah_digital: ev.target.value }))} placeholder="Email madrasah digital" />
+          <input className={inputClass} value={editForm.tugas} onChange={(ev) => setEditForm((prev) => ({ ...prev, tugas: ev.target.value }))} placeholder="Tugas" />
+          <input className={inputClass} value={editForm.mata_pelajaran} onChange={(ev) => setEditForm((prev) => ({ ...prev, mata_pelajaran: ev.target.value }))} placeholder="Mata pelajaran" />
+          <input className={inputClass} value={editForm.penempatan} onChange={(ev) => setEditForm((prev) => ({ ...prev, penempatan: ev.target.value }))} placeholder="Penempatan" />
+          <input className={inputClass} value={editForm.total_jtm} onChange={(ev) => setEditForm((prev) => ({ ...prev, total_jtm: ev.target.value }))} placeholder="Total JTM" />
+        </div>
+        <div className="mt-4 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={cancelEdit}
+            disabled={saving}
+            className="rounded-full border border-[#cbd5e1] px-4 py-2 text-sm text-[#334155] hover:bg-[#f8fafc] disabled:opacity-50"
+          >
+            Batal
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (editingId) {
+                handleUpdate(editingId)
+              }
+            }}
+            disabled={saving || !editingId}
+            className="rounded-full bg-[#0f172a] px-4 py-2 text-sm font-medium text-white hover:bg-[#020617] disabled:opacity-60"
+          >
+            {saving ? 'Menyimpan...' : 'Simpan Perubahan'}
+          </button>
+        </div>
+      </AppModal>
     </div>
   )
 }

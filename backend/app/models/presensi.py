@@ -9,6 +9,12 @@ class StatusPresensi(str, Enum):
     izin = "izin"
     alpha = "alpha"
 
+
+class ModeRekapPresensi(str, Enum):
+    harian = "harian"
+    mingguan = "mingguan"
+    bulanan = "bulanan"
+
 class PresensiBase(BaseModel):
     siswa_id: str
     tanggal: date
@@ -47,6 +53,56 @@ class RekapPresensiResponse(BaseModel):
     alpha: int
     belum_dicatat: int
     detail: list[dict]
+
+
+class RekapPresensiPeriodeSummary(BaseModel):
+    total_hari: int
+    total_slot_presensi: int
+    hadir: int
+    sakit: int
+    izin: int
+    alpha: int
+    belum_dicatat: int
+    persentase_hadir: float
+
+
+class RekapPresensiPeriodeHarian(BaseModel):
+    tanggal: date
+    hadir: int
+    sakit: int
+    izin: int
+    alpha: int
+    belum_dicatat: int
+
+
+class RekapPresensiPeriodeStatusTanggal(BaseModel):
+    tanggal: date
+    status: str
+
+
+class RekapPresensiPeriodeSiswa(BaseModel):
+    siswa_id: str
+    nama: str
+    hadir: int
+    sakit: int
+    izin: int
+    alpha: int
+    belum_dicatat: int
+    persentase_hadir: float
+    status_per_tanggal: list[RekapPresensiPeriodeStatusTanggal]
+
+
+class RekapPresensiPeriodeResponse(BaseModel):
+    mode: ModeRekapPresensi
+    kelompok_id: str
+    kelompok_nama: str
+    tanggal_acuan: date
+    tanggal_mulai: date
+    tanggal_selesai: date
+    total_siswa: int
+    summary: RekapPresensiPeriodeSummary
+    detail_harian: list[RekapPresensiPeriodeHarian]
+    detail_siswa: list[RekapPresensiPeriodeSiswa]
 
 
 class PresensiBatchItem(BaseModel):

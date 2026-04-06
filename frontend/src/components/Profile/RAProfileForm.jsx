@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
 import PropTypes from 'prop-types'
-import ProfileInfoCard from './ProfileInfoCard'
 
-function RAProfileForm({ initialData, saving, error, success, onSubmit }) {
+function RAProfileForm({ initialData, saving, error, success, onSubmit, showSummaryCard }) {
   const [formData, setFormData] = useState({
     nama_ra: '',
     npsn: '',
@@ -105,6 +104,9 @@ function RAProfileForm({ initialData, saving, error, success, onSubmit }) {
     }
 
     setValidationError('')
+    const confirmed = window.confirm(`Simpan perubahan profil lembaga "${formData.nama_ra.trim()}"?`)
+    if (!confirmed) return
+
     await onSubmit?.({
       nama_ra: formData.nama_ra.trim(),
       npsn: toOptional(formData.npsn),
@@ -135,23 +137,23 @@ function RAProfileForm({ initialData, saving, error, success, onSubmit }) {
       {error ? <div className="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div> : null}
       {validationError ? <div className="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{validationError}</div> : null}
 
-      <ProfileInfoCard
-        className="mt-4"
-        avatarUrl={raLogoPreview}
-        avatarAlt={formData.nama_ra || 'Logo RA'}
-        avatarFallback="RA"
-        title={formData.nama_ra || '-'}
-        subtitle={initialData?.tahun_ajaran || '-'}
-        items={[
-          { label: 'NPSN', value: formData.npsn || '-' },
-          { label: 'NSM', value: formData.nomor_statistik || '-' },
-          { label: 'Akreditasi', value: formData.akreditasi || '-' },
-          { label: 'Status Lembaga', value: formData.status_lembaga || '-' },
-          { label: 'Kepala RA', value: formData.nama_kepala || '-' },
-          { label: 'Telepon', value: formData.telepon || '-' },
-          { label: 'Email Lembaga', value: formData.email_lembaga || '-' },
-        ]}
-      />
+      {showSummaryCard ? (
+        <div className="mt-4 rounded-xl border border-[#e2e8f0] bg-white px-4 py-5 sm:px-5 sm:py-6">
+          <div className="flex justify-center">
+            {raLogoPreview ? (
+              <img
+                src={raLogoPreview}
+                alt={formData.nama_ra || 'Logo RA'}
+                className="h-16 w-16 rounded-full border border-[#cbd5e1] object-cover sm:h-20 sm:w-20"
+              />
+            ) : (
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#e2e8f0] text-base font-semibold text-[#334155] sm:h-20 sm:w-20 sm:text-xl">
+                RA
+              </div>
+            )}
+          </div>
+        </div>
+      ) : null}
 
       <form className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2" onSubmit={handleSubmit}>
         <p className={sectionTitleClass}>Identitas Lembaga</p>
@@ -284,6 +286,7 @@ RAProfileForm.propTypes = {
   error: PropTypes.string,
   success: PropTypes.string,
   onSubmit: PropTypes.func.isRequired,
+  showSummaryCard: PropTypes.bool,
 }
 
 RAProfileForm.defaultProps = {
@@ -291,6 +294,7 @@ RAProfileForm.defaultProps = {
   saving: false,
   error: '',
   success: '',
+  showSummaryCard: true,
 }
 
 export default RAProfileForm

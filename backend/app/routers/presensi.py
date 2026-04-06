@@ -1,14 +1,18 @@
 from fastapi import APIRouter, Depends, HTTPException
-from datetime import date
+from datetime import date, timedelta
 from typing import Optional
 import re
 import json
+from calendar import monthrange
 
 from app.models.presensi import (
+    ModeRekapPresensi,
     PresensiBatchUpsertRequest,
     PresensiBatchUpsertResponse,
     PresensiFromChatRequest,
     PresensiFromChatResponse,
+    RekapPresensiPeriodeResponse,
+    RekapPresensiPeriodeSummary,
     RekapPresensiResponse,
     StatusPresensi
 )
@@ -18,6 +22,25 @@ from app.utils.gemini import generate_response
 from app.database import get_supabase_client
 
 router = APIRouter(prefix="/api/presensi", tags=["presensi"])
+
+
+def _get_period_range(mode: ModeRekapPresensi, target_date: date) -> tuple[date, date]:
+    if mode == ModeRekapPresensi.harian:
+        return target_date, target_date
+
+    if mode == ModeRekapPresensi.mingguan:
+        start_date = target_date - timedelta(days=target_date.weekday())
+        end_date = start_date + timedelta(days=6)
+        return start_date, end_date
+
+    start_date = date(target_date.year, target_date.month, 1)
+    end_date = date(target_date.year, target_date.month, monthrange(target_date.year, target_date.month)[1])
+    return start_date, end_date
+
+
+def _iterate_dates(start_date: date, end_date: date) -> list[date]:
+    total_days = (end_date - start_date).days + 1
+    return [start_date + timedelta(days=offset) for offset in range(total_days)]
 
 
 @router.post("/batch", response_model=PresensiBatchUpsertResponse)
@@ -44,43 +67,73 @@ async def upsert_presensi_batch(
     siswa_response = supabase.table("siswa").select("id").eq(
         "kelompok_id", payload.kelompok_id
     ).eq("ra_id", ra_id).eq("tahun_ajaran_id", tahun_ajaran_id).eq("status_aktif", True).execute()
-    siswa_id_set = {row["id"] for row in siswa_response.data or []}
+    siswa_rows = siswa_response.data or []
+    siswa_ids = [row["id"] for row in siswa_rows]
+    siswa_id_set = set(siswa_ids)
 
     if not siswa_id_set:
         raise HTTPException(status_code=400, detail="Kelompok belum memiliki siswa aktif")
 
+    # Siapkan data request per siswa (hanya siswa valid di kelompok)
+    requested_map = {}
+    for record in payload.records:
+        if record.siswa_id in siswa_id_set:
+            requested_map[record.siswa_id] = record
+
+    # Ambil presensi existing sekali untuk semua siswa pada tanggal yang sama
+    existing_response = supabase.table("presensi").select(
+        "id, siswa_id, status, keterangan, sumber_pencatatan"
+    ).eq("tanggal", str(payload.tanggal)).eq("tahun_ajaran_id", tahun_ajaran_id).in_(
+        "siswa_id", siswa_ids
+    ).execute()
+    existing_rows = existing_response.data or []
+    existing_map = {row["siswa_id"]: row for row in existing_rows}
+
+    # Pola sederhana manajemen presensi:
+    # - Jika ada status dari panel: pakai status panel
+    # - Jika belum dikirim tapi sudah pernah dicatat: pertahankan status existing
+    # - Jika belum ada catatan sama sekali: default "hadir"
+    upsert_rows = []
     inserted = 0
     updated = 0
 
-    for record in payload.records:
-        if record.siswa_id not in siswa_id_set:
-            continue
+    for siswa_id in siswa_ids:
+        requested = requested_map.get(siswa_id)
+        existing = existing_map.get(siswa_id)
 
-        existing_response = supabase.table("presensi").select("id").eq(
-            "siswa_id", record.siswa_id
-        ).eq("tanggal", str(payload.tanggal)).eq("tahun_ajaran_id", tahun_ajaran_id).limit(1).execute()
-        existing_rows = existing_response.data or []
-
-        if len(existing_rows) > 0:
-            supabase.table("presensi").update({
-                "status": record.status.value,
-                "dicatat_oleh": user_id,
-                "keterangan": record.keterangan,
-                "sumber_pencatatan": record.sumber_pencatatan or "manual_panel",
-                "tahun_ajaran_id": tahun_ajaran_id,
-            }).eq("id", existing_rows[0]["id"]).execute()
-            updated += 1
+        if requested:
+            status_value = requested.status.value
+            keterangan_value = requested.keterangan
+            sumber_value = requested.sumber_pencatatan or "manual_panel"
+            if existing:
+                updated += 1
+            else:
+                inserted += 1
+        elif existing:
+            status_value = existing["status"]
+            keterangan_value = existing.get("keterangan")
+            sumber_value = existing.get("sumber_pencatatan") or "manual_panel"
         else:
-            supabase.table("presensi").insert({
-                "siswa_id": record.siswa_id,
-                "tanggal": str(payload.tanggal),
-                "status": record.status.value,
-                "dicatat_oleh": user_id,
-                "keterangan": record.keterangan,
-                "sumber_pencatatan": record.sumber_pencatatan or "manual_panel",
-                "tahun_ajaran_id": tahun_ajaran_id,
-            }).execute()
+            status_value = StatusPresensi.hadir.value
+            keterangan_value = None
+            sumber_value = "manual_panel"
             inserted += 1
+
+        upsert_rows.append({
+            "siswa_id": siswa_id,
+            "tanggal": str(payload.tanggal),
+            "status": status_value,
+            "dicatat_oleh": user_id,
+            "keterangan": keterangan_value,
+            "sumber_pencatatan": sumber_value,
+            "tahun_ajaran_id": tahun_ajaran_id,
+        })
+
+    if upsert_rows:
+        supabase.table("presensi").upsert(
+            upsert_rows,
+            on_conflict="siswa_id,tanggal"
+        ).execute()
 
     return PresensiBatchUpsertResponse(
         success=True,
@@ -329,4 +382,177 @@ async def get_rekap_presensi(
         alpha=count_alpha,
         belum_dicatat=count_belum,
         detail=detail
+    )
+
+
+@router.get("/rekap-periode", response_model=RekapPresensiPeriodeResponse)
+async def get_rekap_presensi_periode(
+    mode: ModeRekapPresensi = ModeRekapPresensi.harian,
+    tanggal: Optional[str] = None,
+    kelompok_id: Optional[str] = None,
+    profile: dict = Depends(get_current_user_profile)
+):
+    """
+    Ambil rekap presensi berdasarkan periode harian, mingguan, atau bulanan.
+    """
+    supabase = get_supabase_client()
+    ra_id = profile["ra_id"]
+    user_id = profile["profile"]["id"]
+    active_year = get_active_academic_year(supabase, ra_id, created_by=user_id)
+    tahun_ajaran_id = active_year["id"]
+
+    target_date = date.fromisoformat(tanggal) if tanggal else date.today()
+
+    if kelompok_id:
+        kelompok_response = supabase.table("kelompok").select("id, nama_kelompok, ra_id").eq(
+            "id", kelompok_id
+        ).eq("ra_id", ra_id).eq("tahun_ajaran_id", tahun_ajaran_id).limit(1).execute()
+        kelompok_rows = kelompok_response.data or []
+        if len(kelompok_rows) == 0:
+            raise HTTPException(status_code=404, detail="Kelompok tidak ditemukan")
+        kelompok = kelompok_rows[0]
+    else:
+        raise HTTPException(status_code=400, detail="kelompok_id harus diisi")
+
+    siswa_response = supabase.table("siswa").select("id, nama").eq(
+        "kelompok_id", kelompok_id
+    ).eq("ra_id", ra_id).eq("tahun_ajaran_id", tahun_ajaran_id).eq("status_aktif", True).execute()
+    siswa_rows = siswa_response.data or []
+    siswa_ids = [row["id"] for row in siswa_rows]
+    total_siswa = len(siswa_ids)
+
+    start_date, end_date = _get_period_range(mode, target_date)
+    date_list = _iterate_dates(start_date, end_date)
+    date_strings = [str(d) for d in date_list]
+
+    daily_counts = {
+        ds: {
+            "hadir": 0,
+            "sakit": 0,
+            "izin": 0,
+            "alpha": 0,
+            "belum_dicatat": total_siswa,
+        }
+        for ds in date_strings
+    }
+    student_period_counts = {
+        row["id"]: {
+            "siswa_id": row["id"],
+            "nama": row.get("nama") or "-",
+            "hadir": 0,
+            "sakit": 0,
+            "izin": 0,
+            "alpha": 0,
+            "status_per_tanggal": {ds: "belum_dicatat" for ds in date_strings},
+        }
+        for row in siswa_rows
+    }
+
+    if siswa_ids and date_strings:
+        presensi_response = supabase.table("presensi").select(
+            "siswa_id, tanggal, status"
+        ).eq("tahun_ajaran_id", tahun_ajaran_id).in_("siswa_id", siswa_ids).gte(
+            "tanggal", str(start_date)
+        ).lte("tanggal", str(end_date)).execute()
+        presensi_rows = presensi_response.data or []
+
+        for row in presensi_rows:
+            siswa_id = row.get("siswa_id")
+            day_key = row.get("tanggal")
+            status = row.get("status")
+            if day_key not in daily_counts:
+                continue
+            if siswa_id not in student_period_counts:
+                continue
+            if status not in ["hadir", "sakit", "izin", "alpha"]:
+                continue
+
+            daily_counts[day_key][status] += 1
+            student_period_counts[siswa_id][status] += 1
+            student_period_counts[siswa_id]["status_per_tanggal"][day_key] = status
+
+        for day_key in date_strings:
+            recorded_count = (
+                daily_counts[day_key]["hadir"]
+                + daily_counts[day_key]["sakit"]
+                + daily_counts[day_key]["izin"]
+                + daily_counts[day_key]["alpha"]
+            )
+            daily_counts[day_key]["belum_dicatat"] = max(0, total_siswa - recorded_count)
+
+    detail_harian = []
+    total_hadir = 0
+    total_sakit = 0
+    total_izin = 0
+    total_alpha = 0
+    total_belum = 0
+
+    for d in date_list:
+        day_key = str(d)
+        counts = daily_counts[day_key]
+        total_hadir += counts["hadir"]
+        total_sakit += counts["sakit"]
+        total_izin += counts["izin"]
+        total_alpha += counts["alpha"]
+        total_belum += counts["belum_dicatat"]
+        detail_harian.append({
+            "tanggal": d,
+            "hadir": counts["hadir"],
+            "sakit": counts["sakit"],
+            "izin": counts["izin"],
+            "alpha": counts["alpha"],
+            "belum_dicatat": counts["belum_dicatat"],
+        })
+
+    total_hari = len(date_list)
+    total_slot = total_siswa * total_hari
+    persentase_hadir = round((total_hadir / total_slot * 100), 2) if total_slot > 0 else 0.0
+
+    detail_siswa = []
+    sorted_siswa = sorted(siswa_rows, key=lambda row: (row.get("nama") or "").lower())
+    for siswa in sorted_siswa:
+        siswa_id = siswa["id"]
+        item = student_period_counts[siswa_id]
+        recorded_count = item["hadir"] + item["sakit"] + item["izin"] + item["alpha"]
+        belum_count = max(0, total_hari - recorded_count)
+        persentase_hadir_siswa = round((item["hadir"] / total_hari * 100), 2) if total_hari > 0 else 0.0
+
+        detail_siswa.append({
+            "siswa_id": siswa_id,
+            "nama": item["nama"],
+            "hadir": item["hadir"],
+            "sakit": item["sakit"],
+            "izin": item["izin"],
+            "alpha": item["alpha"],
+            "belum_dicatat": belum_count,
+            "persentase_hadir": persentase_hadir_siswa,
+            "status_per_tanggal": [
+                {
+                    "tanggal": d,
+                    "status": item["status_per_tanggal"][str(d)],
+                }
+                for d in date_list
+            ],
+        })
+
+    return RekapPresensiPeriodeResponse(
+        mode=mode,
+        kelompok_id=kelompok_id,
+        kelompok_nama=kelompok["nama_kelompok"],
+        tanggal_acuan=target_date,
+        tanggal_mulai=start_date,
+        tanggal_selesai=end_date,
+        total_siswa=total_siswa,
+        summary=RekapPresensiPeriodeSummary(
+            total_hari=total_hari,
+            total_slot_presensi=total_slot,
+            hadir=total_hadir,
+            sakit=total_sakit,
+            izin=total_izin,
+            alpha=total_alpha,
+            belum_dicatat=total_belum,
+            persentase_hadir=persentase_hadir,
+        ),
+        detail_harian=detail_harian,
+        detail_siswa=detail_siswa,
     )

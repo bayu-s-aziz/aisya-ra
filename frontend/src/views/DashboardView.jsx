@@ -2,6 +2,8 @@ import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
 import PropTypes from 'prop-types'
 import api from '../lib/api'
 import RAProfileForm from '../components/Profile/RAProfileForm'
+import ProfileInfoCard from '../components/Profile/ProfileInfoCard'
+import AppModal from '../components/Modal/AppModal'
 import { fetchRAProfile, saveRAProfile } from '../lib/raProfile'
 
 const loadStudentsManagementPanel = () => import('../components/Settings/StudentsManagementPanel')
@@ -89,6 +91,7 @@ function DashboardView({
   const [raSaving, setRaSaving] = useState(false)
   const [raSuccess, setRaSuccess] = useState('')
   const [raError, setRaError] = useState('')
+  const [isInstitutionModalOpen, setIsInstitutionModalOpen] = useState(false)
 
   const canManageInstitutionProfile = useMemo(() => {
     const normalizedRole = (role || '').toLowerCase()
@@ -230,6 +233,18 @@ function DashboardView({
     ]
   }, [raProfile])
 
+  const institutionSummaryItems = useMemo(() => {
+    return [
+      { label: 'NPSN', value: raProfile?.npsn || '-' },
+      { label: 'NSM', value: raProfile?.nomor_statistik || '-' },
+      { label: 'Status Lembaga', value: raProfile?.status_lembaga || '-' },
+      { label: 'Akreditasi', value: raProfile?.akreditasi || '-' },
+      { label: 'Kepala RA', value: raProfile?.nama_kepala || '-' },
+      { label: 'Telepon', value: raProfile?.telepon || '-' },
+      { label: 'Email Lembaga', value: raProfile?.email_lembaga || '-' },
+    ]
+  }, [raProfile])
+
   const panelTitle = PANEL_LABELS[activePanel] || 'Dashboard'
   const panelSubtitle = activePanel === 'ringkasan'
     ? 'Pantau ringkasan operasional RA secara cepat dari satu layar.'
@@ -250,6 +265,7 @@ function DashboardView({
       const latestProfile = await fetchRAProfile(token)
       setRaProfile(latestProfile || null)
       setRaSuccess('Profil lembaga berhasil disimpan')
+      setIsInstitutionModalOpen(false)
     } catch (saveError) {
       setRaError(saveError?.response?.data?.detail || saveError?.message || 'Gagal menyimpan profil lembaga')
     } finally {
@@ -319,16 +335,16 @@ function DashboardView({
             {raSuccess ? <p className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-700">{raSuccess}</p> : null}
 
             {!raLoading && !raLoadError ? (
-              canManageInstitutionProfile ? (
-                <RAProfileForm
-                  key={`institution-form-${raProfile?.id || raProfile?.nama_ra || 'default'}`}
-                  initialData={raProfile}
-                  saving={raSaving}
-                  error={raError}
-                  success=""
-                  onSubmit={handleSaveInstitutionProfile}
+              <div className="space-y-3">
+                <ProfileInfoCard
+                  avatarUrl={raProfile?.logo_url || ''}
+                  avatarAlt={raProfile?.nama_ra || 'Logo RA'}
+                  avatarFallback="RA"
+                  title={raProfile?.nama_ra || '-'}
+                  subtitle={raProfile?.tahun_ajaran || '-'}
+                  items={institutionSummaryItems}
                 />
-              ) : (
+
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {institutionReadonlyItems.map((item) => (
                     <div
@@ -342,11 +358,52 @@ function DashboardView({
                       <p className="mt-1 text-sm font-medium text-[#0f172a]">{item.value || '-'}</p>
                     </div>
                   ))}
-                  <div className="rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-3 py-3 text-sm text-[#64748b] sm:col-span-2">
-                    Profil lembaga hanya bisa diubah oleh role Kepala/Admin.
-                  </div>
+
+                  {canManageInstitutionProfile ? (
+                    <div className="rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-3 py-3 sm:col-span-2">
+                      <p className="text-sm text-[#475569]">Perubahan profil lembaga dilakukan melalui modal edit.</p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRaError('')
+                          setIsInstitutionModalOpen(true)
+                        }}
+                        className="mt-3 rounded-full bg-[#0f172a] px-4 py-2 text-sm font-medium text-white hover:bg-[#020617]"
+                      >
+                        Ubah Profil Lembaga
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-3 py-3 text-sm text-[#64748b] sm:col-span-2">
+                      Profil lembaga hanya bisa diubah oleh role Kepala/Admin.
+                    </div>
+                  )}
                 </div>
-              )
+              </div>
+            ) : null}
+
+            {canManageInstitutionProfile ? (
+              <AppModal
+                isOpen={isInstitutionModalOpen}
+                onClose={() => {
+                  if (!raSaving) {
+                    setIsInstitutionModalOpen(false)
+                  }
+                }}
+                title="Ubah Profil Lembaga"
+                description="Perbarui data lembaga melalui form berikut, lalu konfirmasi sebelum menyimpan."
+                size="lg"
+              >
+                <RAProfileForm
+                  key={`institution-form-${raProfile?.id || raProfile?.nama_ra || 'default'}`}
+                  initialData={raProfile}
+                  saving={raSaving}
+                  error={raError}
+                  success=""
+                  onSubmit={handleSaveInstitutionProfile}
+                  showSummaryCard={false}
+                />
+              </AppModal>
             ) : null}
           </section>
         ) : null}

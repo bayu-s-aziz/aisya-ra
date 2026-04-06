@@ -6,6 +6,7 @@ import {
   fetchManagedUsers,
   updateKelompok,
 } from '../../lib/settingsManagement'
+import AppModal from '../Modal/AppModal'
 
 function KelompokManagementPanel() {
   const [kelompokList, setKelompokList] = useState([])
@@ -15,6 +16,8 @@ function KelompokManagementPanel() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
 
   const [namaKelompok, setNamaKelompok] = useState('')
   const [waliKelasId, setWaliKelasId] = useState('')
@@ -87,9 +90,15 @@ function KelompokManagementPanel() {
     }
   }, [kelompokList, filteredKelompokList])
 
+  const getGuruNameById = (guruId) => {
+    if (!guruId) return 'Belum dipilih'
+    return guruList.find((guru) => guru.id === guruId)?.nama || 'Tidak ditemukan'
+  }
+
   const handleCreate = async (ev) => {
     ev.preventDefault()
-    if (!namaKelompok.trim()) {
+    const kelompokNama = namaKelompok.trim()
+    if (!kelompokNama) {
       setError('Nama kelompok wajib diisi')
       return
     }
@@ -97,12 +106,17 @@ function KelompokManagementPanel() {
     const token = localStorage.getItem('aisya_access_token')
     if (!token) return
 
+    const agree = window.confirm(
+      `Simpan kelompok baru "${kelompokNama}" dengan wali kelas "${getGuruNameById(waliKelasId)}"?`,
+    )
+    if (!agree) return
+
     setSaving(true)
     setError('')
     setSuccess('')
     try {
       await createKelompok(token, {
-        nama_kelompok: namaKelompok.trim(),
+        nama_kelompok: kelompokNama,
         wali_kelas_id: waliKelasId || null,
         kode_rombel: kodeRombel.trim() || null,
         tingkat: tingkat.trim() || null,
@@ -122,6 +136,7 @@ function KelompokManagementPanel() {
       setRuangKelas('')
       setKapasitas('')
       setStatusRombel('aktif')
+      setIsCreateModalOpen(false)
       await loadData()
     } catch (err) {
       setError(err?.response?.data?.detail || err?.message || 'Gagal menambah kelompok')
@@ -143,11 +158,13 @@ function KelompokManagementPanel() {
       kapasitas: item.kapasitas ? String(item.kapasitas) : '',
       status_rombel: item.status_rombel || 'aktif',
     })
+    setIsEditModalOpen(true)
     setError('')
     setSuccess('')
   }
 
   const cancelEdit = () => {
+    setIsEditModalOpen(false)
     setEditingId(null)
     setEditForm({
       nama_kelompok: '',
@@ -163,7 +180,8 @@ function KelompokManagementPanel() {
   }
 
   const handleUpdate = async (kelompokId) => {
-    if (!editForm.nama_kelompok.trim()) {
+    const kelompokNama = editForm.nama_kelompok.trim()
+    if (!kelompokNama) {
       setError('Nama kelompok wajib diisi')
       return
     }
@@ -171,12 +189,17 @@ function KelompokManagementPanel() {
     const token = localStorage.getItem('aisya_access_token')
     if (!token) return
 
+    const agree = window.confirm(
+      `Simpan perubahan kelompok "${kelompokNama}" dengan wali kelas "${getGuruNameById(editForm.wali_kelas_id)}"?`,
+    )
+    if (!agree) return
+
     setSaving(true)
     setError('')
     setSuccess('')
     try {
       await updateKelompok(token, kelompokId, {
-        nama_kelompok: editForm.nama_kelompok.trim(),
+        nama_kelompok: kelompokNama,
         wali_kelas_id: editForm.wali_kelas_id || null,
         kode_rombel: editForm.kode_rombel.trim() || null,
         tingkat: editForm.tingkat.trim() || null,
@@ -226,72 +249,28 @@ function KelompokManagementPanel() {
       {error ? <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div> : null}
 
       <div className="rounded-2xl border border-[#e2e8f0] bg-white p-4 shadow-sm">
-        <p className="text-sm font-semibold text-[#0f172a]">Buat Kelompok Baru</p>
-        <form className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-4" onSubmit={handleCreate}>
-          <input
-            className={inputClass}
-            placeholder="Nama kelompok"
-            value={namaKelompok}
-            onChange={(ev) => setNamaKelompok(ev.target.value)}
-          />
-          <input
-            className={inputClass}
-            placeholder="Kode rombel"
-            value={kodeRombel}
-            onChange={(ev) => setKodeRombel(ev.target.value)}
-          />
-          <input
-            className={inputClass}
-            placeholder="Tingkat"
-            value={tingkat}
-            onChange={(ev) => setTingkat(ev.target.value)}
-          />
-          <select className={inputClass} value={waliKelasId} onChange={(ev) => setWaliKelasId(ev.target.value)}>
-            <option value="">Pilih wali kelas (opsional)</option>
-            {guruList.map((guru) => (
-              <option key={guru.id} value={guru.id}>
-                {guru.nama}
-              </option>
-            ))}
-          </select>
-          <input
-            className={inputClass}
-            placeholder="Semester"
-            value={semester}
-            onChange={(ev) => setSemester(ev.target.value)}
-          />
-          <input
-            className={inputClass}
-            placeholder="Kurikulum"
-            value={kurikulum}
-            onChange={(ev) => setKurikulum(ev.target.value)}
-          />
-          <input
-            className={inputClass}
-            placeholder="Ruang kelas"
-            value={ruangKelas}
-            onChange={(ev) => setRuangKelas(ev.target.value)}
-          />
-          <input
-            className={inputClass}
-            type="number"
-            placeholder="Kapasitas"
-            value={kapasitas}
-            onChange={(ev) => setKapasitas(ev.target.value)}
-          />
-          <select className={inputClass} value={statusRombel} onChange={(ev) => setStatusRombel(ev.target.value)}>
-            <option value="aktif">Aktif</option>
-            <option value="nonaktif">Nonaktif</option>
-            <option value="arsip">Arsip</option>
-          </select>
+        <p className="text-sm font-semibold text-[#0f172a]">Aksi Data Kelompok</p>
+        <p className="mt-1 text-xs text-[#64748b]">Tambah dan ubah data kelompok dibuka dalam modal terpisah dengan konfirmasi simpan.</p>
+        <div className="mt-3">
           <button
-            type="submit"
-            disabled={saving}
-            className="rounded-full bg-[#0f172a] px-4 py-2 text-sm font-medium text-white hover:bg-[#020617] disabled:opacity-60 md:col-span-2"
+            type="button"
+            onClick={() => {
+              setNamaKelompok('')
+              setWaliKelasId('')
+              setKodeRombel('')
+              setTingkat('')
+              setSemester('')
+              setKurikulum('')
+              setRuangKelas('')
+              setKapasitas('')
+              setStatusRombel('aktif')
+              setIsCreateModalOpen(true)
+            }}
+            className="rounded-full bg-[#0f172a] px-4 py-2 text-sm font-medium text-white hover:bg-[#020617]"
           >
-            {saving ? 'Menyimpan...' : 'Tambah Kelompok'}
+            Tambah Kelompok
           </button>
-        </form>
+        </div>
       </div>
 
       <div className="rounded-2xl border border-[#e2e8f0] bg-white p-4 shadow-sm">
@@ -349,96 +328,31 @@ function KelompokManagementPanel() {
 
             {!loading
               ? filteredKelompokList.map((item) => {
-                  const isEditing = editingId === item.id
                   const waliName = guruList.find((guru) => guru.id === item.wali_kelas_id)?.nama || '-'
 
                   return (
                     <tr key={item.id}>
-                      <td className="px-3 py-2">
-                        {isEditing ? (
-                          <input
-                            className={inputClass}
-                            value={editForm.nama_kelompok}
-                            onChange={(ev) => setEditForm((prev) => ({ ...prev, nama_kelompok: ev.target.value }))}
-                          />
-                        ) : (
-                          item.nama_kelompok
-                        )}
-                      </td>
-                      <td className="px-3 py-2">
-                        {isEditing ? (
-                          <select
-                            className={inputClass}
-                            value={editForm.wali_kelas_id}
-                            onChange={(ev) => setEditForm((prev) => ({ ...prev, wali_kelas_id: ev.target.value }))}
-                          >
-                            <option value="">Tanpa wali kelas</option>
-                            {guruList.map((guru) => (
-                              <option key={guru.id} value={guru.id}>
-                                {guru.nama}
-                              </option>
-                            ))}
-                          </select>
-                        ) : (
-                          waliName
-                        )}
-                      </td>
+                      <td className="px-3 py-2">{item.nama_kelompok}</td>
+                      <td className="px-3 py-2">{waliName}</td>
                       <td className="px-3 py-2 align-top">
-                        {isEditing ? (
-                          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                            <input className={inputClass} value={editForm.kode_rombel} onChange={(ev) => setEditForm((prev) => ({ ...prev, kode_rombel: ev.target.value }))} placeholder="Kode rombel" />
-                            <input className={inputClass} value={editForm.tingkat} onChange={(ev) => setEditForm((prev) => ({ ...prev, tingkat: ev.target.value }))} placeholder="Tingkat" />
-                            <input className={inputClass} value={editForm.semester} onChange={(ev) => setEditForm((prev) => ({ ...prev, semester: ev.target.value }))} placeholder="Semester" />
-                            <input className={inputClass} value={editForm.kurikulum} onChange={(ev) => setEditForm((prev) => ({ ...prev, kurikulum: ev.target.value }))} placeholder="Kurikulum" />
-                            <input className={inputClass} value={editForm.ruang_kelas} onChange={(ev) => setEditForm((prev) => ({ ...prev, ruang_kelas: ev.target.value }))} placeholder="Ruang kelas" />
-                            <input className={inputClass} type="number" value={editForm.kapasitas} onChange={(ev) => setEditForm((prev) => ({ ...prev, kapasitas: ev.target.value }))} placeholder="Kapasitas" />
-                            <select className={inputClass} value={editForm.status_rombel} onChange={(ev) => setEditForm((prev) => ({ ...prev, status_rombel: ev.target.value }))}>
-                              <option value="aktif">Aktif</option>
-                              <option value="nonaktif">Nonaktif</option>
-                              <option value="arsip">Arsip</option>
-                            </select>
-                          </div>
-                        ) : (
-                          <div className="space-y-1 text-xs text-[#475569]">
-                            <p>Kode: {item.kode_rombel || '-'}</p>
-                            <p>Tingkat: {item.tingkat || '-'}</p>
-                            <p>Semester: {item.semester || '-'}</p>
-                            <p>Kurikulum: {item.kurikulum || '-'}</p>
-                            <p>Ruang/Kapasitas: {item.ruang_kelas || '-'} / {item.kapasitas || '-'}</p>
-                            <p>Status Rombel: {item.status_rombel || '-'}</p>
-                          </div>
-                        )}
+                        <div className="space-y-1 text-xs text-[#475569]">
+                          <p>Kode: {item.kode_rombel || '-'}</p>
+                          <p>Tingkat: {item.tingkat || '-'}</p>
+                          <p>Semester: {item.semester || '-'}</p>
+                          <p>Kurikulum: {item.kurikulum || '-'}</p>
+                          <p>Ruang/Kapasitas: {item.ruang_kelas || '-'} / {item.kapasitas || '-'}</p>
+                          <p>Status Rombel: {item.status_rombel || '-'}</p>
+                        </div>
                       </td>
                       <td className="px-3 py-2">
                         <div className="flex gap-2">
-                          {isEditing ? (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => handleUpdate(item.id)}
-                                disabled={saving}
-                                className="rounded-full bg-[#0f172a] px-3 py-1 text-xs font-medium text-white hover:bg-[#020617]"
-                              >
-                                Simpan
-                              </button>
-                              <button
-                                type="button"
-                                onClick={cancelEdit}
-                                disabled={saving}
-                                className="rounded-full border border-[#cbd5e1] px-3 py-1 text-xs text-[#334155] hover:bg-[#f8fafc]"
-                              >
-                                Batal
-                              </button>
-                            </>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => startEdit(item)}
-                              className="rounded-full border border-[#cbd5e1] px-3 py-1 text-xs text-[#334155] hover:bg-[#f8fafc]"
-                            >
-                              Edit
-                            </button>
-                          )}
+                          <button
+                            type="button"
+                            onClick={() => startEdit(item)}
+                            className="rounded-full border border-[#cbd5e1] px-3 py-1 text-xs text-[#334155] hover:bg-[#f8fafc]"
+                          >
+                            Edit
+                          </button>
 
                           <button
                             type="button"
@@ -457,6 +371,115 @@ function KelompokManagementPanel() {
           </tbody>
         </table>
       </div>
+
+      <AppModal
+        isOpen={isCreateModalOpen}
+        onClose={() => {
+          if (!saving) {
+            setIsCreateModalOpen(false)
+          }
+        }}
+        title="Tambah Kelompok"
+        description="Isi data rombel pada modal ini, lalu simpan setelah konfirmasi."
+        size="lg"
+      >
+        <form className="grid grid-cols-1 gap-3 md:grid-cols-2" onSubmit={handleCreate}>
+          <input className={inputClass} placeholder="Nama kelompok" value={namaKelompok} onChange={(ev) => setNamaKelompok(ev.target.value)} />
+          <input className={inputClass} placeholder="Kode rombel" value={kodeRombel} onChange={(ev) => setKodeRombel(ev.target.value)} />
+          <input className={inputClass} placeholder="Tingkat" value={tingkat} onChange={(ev) => setTingkat(ev.target.value)} />
+          <select className={inputClass} value={waliKelasId} onChange={(ev) => setWaliKelasId(ev.target.value)}>
+            <option value="">Pilih wali kelas (opsional)</option>
+            {guruList.map((guru) => (
+              <option key={guru.id} value={guru.id}>
+                {guru.nama}
+              </option>
+            ))}
+          </select>
+          <input className={inputClass} placeholder="Semester" value={semester} onChange={(ev) => setSemester(ev.target.value)} />
+          <input className={inputClass} placeholder="Kurikulum" value={kurikulum} onChange={(ev) => setKurikulum(ev.target.value)} />
+          <input className={inputClass} placeholder="Ruang kelas" value={ruangKelas} onChange={(ev) => setRuangKelas(ev.target.value)} />
+          <input className={inputClass} type="number" placeholder="Kapasitas" value={kapasitas} onChange={(ev) => setKapasitas(ev.target.value)} />
+          <select className={inputClass} value={statusRombel} onChange={(ev) => setStatusRombel(ev.target.value)}>
+            <option value="aktif">Aktif</option>
+            <option value="nonaktif">Nonaktif</option>
+            <option value="arsip">Arsip</option>
+          </select>
+          <div className="md:col-span-2 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setIsCreateModalOpen(false)}
+              disabled={saving}
+              className="rounded-full border border-[#cbd5e1] px-4 py-2 text-sm text-[#334155] hover:bg-[#f8fafc] disabled:opacity-50"
+            >
+              Batal
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="rounded-full bg-[#0f172a] px-4 py-2 text-sm font-medium text-white hover:bg-[#020617] disabled:opacity-60"
+            >
+              {saving ? 'Menyimpan...' : 'Simpan Kelompok'}
+            </button>
+          </div>
+        </form>
+      </AppModal>
+
+      <AppModal
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          if (!saving) {
+            cancelEdit()
+          }
+        }}
+        title="Ubah Kelompok"
+        description="Perubahan data kelompok disimpan setelah konfirmasi."
+        size="lg"
+      >
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <input className={inputClass} value={editForm.nama_kelompok} onChange={(ev) => setEditForm((prev) => ({ ...prev, nama_kelompok: ev.target.value }))} placeholder="Nama kelompok" />
+          <select className={inputClass} value={editForm.wali_kelas_id} onChange={(ev) => setEditForm((prev) => ({ ...prev, wali_kelas_id: ev.target.value }))}>
+            <option value="">Tanpa wali kelas</option>
+            {guruList.map((guru) => (
+              <option key={guru.id} value={guru.id}>
+                {guru.nama}
+              </option>
+            ))}
+          </select>
+          <input className={inputClass} value={editForm.kode_rombel} onChange={(ev) => setEditForm((prev) => ({ ...prev, kode_rombel: ev.target.value }))} placeholder="Kode rombel" />
+          <input className={inputClass} value={editForm.tingkat} onChange={(ev) => setEditForm((prev) => ({ ...prev, tingkat: ev.target.value }))} placeholder="Tingkat" />
+          <input className={inputClass} value={editForm.semester} onChange={(ev) => setEditForm((prev) => ({ ...prev, semester: ev.target.value }))} placeholder="Semester" />
+          <input className={inputClass} value={editForm.kurikulum} onChange={(ev) => setEditForm((prev) => ({ ...prev, kurikulum: ev.target.value }))} placeholder="Kurikulum" />
+          <input className={inputClass} value={editForm.ruang_kelas} onChange={(ev) => setEditForm((prev) => ({ ...prev, ruang_kelas: ev.target.value }))} placeholder="Ruang kelas" />
+          <input className={inputClass} type="number" value={editForm.kapasitas} onChange={(ev) => setEditForm((prev) => ({ ...prev, kapasitas: ev.target.value }))} placeholder="Kapasitas" />
+          <select className={inputClass} value={editForm.status_rombel} onChange={(ev) => setEditForm((prev) => ({ ...prev, status_rombel: ev.target.value }))}>
+            <option value="aktif">Aktif</option>
+            <option value="nonaktif">Nonaktif</option>
+            <option value="arsip">Arsip</option>
+          </select>
+        </div>
+        <div className="mt-4 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={cancelEdit}
+            disabled={saving}
+            className="rounded-full border border-[#cbd5e1] px-4 py-2 text-sm text-[#334155] hover:bg-[#f8fafc] disabled:opacity-50"
+          >
+            Batal
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (editingId) {
+                handleUpdate(editingId)
+              }
+            }}
+            disabled={saving || !editingId}
+            className="rounded-full bg-[#0f172a] px-4 py-2 text-sm font-medium text-white hover:bg-[#020617] disabled:opacity-60"
+          >
+            {saving ? 'Menyimpan...' : 'Simpan Perubahan'}
+          </button>
+        </div>
+      </AppModal>
     </div>
   )
 }

@@ -5,6 +5,7 @@ import {
   deleteAcademicYear,
   fetchAcademicYears,
 } from '../../lib/settingsManagement'
+import AppModal from '../Modal/AppModal'
 
 function normalizeLabelInput(value) {
   return String(value || '').trim().replace(/\s+/g, '')
@@ -18,6 +19,7 @@ function AcademicYearManagementPanel() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
 
   const inputClass = 'rounded-xl border border-[#cbd5e1] bg-white px-3 py-2 text-sm text-[#0f172a] outline-none transition-colors focus:border-[#0f172a]'
 
@@ -67,6 +69,9 @@ function AcademicYearManagementPanel() {
       return
     }
 
+    const confirmed = window.confirm(`Simpan tahun ajaran baru "${label}"?`)
+    if (!confirmed) return
+
     const token = localStorage.getItem('aisya_access_token')
     if (!token) return
 
@@ -80,6 +85,7 @@ function AcademicYearManagementPanel() {
       })
       setSuccess('Tahun ajaran berhasil ditambahkan')
       setLabelInput('')
+      setIsCreateModalOpen(false)
       await loadData()
     } catch (err) {
       setError(err?.response?.data?.detail || err?.message || 'Gagal menambah tahun ajaran')
@@ -89,6 +95,10 @@ function AcademicYearManagementPanel() {
   }
 
   const handleActivate = async (tahunAjaranId) => {
+    const selectedItem = items.find((item) => item.id === tahunAjaranId)
+    const confirmed = window.confirm(`Jadikan tahun ajaran "${selectedItem?.label || '-'}" sebagai aktif?`)
+    if (!confirmed) return
+
     const token = localStorage.getItem('aisya_access_token')
     if (!token) return
 
@@ -147,19 +157,16 @@ function AcademicYearManagementPanel() {
         </div>
 
         <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
-          <input
-            className={inputClass}
-            value={labelInput}
-            onChange={(ev) => setLabelInput(ev.target.value)}
-            placeholder="Contoh: 2026/2027"
-          />
           <button
             type="button"
-            onClick={handleCreate}
+            onClick={() => {
+              setLabelInput('')
+              setIsCreateModalOpen(true)
+            }}
             disabled={saving}
-            className="rounded-full bg-[#0f172a] px-4 py-2 text-sm font-medium text-white hover:bg-[#020617] disabled:opacity-60"
+            className="rounded-full bg-[#0f172a] px-4 py-2 text-sm font-medium text-white hover:bg-[#020617] disabled:opacity-60 md:max-w-xs"
           >
-            {saving ? 'Menyimpan...' : 'Tambah Tahun Ajaran'}
+            Tambah Tahun Ajaran
           </button>
         </div>
       </div>
@@ -228,6 +235,44 @@ function AcademicYearManagementPanel() {
           </tbody>
         </table>
       </div>
+
+      <AppModal
+        isOpen={isCreateModalOpen}
+        onClose={() => {
+          if (!saving) {
+            setIsCreateModalOpen(false)
+          }
+        }}
+        title="Tambah Tahun Ajaran"
+        description="Isi label tahun ajaran, lalu konfirmasi sebelum data disimpan."
+      >
+        <div className="space-y-3">
+          <input
+            className={inputClass}
+            value={labelInput}
+            onChange={(ev) => setLabelInput(ev.target.value)}
+            placeholder="Contoh: 2026/2027"
+          />
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setIsCreateModalOpen(false)}
+              disabled={saving}
+              className="rounded-full border border-[#cbd5e1] px-4 py-2 text-sm text-[#334155] hover:bg-[#f8fafc] disabled:opacity-50"
+            >
+              Batal
+            </button>
+            <button
+              type="button"
+              onClick={handleCreate}
+              disabled={saving}
+              className="rounded-full bg-[#0f172a] px-4 py-2 text-sm font-medium text-white hover:bg-[#020617] disabled:opacity-60"
+            >
+              {saving ? 'Menyimpan...' : 'Simpan Tahun Ajaran'}
+            </button>
+          </div>
+        </div>
+      </AppModal>
     </div>
   )
 }
