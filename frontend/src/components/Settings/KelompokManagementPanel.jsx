@@ -15,6 +15,8 @@ function KelompokManagementPanel() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [createModalError, setCreateModalError] = useState('')
+  const [editModalError, setEditModalError] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
@@ -99,7 +101,7 @@ function KelompokManagementPanel() {
     ev.preventDefault()
     const kelompokNama = namaKelompok.trim()
     if (!kelompokNama) {
-      setError('Nama kelompok wajib diisi')
+      setCreateModalError('Nama kelompok wajib diisi')
       return
     }
 
@@ -112,6 +114,7 @@ function KelompokManagementPanel() {
     if (!agree) return
 
     setSaving(true)
+    setCreateModalError('')
     setError('')
     setSuccess('')
     try {
@@ -136,10 +139,12 @@ function KelompokManagementPanel() {
       setRuangKelas('')
       setKapasitas('')
       setStatusRombel('aktif')
+      setCreateModalError('')
       setIsCreateModalOpen(false)
       await loadData()
     } catch (err) {
-      setError(err?.response?.data?.detail || err?.message || 'Gagal menambah kelompok')
+      const message = err?.response?.data?.detail || err?.message || 'Gagal menambah kelompok'
+      setCreateModalError(message)
     } finally {
       setSaving(false)
     }
@@ -159,6 +164,7 @@ function KelompokManagementPanel() {
       status_rombel: item.status_rombel || 'aktif',
     })
     setIsEditModalOpen(true)
+    setEditModalError('')
     setError('')
     setSuccess('')
   }
@@ -177,12 +183,13 @@ function KelompokManagementPanel() {
       kapasitas: '',
       status_rombel: 'aktif',
     })
+    setEditModalError('')
   }
 
   const handleUpdate = async (kelompokId) => {
     const kelompokNama = editForm.nama_kelompok.trim()
     if (!kelompokNama) {
-      setError('Nama kelompok wajib diisi')
+      setEditModalError('Nama kelompok wajib diisi')
       return
     }
 
@@ -195,6 +202,7 @@ function KelompokManagementPanel() {
     if (!agree) return
 
     setSaving(true)
+    setEditModalError('')
     setError('')
     setSuccess('')
     try {
@@ -213,7 +221,8 @@ function KelompokManagementPanel() {
       cancelEdit()
       await loadData()
     } catch (err) {
-      setError(err?.response?.data?.detail || err?.message || 'Gagal memperbarui kelompok')
+      const message = err?.response?.data?.detail || err?.message || 'Gagal memperbarui kelompok'
+      setEditModalError(message)
     } finally {
       setSaving(false)
     }
@@ -264,6 +273,7 @@ function KelompokManagementPanel() {
               setRuangKelas('')
               setKapasitas('')
               setStatusRombel('aktif')
+              setCreateModalError('')
               setIsCreateModalOpen(true)
             }}
             className="rounded-full bg-[#0f172a] px-4 py-2 text-sm font-medium text-white hover:bg-[#020617]"
@@ -365,6 +375,7 @@ function KelompokManagementPanel() {
         isOpen={isCreateModalOpen}
         onClose={() => {
           if (!saving) {
+            setCreateModalError('')
             setIsCreateModalOpen(false)
           }
         }}
@@ -373,6 +384,7 @@ function KelompokManagementPanel() {
         size="lg"
       >
         <form className="grid grid-cols-1 gap-3 md:grid-cols-2" onSubmit={handleCreate}>
+          {createModalError ? <div className="md:col-span-2 rounded-md bg-red-50 p-3 text-sm text-red-700">{createModalError}</div> : null}
           <input className={inputClass} placeholder="Nama kelompok" value={namaKelompok} onChange={(ev) => setNamaKelompok(ev.target.value)} />
           <input className={inputClass} placeholder="Kode rombel" value={kodeRombel} onChange={(ev) => setKodeRombel(ev.target.value)} />
           <input className={inputClass} placeholder="Tingkat" value={tingkat} onChange={(ev) => setTingkat(ev.target.value)} />
@@ -396,7 +408,10 @@ function KelompokManagementPanel() {
           <div className="md:col-span-2 flex justify-end gap-2">
             <button
               type="button"
-              onClick={() => setIsCreateModalOpen(false)}
+              onClick={() => {
+                setCreateModalError('')
+                setIsCreateModalOpen(false)
+              }}
               disabled={saving}
               className="rounded-full border border-[#cbd5e1] px-4 py-2 text-sm text-[#334155] hover:bg-[#f8fafc] disabled:opacity-50"
             >
@@ -425,6 +440,7 @@ function KelompokManagementPanel() {
         size="lg"
       >
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          {editModalError ? <div className="md:col-span-2 rounded-md bg-red-50 p-3 text-sm text-red-700">{editModalError}</div> : null}
           <input className={inputClass} value={editForm.nama_kelompok} onChange={(ev) => setEditForm((prev) => ({ ...prev, nama_kelompok: ev.target.value }))} placeholder="Nama kelompok" />
           <select className={inputClass} value={editForm.wali_kelas_id} onChange={(ev) => setEditForm((prev) => ({ ...prev, wali_kelas_id: ev.target.value }))}>
             <option value="">Tanpa wali kelas</option>

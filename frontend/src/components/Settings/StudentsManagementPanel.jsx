@@ -19,6 +19,8 @@ function StudentsManagementPanel() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [createModalError, setCreateModalError] = useState('')
+  const [editModalError, setEditModalError] = useState('')
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
@@ -160,6 +162,7 @@ function StudentsManagementPanel() {
   const cancelEdit = () => {
     setIsEditModalOpen(false)
     setEditingId(null)
+    setEditModalError('')
     setEditForm({
       nama: '',
       nis: '',
@@ -185,7 +188,7 @@ function StudentsManagementPanel() {
   const handleCreate = async () => {
     const nama = createForm.nama.trim()
     if (!nama) {
-      setError('Nama siswa wajib diisi')
+      setCreateModalError('Nama siswa wajib diisi')
       return
     }
 
@@ -198,6 +201,7 @@ function StudentsManagementPanel() {
     if (!agree) return
 
     setSaving(true)
+    setCreateModalError('')
     setError('')
     setSuccess('')
     try {
@@ -223,10 +227,12 @@ function StudentsManagementPanel() {
       })
       setSuccess('Data siswa berhasil ditambahkan')
       resetCreateForm()
+      setCreateModalError('')
       setIsCreateModalOpen(false)
       await loadData(filterKelompokId)
     } catch (err) {
-      setError(err?.response?.data?.detail || err?.message || 'Gagal menambah siswa')
+      const message = err?.response?.data?.detail || err?.message || 'Gagal menambah siswa'
+      setCreateModalError(message)
     } finally {
       setSaving(false)
     }
@@ -255,6 +261,7 @@ function StudentsManagementPanel() {
       status_aktif: Boolean(siswa.status_aktif),
     })
     setIsEditModalOpen(true)
+    setEditModalError('')
     setError('')
     setSuccess('')
   }
@@ -262,7 +269,7 @@ function StudentsManagementPanel() {
   const handleUpdate = async (siswaId) => {
     const nama = editForm.nama.trim()
     if (!nama) {
-      setError('Nama siswa wajib diisi')
+      setEditModalError('Nama siswa wajib diisi')
       return
     }
 
@@ -275,6 +282,7 @@ function StudentsManagementPanel() {
     if (!agree) return
 
     setSaving(true)
+    setEditModalError('')
     setError('')
     setSuccess('')
     try {
@@ -302,7 +310,8 @@ function StudentsManagementPanel() {
       cancelEdit()
       await loadData(filterKelompokId)
     } catch (err) {
-      setError(err?.response?.data?.detail || err?.message || 'Gagal memperbarui siswa')
+      const message = err?.response?.data?.detail || err?.message || 'Gagal memperbarui siswa'
+      setEditModalError(message)
     } finally {
       setSaving(false)
     }
@@ -410,6 +419,7 @@ function StudentsManagementPanel() {
             type="button"
             onClick={() => {
               resetCreateForm()
+              setCreateModalError('')
               setIsCreateModalOpen(true)
             }}
             className="rounded-full bg-[#0f172a] px-4 py-2 text-sm font-medium text-white hover:bg-[#020617]"
@@ -640,6 +650,7 @@ function StudentsManagementPanel() {
         isOpen={isCreateModalOpen}
         onClose={() => {
           if (!saving) {
+            setCreateModalError('')
             setIsCreateModalOpen(false)
           }
         }}
@@ -648,6 +659,7 @@ function StudentsManagementPanel() {
         size="lg"
       >
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          {createModalError ? <div className="md:col-span-2 rounded-md bg-red-50 p-3 text-sm text-red-700">{createModalError}</div> : null}
           <input
             className={inputClass}
             value={createForm.nama}
@@ -771,7 +783,10 @@ function StudentsManagementPanel() {
         <div className="mt-4 flex justify-end gap-2">
           <button
             type="button"
-            onClick={() => setIsCreateModalOpen(false)}
+            onClick={() => {
+              setCreateModalError('')
+              setIsCreateModalOpen(false)
+            }}
             disabled={saving}
             className="rounded-full border border-[#cbd5e1] px-4 py-2 text-sm text-[#334155] hover:bg-[#f8fafc] disabled:opacity-50"
           >
@@ -800,6 +815,7 @@ function StudentsManagementPanel() {
         size="lg"
       >
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          {editModalError ? <div className="md:col-span-2 rounded-md bg-red-50 p-3 text-sm text-red-700">{editModalError}</div> : null}
           <input
             className={inputClass}
             value={editForm.nama}

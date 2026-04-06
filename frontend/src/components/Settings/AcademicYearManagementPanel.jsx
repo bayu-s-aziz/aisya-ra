@@ -19,6 +19,7 @@ function AcademicYearManagementPanel() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [createModalError, setCreateModalError] = useState('')
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
 
   const inputClass = 'rounded-xl border border-[#cbd5e1] bg-white px-3 py-2 text-sm text-[#0f172a] outline-none transition-colors focus:border-[#0f172a]'
@@ -65,7 +66,7 @@ function AcademicYearManagementPanel() {
   const handleCreate = async () => {
     const label = normalizeLabelInput(labelInput)
     if (!label) {
-      setError('Label tahun ajaran wajib diisi')
+      setCreateModalError('Label tahun ajaran wajib diisi')
       return
     }
 
@@ -76,6 +77,7 @@ function AcademicYearManagementPanel() {
     if (!token) return
 
     setSaving(true)
+    setCreateModalError('')
     setError('')
     setSuccess('')
 
@@ -85,10 +87,12 @@ function AcademicYearManagementPanel() {
       })
       setSuccess('Tahun ajaran berhasil ditambahkan')
       setLabelInput('')
+      setCreateModalError('')
       setIsCreateModalOpen(false)
       await loadData()
     } catch (err) {
-      setError(err?.response?.data?.detail || err?.message || 'Gagal menambah tahun ajaran')
+      const message = err?.response?.data?.detail || err?.message || 'Gagal menambah tahun ajaran'
+      setCreateModalError(message)
     } finally {
       setSaving(false)
     }
@@ -161,6 +165,7 @@ function AcademicYearManagementPanel() {
             type="button"
             onClick={() => {
               setLabelInput('')
+              setCreateModalError('')
               setIsCreateModalOpen(true)
             }}
             disabled={saving}
@@ -240,6 +245,7 @@ function AcademicYearManagementPanel() {
         isOpen={isCreateModalOpen}
         onClose={() => {
           if (!saving) {
+            setCreateModalError('')
             setIsCreateModalOpen(false)
           }
         }}
@@ -247,6 +253,7 @@ function AcademicYearManagementPanel() {
         description="Isi label tahun ajaran, lalu konfirmasi sebelum data disimpan."
       >
         <div className="space-y-3">
+          {createModalError ? <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">{createModalError}</div> : null}
           <input
             className={inputClass}
             value={labelInput}
@@ -256,7 +263,10 @@ function AcademicYearManagementPanel() {
           <div className="flex justify-end gap-2">
             <button
               type="button"
-              onClick={() => setIsCreateModalOpen(false)}
+              onClick={() => {
+                setCreateModalError('')
+                setIsCreateModalOpen(false)
+              }}
               disabled={saving}
               className="rounded-full border border-[#cbd5e1] px-4 py-2 text-sm text-[#334155] hover:bg-[#f8fafc] disabled:opacity-50"
             >

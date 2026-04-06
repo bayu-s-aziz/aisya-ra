@@ -46,6 +46,8 @@ function UsersManagementPanel() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [createModalError, setCreateModalError] = useState('')
+  const [editModalError, setEditModalError] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [roleFilter, setRoleFilter] = useState('all')
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
@@ -173,7 +175,7 @@ function UsersManagementPanel() {
     const password = createForm.password.trim()
 
     if (!nama || !email || !password) {
-      setError('Nama, email, dan password awal wajib diisi')
+      setCreateModalError('Nama, email, dan password awal wajib diisi')
       return
     }
 
@@ -186,6 +188,7 @@ function UsersManagementPanel() {
     if (!agree) return
 
     setSaving(true)
+    setCreateModalError('')
     setError('')
     setSuccess('')
     try {
@@ -211,10 +214,12 @@ function UsersManagementPanel() {
       })
       setSuccess('Pengguna baru berhasil ditambahkan')
       resetCreateForm()
+      setCreateModalError('')
       setIsCreateModalOpen(false)
       await loadUsers()
     } catch (err) {
-      setError(getErrorMessage(err, 'Gagal menambah pengguna'))
+      const message = getErrorMessage(err, 'Gagal menambah pengguna')
+      setCreateModalError(message)
     } finally {
       setSaving(false)
     }
@@ -243,6 +248,7 @@ function UsersManagementPanel() {
       total_jtm: user.total_jtm || '',
     })
     setIsEditModalOpen(true)
+    setEditModalError('')
     setError('')
     setSuccess('')
   }
@@ -250,6 +256,7 @@ function UsersManagementPanel() {
   const cancelEdit = () => {
     setIsEditModalOpen(false)
     setEditingId(null)
+    setEditModalError('')
     setEditForm({
       nama: '',
       email: '',
@@ -280,7 +287,7 @@ function UsersManagementPanel() {
     const email = editForm.email.trim()
 
     if (!nama || !email) {
-      setError('Nama dan email wajib diisi')
+      setEditModalError('Nama dan email wajib diisi')
       return
     }
 
@@ -314,6 +321,7 @@ function UsersManagementPanel() {
     }
 
     setSaving(true)
+    setEditModalError('')
     setError('')
     setSuccess('')
     try {
@@ -322,7 +330,8 @@ function UsersManagementPanel() {
       cancelEdit()
       await loadUsers()
     } catch (err) {
-      setError(getErrorMessage(err, 'Gagal memperbarui pengguna'))
+      const message = getErrorMessage(err, 'Gagal memperbarui pengguna')
+      setEditModalError(message)
     } finally {
       setSaving(false)
     }
@@ -393,6 +402,7 @@ function UsersManagementPanel() {
             type="button"
             onClick={() => {
               resetCreateForm()
+              setCreateModalError('')
               setIsCreateModalOpen(true)
             }}
             className="rounded-full bg-[#0f172a] px-4 py-2 text-sm font-medium text-white hover:bg-[#020617]"
@@ -553,6 +563,7 @@ function UsersManagementPanel() {
         isOpen={isCreateModalOpen}
         onClose={() => {
           if (!saving) {
+            setCreateModalError('')
             setIsCreateModalOpen(false)
           }
         }}
@@ -561,6 +572,7 @@ function UsersManagementPanel() {
         size="lg"
       >
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          {createModalError ? <div className="md:col-span-2 rounded-md bg-red-50 p-3 text-sm text-red-700">{createModalError}</div> : null}
           <input
             className={inputClass}
             value={createForm.nama}
@@ -681,7 +693,10 @@ function UsersManagementPanel() {
         <div className="mt-4 flex justify-end gap-2">
           <button
             type="button"
-            onClick={() => setIsCreateModalOpen(false)}
+            onClick={() => {
+              setCreateModalError('')
+              setIsCreateModalOpen(false)
+            }}
             disabled={saving}
             className="rounded-full border border-[#cbd5e1] px-4 py-2 text-sm text-[#334155] hover:bg-[#f8fafc] disabled:opacity-50"
           >
@@ -710,6 +725,7 @@ function UsersManagementPanel() {
         size="lg"
       >
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          {editModalError ? <div className="md:col-span-2 rounded-md bg-red-50 p-3 text-sm text-red-700">{editModalError}</div> : null}
           <input className={inputClass} value={editForm.nama} onChange={(ev) => setEditForm((prev) => ({ ...prev, nama: ev.target.value }))} placeholder="Nama lengkap" />
           <input className={inputClass} type="email" value={editForm.email} onChange={(ev) => setEditForm((prev) => ({ ...prev, email: ev.target.value }))} placeholder="Email" />
           <input className={inputClass} type="password" value={editForm.password} onChange={(ev) => setEditForm((prev) => ({ ...prev, password: ev.target.value }))} placeholder="Password baru (opsional)" />
