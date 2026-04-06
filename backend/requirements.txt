@@ -12,3 +12,4 @@ apscheduler
 PyPDF2
 python-docx
 pytest
+holidays

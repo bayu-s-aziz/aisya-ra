@@ -144,3 +144,23 @@ export async function deleteAcademicYear(token, tahunAjaranId) {
   const response = await api.delete(`/tahun-ajaran/${tahunAjaranId}`, { headers: authHeaders(token) })
   return response?.data
 }
+
+export async function updateAcademicYearConfig(token, tahunAjaranId, payload) {
+  const response = await api.patch(`/tahun-ajaran/${tahunAjaranId}/config`, payload, { headers: authHeaders(token) })
+  return response?.data?.data
+}
+
+export async function fetchAcademicCalendar(token, tahunAjaranId) {
+  const response = await api.get(`/tahun-ajaran/${tahunAjaranId}/kalender`, { headers: authHeaders(token) })
+  return response?.data?.data || []
+}
+
+export async function createAcademicCalendarEvent(token, tahunAjaranId, payload) {
+  const response = await api.post(`/tahun-ajaran/${tahunAjaranId}/kalender/manual`, payload, { headers: authHeaders(token) })
+  return response?.data?.data || []
+}
+
+export async function deleteAcademicCalendarEvent(token, tahunAjaranId, kalenderId) {
+  const response = await api.delete(`/tahun-ajaran/${tahunAjaranId}/kalender/${kalenderId}`, { headers: authHeaders(token) })
+  return response?.data
+}

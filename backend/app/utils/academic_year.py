@@ -105,7 +105,7 @@ def get_active_academic_year(supabase, ra_id: str, created_by: str | None = None
     try:
         active_response = (
             supabase.table("tahun_ajaran")
-            .select("id,ra_id,label,is_active,created_at,updated_at")
+            .select("id,ra_id,label,is_active,hari_efektif_belajar,created_at,updated_at")
             .eq("ra_id", ra_id)
             .eq("is_active", True)
             .order("updated_at", desc=True)
@@ -126,7 +126,7 @@ def get_active_academic_year(supabase, ra_id: str, created_by: str | None = None
     try:
         latest_response = (
             supabase.table("tahun_ajaran")
-            .select("id,ra_id,label,is_active,created_at,updated_at")
+            .select("id,ra_id,label,is_active,hari_efektif_belajar,created_at,updated_at")
             .eq("ra_id", ra_id)
             .order("created_at", desc=True)
             .limit(1)
@@ -155,6 +155,7 @@ def get_active_academic_year(supabase, ra_id: str, created_by: str | None = None
         "ra_id": ra_id,
         "label": normalized_label,
         "is_active": True,
+        "hari_efektif_belajar": 5,
     }
     if created_by:
         insert_payload["created_by"] = created_by

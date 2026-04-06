@@ -16,6 +16,11 @@ from app.models.presensi import (
     RekapPresensiResponse,
     StatusPresensi
 )
+from app.utils.academic_calendar import (
+    fetch_holiday_dates,
+    filter_learning_dates,
+    normalize_effective_school_days,
+)
 from app.utils.academic_year import get_active_academic_year
 from app.utils.auth import get_current_user_profile
 from app.utils.gemini import generate_response
@@ -422,7 +427,53 @@ async def get_rekap_presensi_periode(
     total_siswa = len(siswa_ids)
 
     start_date, end_date = _get_period_range(mode, target_date)
-    date_list = _iterate_dates(start_date, end_date)
+    source_dates = _iterate_dates(start_date, end_date)
+    hari_efektif = normalize_effective_school_days(active_year.get("hari_efektif_belajar", 5))
+    holiday_dates = fetch_holiday_dates(
+        supabase,
+        ra_id,
+        tahun_ajaran_id,
+        start_date=start_date,
+        end_date=end_date,
+    )
+    date_list = filter_learning_dates(source_dates, hari_efektif, holiday_dates)
+
+    if not date_list:
+        return RekapPresensiPeriodeResponse(
+            mode=mode,
+            kelompok_id=kelompok_id,
+            kelompok_nama=kelompok["nama_kelompok"],
+            tanggal_acuan=target_date,
+            tanggal_mulai=start_date,
+            tanggal_selesai=end_date,
+            total_siswa=total_siswa,
+            summary=RekapPresensiPeriodeSummary(
+                total_hari=0,
+                total_slot_presensi=0,
+                hadir=0,
+                sakit=0,
+                izin=0,
+                alpha=0,
+                belum_dicatat=0,
+                persentase_hadir=0.0,
+            ),
+            detail_harian=[],
+            detail_siswa=[
+                {
+                    "siswa_id": row["id"],
+                    "nama": row.get("nama") or "-",
+                    "hadir": 0,
+                    "sakit": 0,
+                    "izin": 0,
+                    "alpha": 0,
+                    "belum_dicatat": 0,
+                    "persentase_hadir": 0.0,
+                    "status_per_tanggal": [],
+                }
+                for row in sorted(siswa_rows, key=lambda row: (row.get("nama") or "").lower())
+            ],
+        )
+
     date_strings = [str(d) for d in date_list]
 
     daily_counts = {
