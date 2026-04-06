@@ -30,6 +30,7 @@ class KelompokUpdateRequest(BaseModel):
 class KelompokItem(BaseModel):
     id: str
     ra_id: str
+    tahun_ajaran_id: Optional[str] = None
     nama_kelompok: str
     wali_kelas_id: Optional[str] = None
     kode_rombel: Optional[str] = None

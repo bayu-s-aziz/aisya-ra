@@ -4,10 +4,6 @@ import {
   fetchPresensiRekap,
   savePresensiBatch,
 } from '../../lib/settingsManagement'
-import { fetchAuthMeData } from '../../lib/authMe'
-import { saveRAProfile } from '../../lib/raProfile'
-
-const MANAGE_RA_ROLES = ['kepala_ra', 'kepala', 'admin', 'admin_ra']
 
 const STATUS_OPTIONS = [
   { value: 'belum_dicatat', label: 'Belum dicatat' },
@@ -35,10 +31,6 @@ function PresensiManagementPanel() {
   const [rekap, setRekap] = useState(null)
   const [statusMap, setStatusMap] = useState({})
   const [keteranganMap, setKeteranganMap] = useState({})
-  const [activeTahunAjaran, setActiveTahunAjaran] = useState('')
-  const [tahunAjaranDraft, setTahunAjaranDraft] = useState('')
-  const [canManageAcademicYear, setCanManageAcademicYear] = useState(false)
-  const [savingAcademicYear, setSavingAcademicYear] = useState(false)
 
   const inputClass = 'rounded-xl border border-[#cbd5e1] bg-white px-3 py-2 text-sm text-[#0f172a] outline-none transition-colors focus:border-[#0f172a]'
 
@@ -50,22 +42,12 @@ function PresensiManagementPanel() {
       setLoading(true)
       setError('')
       try {
-        const [kelompokData, me] = await Promise.all([
-          fetchKelompok(token),
-          fetchAuthMeData(token),
-        ])
+        const kelompokData = await fetchKelompok(token)
 
         setKelompokList(kelompokData)
         if (kelompokData.length > 0) {
           setSelectedKelompokId(kelompokData[0].id)
         }
-
-        const nextTahunAjaran = me?.ra_profile?.tahun_ajaran || ''
-        setActiveTahunAjaran(nextTahunAjaran)
-        setTahunAjaranDraft(nextTahunAjaran)
-
-        const roleLower = (me?.profile?.role || '').toLowerCase()
-        setCanManageAcademicYear(MANAGE_RA_ROLES.includes(roleLower))
       } catch (err) {
         setError(err?.response?.data?.detail || err?.message || 'Gagal memuat kelompok')
       } finally {
@@ -184,29 +166,6 @@ function PresensiManagementPanel() {
     }
   }
 
-  const handleSaveTahunAjaranAktif = async () => {
-    if (!tahunAjaranDraft.trim()) {
-      setError('Tahun pelajaran aktif wajib diisi')
-      return
-    }
-
-    const token = localStorage.getItem('aisya_access_token')
-    if (!token) return
-
-    setSavingAcademicYear(true)
-    setError('')
-    setSuccess('')
-    try {
-      await saveRAProfile(token, { tahun_ajaran: tahunAjaranDraft.trim() })
-      setActiveTahunAjaran(tahunAjaranDraft.trim())
-      setSuccess('Tahun pelajaran aktif berhasil diperbarui')
-    } catch (err) {
-      setError(err?.response?.data?.detail || err?.message || 'Gagal memperbarui tahun pelajaran aktif')
-    } finally {
-      setSavingAcademicYear(false)
-    }
-  }
-
   const summary = rekap
     ? `Hadir: ${statusSummary.hadir} | Sakit: ${statusSummary.sakit} | Izin: ${statusSummary.izin} | Alpha: ${statusSummary.alpha} | Belum dicatat: ${statusSummary.belum_dicatat}`
     : ''
@@ -215,39 +174,6 @@ function PresensiManagementPanel() {
     <div className="space-y-4">
       {success ? <div className="rounded-md bg-emerald-50 p-3 text-sm text-emerald-700">{success}</div> : null}
       {error ? <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div> : null}
-
-      <div className="rounded-2xl border border-[#e2e8f0] bg-white p-4 shadow-sm">
-        <p className="text-sm font-semibold text-[#0f172a]">Tahun Pelajaran Aktif</p>
-        <p className="mt-1 text-xs text-[#64748b]">
-          Pengaturan ini dipakai lintas modul operasional AISYA.
-        </p>
-
-        {canManageAcademicYear ? (
-          <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
-            <input
-              className={inputClass}
-              value={tahunAjaranDraft}
-              onChange={(ev) => setTahunAjaranDraft(ev.target.value)}
-              placeholder="Contoh: 2026/2027"
-            />
-            <button
-              type="button"
-              onClick={handleSaveTahunAjaranAktif}
-              disabled={savingAcademicYear}
-              className="rounded-full bg-[#0f172a] px-4 py-2 text-sm font-medium text-white hover:bg-[#020617] disabled:opacity-60"
-            >
-              {savingAcademicYear ? 'Menyimpan...' : 'Simpan Tahun Aktif'}
-            </button>
-            <div className="rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-3 py-2 text-sm text-[#334155]">
-              Aktif saat ini: <span className="font-medium text-[#0f172a]">{activeTahunAjaran || '-'}</span>
-            </div>
-          </div>
-        ) : (
-          <div className="mt-3 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-3 py-2 text-sm text-[#334155]">
-            Tahun pelajaran aktif: <span className="font-medium text-[#0f172a]">{activeTahunAjaran || '-'}</span>
-          </div>
-        )}
-      </div>
 
       <div className="rounded-2xl border border-[#e2e8f0] bg-white p-4 shadow-sm">
         <p className="text-sm font-semibold text-[#0f172a]">Filter Rekap Presensi</p>
@@ -328,7 +254,6 @@ function PresensiManagementPanel() {
       {rekap ? (
         <div className="rounded-2xl border border-[#e2e8f0] bg-white p-4 text-sm text-[#334155] shadow-sm">
           <p className="font-semibold text-[#0f172a]">{rekap.kelompok_nama} - {rekap.tanggal}</p>
-          {activeTahunAjaran ? <p className="mt-1 text-xs text-[#64748b]">Tahun aktif: {activeTahunAjaran}</p> : null}
           <p className="mt-1 text-xs text-[#64748b]">{summary}</p>
         </div>
       ) : null}

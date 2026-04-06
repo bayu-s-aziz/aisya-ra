@@ -50,6 +50,7 @@ class SiswaUpdateRequest(BaseModel):
 class SiswaItem(BaseModel):
     id: str
     ra_id: str
+    tahun_ajaran_id: Optional[str] = None
     nama: str
     kelompok_id: Optional[str]
     status_aktif: bool

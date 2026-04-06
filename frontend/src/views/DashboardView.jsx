@@ -8,6 +8,7 @@ const loadStudentsManagementPanel = () => import('../components/Settings/Student
 const loadUsersManagementPanel = () => import('../components/Settings/UsersManagementPanel')
 const loadKelompokManagementPanel = () => import('../components/Settings/KelompokManagementPanel')
 const loadPresensiManagementPanel = () => import('../components/Settings/PresensiManagementPanel')
+const loadAcademicYearManagementPanel = () => import('../components/Settings/AcademicYearManagementPanel')
 const loadKnowledgeBaseView = () => import('./KnowledgeBaseView')
 const loadSuratView = () => import('./SuratView')
 
@@ -15,12 +16,14 @@ const StudentsManagementPanel = lazy(loadStudentsManagementPanel)
 const UsersManagementPanel = lazy(loadUsersManagementPanel)
 const KelompokManagementPanel = lazy(loadKelompokManagementPanel)
 const PresensiManagementPanel = lazy(loadPresensiManagementPanel)
+const AcademicYearManagementPanel = lazy(loadAcademicYearManagementPanel)
 const KnowledgeBaseView = lazy(loadKnowledgeBaseView)
 const SuratView = lazy(loadSuratView)
 
 const PANEL_LABELS = {
   ringkasan: 'Dashboard',
   'profil-lembaga': 'Profil Lembaga',
+  'manajemen-tahun-ajaran': 'Manajemen Tahun Ajaran',
   'manajemen-siswa': 'Manajemen Siswa',
   'manajemen-pengguna': 'Manajemen Pengguna',
   'manajemen-kelompok': 'Manajemen Kelompok',
@@ -50,6 +53,7 @@ function prefetchPanelById(panelId) {
   if (panelId === 'manajemen-pengguna') return loadUsersManagementPanel()
   if (panelId === 'manajemen-kelompok') return loadKelompokManagementPanel()
   if (panelId === 'manajemen-presensi') return loadPresensiManagementPanel()
+  if (panelId === 'manajemen-tahun-ajaran') return loadAcademicYearManagementPanel()
   if (panelId === 'manajemen-berkas-dokumen') return loadKnowledgeBaseView()
   if (panelId === 'manajemen-berkas-surat') return loadSuratView()
   return Promise.resolve()
@@ -296,6 +300,7 @@ function DashboardView({
                   <div className="rounded-2xl border border-[#e2e8f0] bg-[#f8fafc] p-4">
                     <p className="text-sm font-semibold text-[#0f172a]">Status Monitoring</p>
                     <div className="mt-3 space-y-2 text-sm text-[#475569]">
+                      <p>Tahun ajaran aktif: <span className="font-medium text-[#0f172a]">{data?.tahun_ajaran_aktif || '-'}</span></p>
                       <p>Data dashboard sinkron dengan endpoint role: <span className="font-medium text-[#0f172a]">{(role || 'guru').toLowerCase()}</span></p>
                       <p>Gunakan menu panel di sidebar kiri untuk masuk ke manajemen data detail.</p>
                       <p>Untuk pembaruan, refresh browser atau buka ulang panel Dashboard.</p>
@@ -350,6 +355,14 @@ function DashboardView({
           <section className="rounded-2xl border border-[#e2e8f0] bg-white p-4 shadow-sm">
             <Suspense fallback={<PanelLoadingFallback />}>
               <StudentsManagementPanel />
+            </Suspense>
+          </section>
+        ) : null}
+
+        {activePanel === 'manajemen-tahun-ajaran' ? (
+          <section className="rounded-2xl border border-[#e2e8f0] bg-white p-4 shadow-sm">
+            <Suspense fallback={<PanelLoadingFallback />}>
+              <AcademicYearManagementPanel />
             </Suspense>
           </section>
         ) : null}
@@ -413,6 +426,7 @@ DashboardView.propTypes = {
   activePanel: PropTypes.oneOf([
     'ringkasan',
     'profil-lembaga',
+    'manajemen-tahun-ajaran',
     'manajemen-siswa',
     'manajemen-pengguna',
     'manajemen-kelompok',

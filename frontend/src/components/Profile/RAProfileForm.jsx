@@ -23,7 +23,6 @@ function RAProfileForm({ initialData, saving, error, success, onSubmit }) {
     kabupaten_kota: '',
     provinsi: '',
     kode_pos: '',
-    tahun_ajaran: '',
     logo_url: '',
   })
   const [raLogoPreview, setRaLogoPreview] = useState('')
@@ -51,7 +50,6 @@ function RAProfileForm({ initialData, saving, error, success, onSubmit }) {
       kabupaten_kota: initialData?.kabupaten_kota || '',
       provinsi: initialData?.provinsi || '',
       kode_pos: initialData?.kode_pos || '',
-      tahun_ajaran: initialData?.tahun_ajaran || '',
       logo_url: initialData?.logo_url || '',
     })
     setRaLogoPreview(initialData?.logo_url || '')
@@ -106,11 +104,6 @@ function RAProfileForm({ initialData, saving, error, success, onSubmit }) {
       return
     }
 
-    if (!formData.tahun_ajaran.trim()) {
-      setValidationError('Tahun ajaran wajib diisi')
-      return
-    }
-
     setValidationError('')
     await onSubmit?.({
       nama_ra: formData.nama_ra.trim(),
@@ -132,7 +125,6 @@ function RAProfileForm({ initialData, saving, error, success, onSubmit }) {
       kabupaten_kota: toOptional(formData.kabupaten_kota),
       provinsi: toOptional(formData.provinsi),
       kode_pos: toOptional(formData.kode_pos),
-      tahun_ajaran: formData.tahun_ajaran.trim(),
       logo_url: formData.logo_url || undefined,
     })
   }
@@ -149,7 +141,7 @@ function RAProfileForm({ initialData, saving, error, success, onSubmit }) {
         avatarAlt={formData.nama_ra || 'Logo RA'}
         avatarFallback="RA"
         title={formData.nama_ra || '-'}
-        subtitle={formData.tahun_ajaran || '-'}
+        subtitle={initialData?.tahun_ajaran || '-'}
         items={[
           { label: 'NPSN', value: formData.npsn || '-' },
           { label: 'NSM', value: formData.nomor_statistik || '-' },
@@ -242,10 +234,6 @@ function RAProfileForm({ initialData, saving, error, success, onSubmit }) {
         <div className="flex flex-col gap-1">
           <label className={labelClass}>Website</label>
           <input className={inputClass} type="url" value={formData.website} onChange={(ev) => setField('website', ev.target.value)} placeholder="https://..." />
-        </div>
-        <div className="flex flex-col gap-1">
-          <label className={labelClass}>Tahun ajaran</label>
-          <input className={inputClass} value={formData.tahun_ajaran} onChange={(ev) => setField('tahun_ajaran', ev.target.value)} placeholder="Contoh: 2025/2026" />
         </div>
         <div className="flex flex-col gap-1 md:col-span-2">
           <label className={labelClass}>Upload logo</label>

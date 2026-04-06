@@ -14,12 +14,13 @@ from app.models.siswa import (
     SiswaListResponse,
     SiswaUpdateRequest,
 )
+from app.utils.academic_year import get_active_academic_year_id
 from app.utils.auth import get_current_user_profile
 
 router = APIRouter()
 
 SISWA_SELECT_FIELDS = (
-    "id,ra_id,nama,kelompok_id,status_aktif,nis,"
+    "id,ra_id,tahun_ajaran_id,nama,kelompok_id,status_aktif,nis,"
     "nisn,nik,tempat_lahir,tanggal_lahir,tingkat_rombel,umur_text,"
     "jenis_kelamin,alamat,no_telepon,kebutuhan_khusus,disabilitas,"
     "nomor_kip_pip,nama_ayah_kandung,nama_ibu_kandung,nama_wali"
@@ -46,15 +47,18 @@ EMIS_HEADER_ALIASES = {
 }
 
 
-def _validate_kelompok_access(supabase, ra_id: str, kelompok_id: str):
-    kelompok = (
+def _validate_kelompok_access(supabase, ra_id: str, kelompok_id: str, tahun_ajaran_id: str | None = None):
+    query = (
         supabase.table("kelompok")
         .select("id")
         .eq("id", kelompok_id)
         .eq("ra_id", ra_id)
         .limit(1)
-        .execute()
     )
+    if tahun_ajaran_id:
+        query = query.eq("tahun_ajaran_id", tahun_ajaran_id)
+
+    kelompok = query.execute()
     if not kelompok.data:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -181,6 +185,7 @@ def _build_kelompok_index(kelompok_data: list[dict]) -> dict[str, str]:
 def _get_or_create_kelompok_id_by_name(
     supabase,
     ra_id: str,
+    tahun_ajaran_id: str,
     tingkat_rombel: str | None,
     kelompok_index: dict[str, str],
     kelompok_name_by_id: dict[str, str],
@@ -201,7 +206,13 @@ def _get_or_create_kelompok_id_by_name(
     try:
         create_response = (
             supabase.table("kelompok")
-            .insert({"ra_id": ra_id, "nama_kelompok": tingkat_rombel})
+            .insert(
+                {
+                    "ra_id": ra_id,
+                    "tahun_ajaran_id": tahun_ajaran_id,
+                    "nama_kelompok": tingkat_rombel,
+                }
+            )
             .execute()
         )
         created = create_response.data[0] if create_response.data else None
@@ -249,15 +260,22 @@ def list_siswa(
 ):
     supabase = get_supabase_client()
     ra_id = current["ra_id"]
+    tahun_ajaran_id = get_active_academic_year_id(
+        supabase,
+        ra_id,
+        created_by=current["profile"]["id"],
+    )
 
     try:
         query = (
             supabase.table("siswa")
             .select(SISWA_SELECT_FIELDS)
             .eq("ra_id", ra_id)
+            .eq("tahun_ajaran_id", tahun_ajaran_id)
             .order("nama")
         )
         if kelompok_id:
+            _validate_kelompok_access(supabase, ra_id, kelompok_id, tahun_ajaran_id)
             query = query.eq("kelompok_id", kelompok_id)
         response = query.execute()
     except Exception as exc:
@@ -273,13 +291,19 @@ def list_siswa(
 def create_siswa(payload: SiswaCreateRequest, current=Depends(get_current_user_profile)):
     supabase = get_supabase_client()
     ra_id = current["ra_id"]
+    tahun_ajaran_id = get_active_academic_year_id(
+        supabase,
+        ra_id,
+        created_by=current["profile"]["id"],
+    )
 
     try:
         if payload.kelompok_id:
-            _validate_kelompok_access(supabase, ra_id, payload.kelompok_id)
+            _validate_kelompok_access(supabase, ra_id, payload.kelompok_id, tahun_ajaran_id)
 
         insert_data = payload.model_dump(exclude_none=True)
         insert_data["ra_id"] = ra_id
+        insert_data["tahun_ajaran_id"] = tahun_ajaran_id
         response = (
             supabase.table("siswa")
             .insert(insert_data)
@@ -304,6 +328,11 @@ def create_siswa(payload: SiswaCreateRequest, current=Depends(get_current_user_p
 def update_siswa(id: str, payload: SiswaUpdateRequest, current=Depends(get_current_user_profile)):
     supabase = get_supabase_client()
     ra_id = current["ra_id"]
+    tahun_ajaran_id = get_active_academic_year_id(
+        supabase,
+        ra_id,
+        created_by=current["profile"]["id"],
+    )
 
     update_data = payload.model_dump(exclude_unset=True)
     if not update_data:
@@ -313,7 +342,7 @@ def update_siswa(id: str, payload: SiswaUpdateRequest, current=Depends(get_curre
         )
 
     if "kelompok_id" in update_data and update_data["kelompok_id"]:
-        _validate_kelompok_access(supabase, ra_id, update_data["kelompok_id"])
+        _validate_kelompok_access(supabase, ra_id, update_data["kelompok_id"], tahun_ajaran_id)
 
     try:
         response = (
@@ -321,6 +350,7 @@ def update_siswa(id: str, payload: SiswaUpdateRequest, current=Depends(get_curre
             .update(update_data)
             .eq("id", id)
             .eq("ra_id", ra_id)
+            .eq("tahun_ajaran_id", tahun_ajaran_id)
             .execute()
         )
     except Exception as exc:
@@ -346,6 +376,11 @@ def update_siswa(id: str, payload: SiswaUpdateRequest, current=Depends(get_curre
 def delete_siswa(id: str, current=Depends(get_current_user_profile)):
     supabase = get_supabase_client()
     ra_id = current["ra_id"]
+    tahun_ajaran_id = get_active_academic_year_id(
+        supabase,
+        ra_id,
+        created_by=current["profile"]["id"],
+    )
 
     try:
         response = (
@@ -353,6 +388,7 @@ def delete_siswa(id: str, current=Depends(get_current_user_profile)):
             .update({"status_aktif": False})
             .eq("id", id)
             .eq("ra_id", ra_id)
+            .eq("tahun_ajaran_id", tahun_ajaran_id)
             .execute()
         )
     except Exception as exc:
@@ -382,15 +418,21 @@ async def import_siswa(
 ):
     supabase = get_supabase_client()
     ra_id = current["ra_id"]
+    tahun_ajaran_id = get_active_academic_year_id(
+        supabase,
+        ra_id,
+        created_by=current["profile"]["id"],
+    )
 
     if kelompok_id:
-        _validate_kelompok_access(supabase, ra_id, kelompok_id)
+        _validate_kelompok_access(supabase, ra_id, kelompok_id, tahun_ajaran_id)
 
     try:
         kelompok_response = (
             supabase.table("kelompok")
             .select("id,nama_kelompok")
             .eq("ra_id", ra_id)
+            .eq("tahun_ajaran_id", tahun_ajaran_id)
             .execute()
         )
         kelompok_data = kelompok_response.data or []
@@ -432,6 +474,7 @@ async def import_siswa(
                     resolved_kelompok_id = _get_or_create_kelompok_id_by_name(
                         supabase,
                         ra_id,
+                        tahun_ajaran_id,
                         mapped.get("tingkat_rombel"),
                         kelompok_index,
                         kelompok_name_by_id,
@@ -445,6 +488,7 @@ async def import_siswa(
                 imported_rows.append(
                     {
                         "ra_id": ra_id,
+                        "tahun_ajaran_id": tahun_ajaran_id,
                         "nama": nama,
                         "kelompok_id": resolved_kelompok_id,
                         "status_aktif": _to_bool_status(mapped.get("status"), default=True),
@@ -507,6 +551,7 @@ async def import_siswa(
                     resolved_kelompok_id = _get_or_create_kelompok_id_by_name(
                         supabase,
                         ra_id,
+                        tahun_ajaran_id,
                         mapped.get("tingkat_rombel"),
                         kelompok_index,
                         kelompok_name_by_id,
@@ -520,6 +565,7 @@ async def import_siswa(
                 imported_rows.append(
                     {
                         "ra_id": ra_id,
+                        "tahun_ajaran_id": tahun_ajaran_id,
                         "nama": nama,
                         "kelompok_id": resolved_kelompok_id,
                         "status_aktif": _to_bool_status(mapped.get("status"), default=True),

@@ -7,6 +7,7 @@ from app.models.kelompok import (
     KelompokListResponse,
     KelompokUpdateRequest,
 )
+from app.utils.academic_year import get_active_academic_year_id
 from app.utils.auth import get_current_user_profile
 
 router = APIRouter()
@@ -16,15 +17,21 @@ router = APIRouter()
 def list_kelompok(current=Depends(get_current_user_profile)):
     supabase = get_supabase_client()
     ra_id = current["ra_id"]
+    tahun_ajaran_id = get_active_academic_year_id(
+        supabase,
+        ra_id,
+        created_by=current["profile"]["id"],
+    )
 
     try:
         response = (
             supabase.table("kelompok")
             .select(
-                "id,ra_id,nama_kelompok,wali_kelas_id,"
+                "id,ra_id,tahun_ajaran_id,nama_kelompok,wali_kelas_id,"
                 "kode_rombel,tingkat,semester,kurikulum,ruang_kelas,kapasitas,status_rombel"
             )
             .eq("ra_id", ra_id)
+            .eq("tahun_ajaran_id", tahun_ajaran_id)
             .order("nama_kelompok")
             .execute()
         )
@@ -41,6 +48,11 @@ def list_kelompok(current=Depends(get_current_user_profile)):
 def create_kelompok(payload: KelompokCreateRequest, current=Depends(get_current_user_profile)):
     supabase = get_supabase_client()
     ra_id = current["ra_id"]
+    tahun_ajaran_id = get_active_academic_year_id(
+        supabase,
+        ra_id,
+        created_by=current["profile"]["id"],
+    )
 
     try:
         response = (
@@ -48,6 +60,7 @@ def create_kelompok(payload: KelompokCreateRequest, current=Depends(get_current_
             .insert(
                 {
                     "ra_id": ra_id,
+                    "tahun_ajaran_id": tahun_ajaran_id,
                     "nama_kelompok": payload.nama_kelompok,
                     "wali_kelas_id": payload.wali_kelas_id,
                     "kode_rombel": payload.kode_rombel,
@@ -78,6 +91,11 @@ def create_kelompok(payload: KelompokCreateRequest, current=Depends(get_current_
 def update_kelompok(id: str, payload: KelompokUpdateRequest, current=Depends(get_current_user_profile)):
     supabase = get_supabase_client()
     ra_id = current["ra_id"]
+    tahun_ajaran_id = get_active_academic_year_id(
+        supabase,
+        ra_id,
+        created_by=current["profile"]["id"],
+    )
 
     update_data = payload.model_dump(exclude_unset=True)
     if not update_data:
@@ -92,6 +110,7 @@ def update_kelompok(id: str, payload: KelompokUpdateRequest, current=Depends(get
             .update(update_data)
             .eq("id", id)
             .eq("ra_id", ra_id)
+            .eq("tahun_ajaran_id", tahun_ajaran_id)
             .execute()
         )
     except Exception as exc:
@@ -117,12 +136,18 @@ def update_kelompok(id: str, payload: KelompokUpdateRequest, current=Depends(get
 def delete_kelompok(id: str, current=Depends(get_current_user_profile)):
     supabase = get_supabase_client()
     ra_id = current["ra_id"]
+    tahun_ajaran_id = get_active_academic_year_id(
+        supabase,
+        ra_id,
+        created_by=current["profile"]["id"],
+    )
 
     try:
         siswa_response = (
             supabase.table("siswa")
             .select("id")
             .eq("ra_id", ra_id)
+            .eq("tahun_ajaran_id", tahun_ajaran_id)
             .eq("kelompok_id", id)
             .eq("status_aktif", True)
             .limit(1)
@@ -146,6 +171,7 @@ def delete_kelompok(id: str, current=Depends(get_current_user_profile)):
             .delete()
             .eq("id", id)
             .eq("ra_id", ra_id)
+            .eq("tahun_ajaran_id", tahun_ajaran_id)
             .execute()
         )
     except Exception as exc:

@@ -109,3 +109,26 @@ export async function savePresensiBatch(token, payload) {
   })
   return response?.data
 }
+
+export async function fetchAcademicYears(token) {
+  const response = await api.get('/tahun-ajaran', { headers: authHeaders(token) })
+  return {
+    data: response?.data?.data || [],
+    activeId: response?.data?.active_id || null,
+  }
+}
+
+export async function createAcademicYear(token, payload) {
+  const response = await api.post('/tahun-ajaran', payload, { headers: authHeaders(token) })
+  return response?.data?.data
+}
+
+export async function activateAcademicYear(token, tahunAjaranId) {
+  const response = await api.patch(`/tahun-ajaran/${tahunAjaranId}/activate`, {}, { headers: authHeaders(token) })
+  return response?.data?.data
+}
+
+export async function deleteAcademicYear(token, tahunAjaranId) {
+  const response = await api.delete(`/tahun-ajaran/${tahunAjaranId}`, { headers: authHeaders(token) })
+  return response?.data
+}

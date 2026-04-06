@@ -12,6 +12,7 @@ from app.models.rpph import (
     RpphListResponse,
     RpphUpdateRequest,
 )
+from app.utils.academic_year import get_active_academic_year
 from app.utils.auth import get_current_user_profile
 from app.utils.gemini import generate_response
 from app.utils.pdf import generate_rpph_pdf
@@ -70,6 +71,8 @@ def create_rpph(payload: RpphCreateRequest, current=Depends(get_current_user_pro
     supabase = get_supabase_client()
     guru_id = current["profile"]["id"]
     ra_id = current["ra_id"]
+    active_year = get_active_academic_year(supabase, ra_id, created_by=guru_id)
+    tahun_ajaran_id = active_year["id"]
 
     try:
         kelompok_check = (
@@ -77,6 +80,7 @@ def create_rpph(payload: RpphCreateRequest, current=Depends(get_current_user_pro
             .select("id")
             .eq("id", payload.kelompok_id)
             .eq("ra_id", ra_id)
+            .eq("tahun_ajaran_id", tahun_ajaran_id)
             .limit(1)
             .execute()
         )
@@ -99,6 +103,7 @@ def create_rpph(payload: RpphCreateRequest, current=Depends(get_current_user_pro
                 {
                     "guru_id": guru_id,
                     "kelompok_id": payload.kelompok_id,
+                    "tahun_ajaran_id": tahun_ajaran_id,
                     "tanggal": payload.tanggal,
                     "tema": payload.tema,
                     "subtema": payload.subtema,
@@ -125,12 +130,16 @@ def create_rpph(payload: RpphCreateRequest, current=Depends(get_current_user_pro
 def list_rpph(current=Depends(get_current_user_profile)):
     supabase = get_supabase_client()
     guru_id = current["profile"]["id"]
+    ra_id = current["ra_id"]
+    active_year = get_active_academic_year(supabase, ra_id, created_by=guru_id)
+    tahun_ajaran_id = active_year["id"]
 
     try:
         response = (
             supabase.table("rpph")
-            .select("id,guru_id,kelompok_id,tanggal,tema,subtema,konten_json,pdf_url")
+            .select("id,guru_id,tahun_ajaran_id,kelompok_id,tanggal,tema,subtema,konten_json,pdf_url")
             .eq("guru_id", guru_id)
+            .eq("tahun_ajaran_id", tahun_ajaran_id)
             .order("tanggal", desc=True)
             .execute()
         )
@@ -148,6 +157,8 @@ def update_rpph(id: str, payload: RpphUpdateRequest, current=Depends(get_current
     supabase = get_supabase_client()
     guru_id = current["profile"]["id"]
     ra_id = current["ra_id"]
+    active_year = get_active_academic_year(supabase, ra_id, created_by=guru_id)
+    tahun_ajaran_id = active_year["id"]
 
     update_data = payload.model_dump(exclude_unset=True)
     if not update_data:
@@ -164,6 +175,7 @@ def update_rpph(id: str, payload: RpphUpdateRequest, current=Depends(get_current
                 .select("id")
                 .eq("id", kelompok_id)
                 .eq("ra_id", ra_id)
+                .eq("tahun_ajaran_id", tahun_ajaran_id)
                 .limit(1)
                 .execute()
             )
@@ -185,6 +197,7 @@ def update_rpph(id: str, payload: RpphUpdateRequest, current=Depends(get_current
             .update(update_data)
             .eq("id", id)
             .eq("guru_id", guru_id)
+            .eq("tahun_ajaran_id", tahun_ajaran_id)
             .execute()
         )
     except Exception as exc:
@@ -210,6 +223,9 @@ def update_rpph(id: str, payload: RpphUpdateRequest, current=Depends(get_current
 def delete_rpph(id: str, current=Depends(get_current_user_profile)):
     supabase = get_supabase_client()
     guru_id = current["profile"]["id"]
+    ra_id = current["ra_id"]
+    active_year = get_active_academic_year(supabase, ra_id, created_by=guru_id)
+    tahun_ajaran_id = active_year["id"]
 
     try:
         delete_response = (
@@ -217,6 +233,7 @@ def delete_rpph(id: str, current=Depends(get_current_user_profile)):
             .delete()
             .eq("id", id)
             .eq("guru_id", guru_id)
+            .eq("tahun_ajaran_id", tahun_ajaran_id)
             .execute()
         )
     except Exception as exc:
@@ -242,6 +259,9 @@ def delete_rpph(id: str, current=Depends(get_current_user_profile)):
 def get_rpph_pdf(id: str, current=Depends(get_current_user_profile)):
     supabase = get_supabase_client()
     guru_id = current["profile"]["id"]
+    ra_id = current["ra_id"]
+    active_year = get_active_academic_year(supabase, ra_id, created_by=guru_id)
+    tahun_ajaran_id = active_year["id"]
 
     try:
         response = (
@@ -249,6 +269,7 @@ def get_rpph_pdf(id: str, current=Depends(get_current_user_profile)):
             .select("id,konten_json")
             .eq("id", id)
             .eq("guru_id", guru_id)
+            .eq("tahun_ajaran_id", tahun_ajaran_id)
             .limit(1)
             .execute()
         )

@@ -20,6 +20,7 @@ from app.utils.gemini import generate_response
 from app.utils.whisper import transcribe_audio
 from app.utils.retrieval import retrieve_relevant_context, build_rag_prompt
 from app.routers.dashboard import get_dashboard_guru, get_dashboard_kepala
+from app.utils.academic_year import get_active_academic_year
 from app.utils.dashboard_chat_formatter import (
     build_dashboard_text_from_endpoint,
     is_refresh_command,
@@ -89,7 +90,7 @@ def _is_admin_role(role: str) -> bool:
     return (role or "").lower() in {"kepala_ra", "kepala", "admin", "admin_ra"}
 
 
-def _build_students_context(supabase, ra_id: str, query: str) -> str | None:
+def _build_students_context(supabase, ra_id: str, tahun_ajaran_id: str, query: str) -> str | None:
     if not _looks_like_student_query(query):
         return None
 
@@ -98,6 +99,7 @@ def _build_students_context(supabase, ra_id: str, query: str) -> str | None:
             supabase.table("kelompok")
             .select("id,nama_kelompok")
             .eq("ra_id", ra_id)
+            .eq("tahun_ajaran_id", tahun_ajaran_id)
             .order("nama_kelompok")
             .execute()
         )
@@ -122,6 +124,7 @@ def _build_students_context(supabase, ra_id: str, query: str) -> str | None:
             supabase.table("siswa")
             .select("nama,nisn,status_aktif,kelompok_id,tingkat_rombel")
             .eq("ra_id", ra_id)
+            .eq("tahun_ajaran_id", tahun_ajaran_id)
             .order("nama")
         )
         if matched_kelompok:
@@ -200,13 +203,14 @@ def _build_users_context(supabase, ra_id: str, can_view_sensitive: bool) -> str 
     )
 
 
-def _build_presensi_context(supabase, ra_id: str) -> str | None:
+def _build_presensi_context(supabase, ra_id: str, tahun_ajaran_id: str) -> str | None:
     today = datetime.now(timezone.utc).date().isoformat()
     try:
         siswa_resp = (
             supabase.table("siswa")
             .select("id,nama,kelompok_id")
             .eq("ra_id", ra_id)
+            .eq("tahun_ajaran_id", tahun_ajaran_id)
             .eq("status_aktif", True)
             .execute()
         )
@@ -220,6 +224,7 @@ def _build_presensi_context(supabase, ra_id: str) -> str | None:
             supabase.table("presensi")
             .select("siswa_id,status")
             .eq("tanggal", today)
+            .eq("tahun_ajaran_id", tahun_ajaran_id)
             .in_("siswa_id", siswa_ids)
             .execute()
         )
@@ -240,7 +245,7 @@ def _build_presensi_context(supabase, ra_id: str) -> str | None:
     )
 
 
-def _build_rpph_context(supabase, ra_id: str) -> str | None:
+def _build_rpph_context(supabase, ra_id: str, tahun_ajaran_id: str) -> str | None:
     try:
         guru_resp = (
             supabase.table("profiles")
@@ -255,6 +260,7 @@ def _build_rpph_context(supabase, ra_id: str) -> str | None:
         rpph_resp = (
             supabase.table("rpph")
             .select("id,guru_id,tanggal,tema,subtema")
+            .eq("tahun_ajaran_id", tahun_ajaran_id)
             .in_("guru_id", guru_ids)
             .order("tanggal", desc=True)
             .limit(20)
@@ -401,12 +407,14 @@ def _build_system_data_context(supabase, current: dict, query: str) -> str | Non
     user_id = current["profile"]["id"]
     role = (current.get("profile") or {}).get("role") or ""
     can_view_sensitive = _is_admin_role(role)
+    active_year = get_active_academic_year(supabase, ra_id, created_by=user_id)
+    tahun_ajaran_id = active_year["id"]
 
     request_all_data = _is_requesting_all_data(query)
     sections = []
 
     if request_all_data or _looks_like_student_query(query):
-        students = _build_students_context(supabase, ra_id, query)
+        students = _build_students_context(supabase, ra_id, tahun_ajaran_id, query)
         if students:
             sections.append(("MANAJEMEN SISWA", students))
 
@@ -416,12 +424,12 @@ def _build_system_data_context(supabase, current: dict, query: str) -> str | Non
             sections.append(("MANAJEMEN PENGGUNA/GURU", users))
 
     if request_all_data or _contains_any(query, ["presensi", "kehadiran", "hadir", "izin", "sakit", "alpha"]):
-        presensi = _build_presensi_context(supabase, ra_id)
+        presensi = _build_presensi_context(supabase, ra_id, tahun_ajaran_id)
         if presensi:
             sections.append(("PRESENSI", presensi))
 
     if request_all_data or _contains_any(query, ["rpph", "rencana pembelajaran", "tema", "subtema"]):
-        rpph = _build_rpph_context(supabase, ra_id)
+        rpph = _build_rpph_context(supabase, ra_id, tahun_ajaran_id)
         if rpph:
             sections.append(("RPPH", rpph))
 

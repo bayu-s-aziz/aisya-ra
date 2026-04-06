@@ -3,6 +3,7 @@ from datetime import date, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.database import get_supabase_client
+from app.utils.academic_year import get_active_academic_year
 from app.utils.auth import get_current_user_profile
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
@@ -12,11 +13,18 @@ def _start_of_week(target: date) -> date:
     return target - timedelta(days=target.weekday())
 
 
-def _count_rpph_for_guru(supabase, guru_id: str, start_date: date, end_date: date) -> int:
+def _count_rpph_for_guru(
+    supabase,
+    guru_id: str,
+    start_date: date,
+    end_date: date,
+    tahun_ajaran_id: str,
+) -> int:
     response = (
         supabase.table("rpph")
         .select("id", count="exact")
         .eq("guru_id", guru_id)
+        .eq("tahun_ajaran_id", tahun_ajaran_id)
         .gte("tanggal", str(start_date))
         .lte("tanggal", str(end_date))
         .execute()
@@ -24,58 +32,94 @@ def _count_rpph_for_guru(supabase, guru_id: str, start_date: date, end_date: dat
     return response.count or 0
 
 
-def _count_catatan_for_guru_optional(supabase, guru_id: str, start_date: date, end_date: date) -> tuple[int, str]:
+def _count_catatan_for_guru_optional(
+    supabase,
+    guru_id: str,
+    start_date: date,
+    end_date: date,
+    tahun_ajaran_id: str,
+) -> tuple[int, str]:
     try:
         response = (
             supabase.table("catatan_anekdot")
             .select("id", count="exact")
             .eq("guru_id", guru_id)
+            .eq("tahun_ajaran_id", tahun_ajaran_id)
             .gte("tanggal", str(start_date))
             .lte("tanggal", str(end_date))
             .execute()
         )
         return response.count or 0, "catatan"
     except Exception:
-        fallback_count = _count_rpph_for_guru(supabase, guru_id, start_date, end_date)
+        fallback_count = _count_rpph_for_guru(
+            supabase,
+            guru_id,
+            start_date,
+            end_date,
+            tahun_ajaran_id,
+        )
         return fallback_count, "rpph_fallback"
 
 
-def _get_active_students_in_ra(supabase, ra_id: str):
+def _get_active_students_in_ra(supabase, ra_id: str, tahun_ajaran_id: str):
+    kelompok_response = (
+        supabase.table("kelompok")
+        .select("id,nama_kelompok")
+        .eq("ra_id", ra_id)
+        .eq("tahun_ajaran_id", tahun_ajaran_id)
+        .execute()
+    )
+    kelompok_map = {
+        item["id"]: item.get("nama_kelompok")
+        for item in (kelompok_response.data or [])
+        if item.get("id")
+    }
+
     siswa_response = (
         supabase.table("siswa")
-        .select("id,nama,kelompok_id,kelompok:kelompok_id(id,nama_kelompok,ra_id)")
+        .select("id,nama,kelompok_id")
+        .eq("ra_id", ra_id)
+        .eq("tahun_ajaran_id", tahun_ajaran_id)
         .eq("status_aktif", True)
         .execute()
     )
 
     result = []
     for siswa in siswa_response.data or []:
-        kelompok = siswa.get("kelompok")
-        if kelompok and kelompok.get("ra_id") == ra_id:
+        kelompok_id = siswa.get("kelompok_id")
+        if kelompok_id in kelompok_map:
             result.append(
                 {
                     "id": siswa["id"],
                     "nama": siswa["nama"],
-                    "kelompok_id": siswa.get("kelompok_id"),
-                    "kelompok_nama": kelompok.get("nama_kelompok"),
+                    "kelompok_id": kelompok_id,
+                    "kelompok_nama": kelompok_map.get(kelompok_id),
                 }
             )
     return result
 
 
-def _get_students_without_catatan_7_days_optional(supabase, ra_id: str, today: date):
-    students = _get_active_students_in_ra(supabase, ra_id)
+def _get_students_without_catatan_7_days_optional(
+    supabase,
+    ra_id: str,
+    today: date,
+    tahun_ajaran_id: str,
+):
+    students = _get_active_students_in_ra(supabase, ra_id, tahun_ajaran_id)
     if not students:
         return [], "catatan"
 
     start_date = today - timedelta(days=7)
+    student_ids = [item["id"] for item in students]
 
     try:
         catatan_response = (
             supabase.table("catatan_anekdot")
             .select("siswa_id")
+            .eq("tahun_ajaran_id", tahun_ajaran_id)
             .gte("tanggal", str(start_date))
             .lte("tanggal", str(today))
+            .in_("siswa_id", student_ids)
             .execute()
         )
         siswa_with_catatan = {item["siswa_id"] for item in (catatan_response.data or []) if item.get("siswa_id")}
@@ -84,8 +128,10 @@ def _get_students_without_catatan_7_days_optional(supabase, ra_id: str, today: d
         presensi_response = (
             supabase.table("presensi")
             .select("siswa_id")
+            .eq("tahun_ajaran_id", tahun_ajaran_id)
             .gte("tanggal", str(start_date))
             .lte("tanggal", str(today))
+            .in_("siswa_id", student_ids)
             .execute()
         )
         siswa_with_catatan = {item["siswa_id"] for item in (presensi_response.data or []) if item.get("siswa_id")}
@@ -109,8 +155,10 @@ def _get_students_without_catatan_7_days_optional(supabase, ra_id: str, today: d
 def get_dashboard_guru(current=Depends(get_current_user_profile)):
     supabase = get_supabase_client()
     profile = current["profile"]
-    guru_id = profile["profile"]["id"]
+    guru_id = profile["id"]
     ra_id = current["ra_id"]
+    active_year = get_active_academic_year(supabase, ra_id, created_by=guru_id)
+    tahun_ajaran_id = active_year["id"]
 
     today = date.today()
     start_week = _start_of_week(today)
@@ -120,6 +168,7 @@ def get_dashboard_guru(current=Depends(get_current_user_profile)):
             supabase.table("rpph")
             .select("id", count="exact")
             .eq("guru_id", guru_id)
+            .eq("tahun_ajaran_id", tahun_ajaran_id)
             .eq("tanggal", str(today))
             .execute()
             .count
@@ -127,17 +176,25 @@ def get_dashboard_guru(current=Depends(get_current_user_profile)):
         )
 
         catatan_week_count, catatan_source = _count_catatan_for_guru_optional(
-            supabase, guru_id, start_week, today
+            supabase,
+            guru_id,
+            start_week,
+            today,
+            tahun_ajaran_id,
         )
 
         siswa_tanpa_catatan, siswa_tanpa_catatan_source = _get_students_without_catatan_7_days_optional(
-            supabase, ra_id, today
+            supabase,
+            ra_id,
+            today,
+            tahun_ajaran_id,
         )
 
         kelompok_response = (
             supabase.table("kelompok")
             .select("id,nama_kelompok")
             .eq("ra_id", ra_id)
+            .eq("tahun_ajaran_id", tahun_ajaran_id)
             .order("nama_kelompok")
             .execute()
         )
@@ -157,6 +214,8 @@ def get_dashboard_guru(current=Depends(get_current_user_profile)):
                 supabase.table("siswa")
                 .select("id", count="exact")
                 .eq("kelompok_id", kelompok["id"])
+                .eq("ra_id", ra_id)
+                .eq("tahun_ajaran_id", tahun_ajaran_id)
                 .eq("status_aktif", True)
                 .execute()
             )
@@ -166,6 +225,8 @@ def get_dashboard_guru(current=Depends(get_current_user_profile)):
                 supabase.table("siswa")
                 .select("id")
                 .eq("kelompok_id", kelompok["id"])
+                .eq("ra_id", ra_id)
+                .eq("tahun_ajaran_id", tahun_ajaran_id)
                 .eq("status_aktif", True)
                 .execute()
             )
@@ -179,6 +240,7 @@ def get_dashboard_guru(current=Depends(get_current_user_profile)):
                     supabase.table("presensi")
                     .select("siswa_id,status")
                     .eq("tanggal", str(today))
+                    .eq("tahun_ajaran_id", tahun_ajaran_id)
                     .in_("siswa_id", siswa_ids)
                     .execute()
                 )
@@ -242,6 +304,7 @@ def get_dashboard_guru(current=Depends(get_current_user_profile)):
                 "total": total_rekap,
                 "per_kelompok": rekap_per_kelompok,
             },
+            "tahun_ajaran_aktif": active_year.get("label"),
         },
     }
 
@@ -258,6 +321,9 @@ def get_dashboard_kepala(current=Depends(get_current_user_profile)):
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Hanya Kepala RA/Admin yang bisa mengakses dashboard ini",
         )
+
+    active_year = get_active_academic_year(supabase, ra_id, created_by=profile["id"])
+    tahun_ajaran_id = active_year["id"]
 
     today = date.today()
     start_week = _start_of_week(today)
@@ -279,19 +345,31 @@ def get_dashboard_kepala(current=Depends(get_current_user_profile)):
                 supabase.table("rpph")
                 .select("id", count="exact")
                 .eq("guru_id", guru["id"])
+                .eq("tahun_ajaran_id", tahun_ajaran_id)
                 .eq("tanggal", str(today))
                 .execute()
                 .count
                 or 0
             )
-            rpph_week = _count_rpph_for_guru(supabase, guru["id"], start_week, today)
+            rpph_week = _count_rpph_for_guru(
+                supabase,
+                guru["id"],
+                start_week,
+                today,
+                tahun_ajaran_id,
+            )
             catatan_week, catatan_source = _count_catatan_for_guru_optional(
-                supabase, guru["id"], start_week, today
+                supabase,
+                guru["id"],
+                start_week,
+                today,
+                tahun_ajaran_id,
             )
             presensi_dicatat = (
                 supabase.table("presensi")
                 .select("id", count="exact")
                 .eq("dicatat_oleh", guru["id"])
+                .eq("tahun_ajaran_id", tahun_ajaran_id)
                 .eq("tanggal", str(today))
                 .execute()
                 .count
@@ -315,6 +393,7 @@ def get_dashboard_kepala(current=Depends(get_current_user_profile)):
             supabase.table("kelompok")
             .select("id,nama_kelompok")
             .eq("ra_id", ra_id)
+            .eq("tahun_ajaran_id", tahun_ajaran_id)
             .order("nama_kelompok")
             .execute()
         )
@@ -325,6 +404,8 @@ def get_dashboard_kepala(current=Depends(get_current_user_profile)):
                 supabase.table("siswa")
                 .select("id", count="exact")
                 .eq("kelompok_id", kelas["id"])
+                .eq("ra_id", ra_id)
+                .eq("tahun_ajaran_id", tahun_ajaran_id)
                 .eq("status_aktif", True)
                 .execute()
                 .count
@@ -335,6 +416,7 @@ def get_dashboard_kepala(current=Depends(get_current_user_profile)):
                 supabase.table("rpph")
                 .select("id", count="exact")
                 .eq("kelompok_id", kelas["id"])
+                .eq("tahun_ajaran_id", tahun_ajaran_id)
                 .gte("tanggal", str(start_week))
                 .lte("tanggal", str(today))
                 .execute()
@@ -346,6 +428,8 @@ def get_dashboard_kepala(current=Depends(get_current_user_profile)):
                 supabase.table("siswa")
                 .select("id")
                 .eq("kelompok_id", kelas["id"])
+                .eq("ra_id", ra_id)
+                .eq("tahun_ajaran_id", tahun_ajaran_id)
                 .eq("status_aktif", True)
                 .execute()
             )
@@ -357,6 +441,7 @@ def get_dashboard_kepala(current=Depends(get_current_user_profile)):
                     supabase.table("presensi")
                     .select("id", count="exact")
                     .eq("tanggal", str(today))
+                    .eq("tahun_ajaran_id", tahun_ajaran_id)
                     .in_("siswa_id", siswa_ids)
                     .execute()
                     .count
@@ -385,5 +470,6 @@ def get_dashboard_kepala(current=Depends(get_current_user_profile)):
             "tanggal": str(today),
             "summary_per_guru": summary_per_guru,
             "summary_per_kelas": summary_per_kelas,
+            "tahun_ajaran_aktif": active_year.get("label"),
         },
     }

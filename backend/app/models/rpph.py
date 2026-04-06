@@ -37,6 +37,7 @@ class RpphUpdateRequest(BaseModel):
 class RpphItem(BaseModel):
     id: str
     guru_id: str
+    tahun_ajaran_id: str | None = None
     kelompok_id: str
     tanggal: str
     tema: str

@@ -101,6 +101,12 @@ const DASHBOARD_MENUS = [
     icon: BuildingLibraryIcon,
   },
   {
+    id: 'manajemen-tahun-ajaran',
+    label: 'Manajemen Tahun Ajaran',
+    icon: CalendarDaysIcon,
+    adminOnly: true,
+  },
+  {
     id: 'manajemen-siswa',
     label: 'Manajemen Siswa',
     icon: AcademicCapIcon,
