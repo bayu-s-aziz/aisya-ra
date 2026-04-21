@@ -3,7 +3,6 @@ uvicorn
 supabase
 python-dotenv
 google-genai
-groq
 python-multipart
 openpyxl
 weasyprint

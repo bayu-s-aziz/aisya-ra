@@ -1,11 +1,14 @@
-from groq import Groq
+import mimetypes
+
+from google import genai
+from google.genai import types
 
 from app.config import settings
 
 
 def transcribe_audio(file_bytes: bytes, filename: str = "audio.wav") -> str:
     """
-    Transcribe audio file using Groq Whisper API.
+    Transcribe audio file using Google AI Studio (Gemini).
     
     Args:
         file_bytes: Audio file content in bytes
@@ -14,20 +17,28 @@ def transcribe_audio(file_bytes: bytes, filename: str = "audio.wav") -> str:
     Returns:
         Transcribed text
     """
-    if not settings.GROQ_API_KEY:
-        raise ValueError("GROQ_API_KEY belum diset di environment variables")
+    if not settings.GEMINI_API_KEY:
+        raise ValueError("GEMINI_API_KEY belum diset di environment variables")
 
-    client = Groq(api_key=settings.GROQ_API_KEY)
+    if not file_bytes:
+        raise ValueError("File audio kosong")
 
-    # Create a file-like object from bytes
-    from io import BytesIO
-    audio_file = BytesIO(file_bytes)
-    audio_file.name = filename
+    client = genai.Client(api_key=settings.GEMINI_API_KEY)
+    mime_type, _ = mimetypes.guess_type(filename or "audio.wav")
+    audio_mime_type = mime_type or "audio/wav"
+    model_name = getattr(settings, "GEMINI_TRANSCRIBE_MODEL", "") or getattr(settings, "GEMINI_MODEL", "") or "gemini-2.5-flash"
 
-    transcription = client.audio.transcriptions.create(
-        file=audio_file,
-        model="whisper-large-v3",
-        response_format="text",
+    prompt = (
+        "Transkripsikan audio ini ke teks bahasa Indonesia dengan akurat. "
+        "Kembalikan hanya teks transkripsinya tanpa tambahan penjelasan."
     )
 
-    return transcription
+    response = client.models.generate_content(
+        model=model_name,
+        contents=[
+            prompt,
+            types.Part.from_bytes(data=file_bytes, mime_type=audio_mime_type),
+        ],
+    )
+
+    return (getattr(response, "text", None) or "").strip()
