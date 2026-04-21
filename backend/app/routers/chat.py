@@ -1,6 +1,8 @@
 import json
+from difflib import get_close_matches
 from datetime import date, datetime, timedelta, timezone
 import re
+from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
@@ -12,6 +14,8 @@ from app.models.chat import (
     ChatRoomListResponse,
     CreateChatRoomRequest,
     CreateChatRoomResponse,
+    ChatVocabularySettingsRequest,
+    ChatVocabularySettingsResponse,
     SendMessageRequest,
     SendMessageResponse,
     VoiceMessageResponse,
@@ -32,6 +36,145 @@ router = APIRouter()
 
 VALID_TIPE = {'utama', 'rpph', 'anekdot', 'surat', 'presensi', 'custom', 'dashboard'}
 VALID_PRESENSI_STATUS = {"hadir", "sakit", "izin", "alpha"}
+
+NATURAL_TOKEN_NORMALIZATION = {
+    "g": "tidak",
+    "ga": "tidak",
+    "gak": "tidak",
+    "gk": "tidak",
+    "enggak": "tidak",
+    "ngga": "tidak",
+    "nggak": "tidak",
+    "ndak": "tidak",
+    "dak": "tidak",
+    "ora": "tidak",
+    "teu": "tidak",
+    "henteu": "tidak",
+    "mboten": "tidak",
+    "tlg": "tolong",
+    "plis": "tolong",
+    "please": "tolong",
+    "tolongin": "tolong",
+    "catet": "catat",
+    "catetin": "catat",
+    "catatin": "catat",
+    "catetkan": "catat",
+    "tandain": "tandai",
+    "tmbh": "tambah",
+    "tmbahin": "tambah",
+    "daftarin": "daftarkan",
+    "masukin": "masukkan",
+    "inputin": "input",
+    "pindahin": "pindah",
+    "geserin": "geser",
+    "mutasiin": "mutasi",
+    "kls": "kelas",
+    "klsnya": "kelas",
+    "klass": "kelas",
+    "grup": "kelompok",
+    "group": "kelompok",
+    "rombelnya": "rombel",
+    "murid": "siswa",
+    "anak": "siswa",
+    "anakdidik": "siswa",
+    "asup": "masuk",
+    "mlebu": "masuk",
+    "mlebet": "masuk",
+    "ijin": "izin",
+    "ijinn": "izin",
+    "alfa": "alpha",
+    "alpa": "alpha",
+    "hr": "hari",
+    "ni": "ini",
+    "kmrn": "kemarin",
+    "skrng": "sekarang",
+    "skrg": "sekarang",
+    "sklh": "sekolah",
+    "madrasah": "ra",
+    "kamad": "kepala",
+    "kepsek": "kepala",
+    "kepmad": "kepala",
+    "kepala_sekolah": "kepala",
+    "yayasan": "penyelenggara",
+    "ta": "tahun",
+    "thn": "tahun",
+    "th": "tahun",
+}
+
+NATURAL_PHRASE_NORMALIZATION = [
+    ("tdk", "tidak"),
+    ("bukan nya", "bukannya"),
+    ("ta aktif", "tahun ajaran aktif"),
+    ("thn ajaran", "tahun ajaran"),
+    ("th ajaran", "tahun ajaran"),
+    ("tahun ajrn", "tahun ajaran"),
+    ("kepala sekolah", "kepala ra"),
+    ("kepala madrasah", "kepala ra"),
+    ("nama sekolah", "nama ra"),
+    ("tak hadir", "tidak hadir"),
+    ("ga hadir", "tidak hadir"),
+    ("gak hadir", "tidak hadir"),
+    ("nggak hadir", "tidak hadir"),
+    ("ga masuk", "tidak masuk"),
+    ("gak masuk", "tidak masuk"),
+    ("nggak masuk", "tidak masuk"),
+    ("tak masuk", "tidak masuk"),
+]
+
+NATURAL_INTENT_VOCAB = sorted(
+    {
+        "tolong",
+        "mohon",
+        "catat",
+        "tandai",
+        "set",
+        "ubah",
+        "update",
+        "tambah",
+        "daftarkan",
+        "masukkan",
+        "input",
+        "pindah",
+        "mutasi",
+        "geser",
+        "siswa",
+        "kelompok",
+        "kelas",
+        "rombel",
+        "presensi",
+        "kehadiran",
+        "tidak",
+        "hadir",
+        "masuk",
+        "sakit",
+        "izin",
+        "alpha",
+        "absen",
+        "hari",
+        "kemarin",
+        "sekarang",
+        "nama",
+        "sekolah",
+        "ra",
+        "kepala",
+        "guru",
+        "gtk",
+        "tahun",
+        "ajaran",
+        "kalender",
+        "libur",
+        "surat",
+        "template",
+        "notifikasi",
+        "knowledge",
+        "dokumen",
+    }
+)
+
+MULTI_STEP_SEPARATOR_PATTERN = re.compile(
+    r"\s*(?:\n+|;|,)?\s*(?:lalu|kemudian|selanjutnya|setelah itu|habis itu|terus)\s+",
+    flags=re.IGNORECASE,
+)
 
 
 def _is_valid_uuid(value: str) -> bool:
@@ -56,6 +199,141 @@ def _normalize_text(value: str) -> str:
     return re.sub(r"\s+", " ", lowered)
 
 
+def _normalize_natural_language_query(value: str) -> str:
+    normalized = _normalize_text(value)
+    if not normalized:
+        return ""
+
+    for source, target in NATURAL_PHRASE_NORMALIZATION:
+        normalized = re.sub(rf"\b{re.escape(source)}\b", target, normalized)
+
+    cleaned = re.sub(r"[^a-z0-9\s\-]", " ", normalized)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    if not cleaned:
+        return ""
+
+    canonical_tokens = []
+    for token in cleaned.split(" "):
+        token_reduced = re.sub(r"(.)\1{2,}", r"\1", token)
+        mapped = NATURAL_TOKEN_NORMALIZATION.get(token_reduced, token_reduced)
+
+        if mapped == token_reduced and len(token_reduced) >= 4 and token_reduced.isalpha():
+            close_match = get_close_matches(token_reduced, NATURAL_INTENT_VOCAB, n=1, cutoff=0.86)
+            if close_match:
+                mapped = close_match[0]
+
+        canonical_tokens.append(mapped)
+
+    return re.sub(r"\s+", " ", " ".join(canonical_tokens)).strip()
+
+
+def _sanitize_custom_vocab_map(value: Any, max_items: int = 200) -> dict[str, str]:
+    if not isinstance(value, dict):
+        return {}
+
+    sanitized: dict[str, str] = {}
+    for raw_key, raw_target in value.items():
+        if len(sanitized) >= max_items:
+            break
+
+        if not isinstance(raw_key, str) or not isinstance(raw_target, str):
+            continue
+
+        key = _normalize_text(raw_key)
+        target = _normalize_text(raw_target)
+        if not key or not target:
+            continue
+
+        if len(key) > 60 or len(target) > 120:
+            continue
+
+        sanitized[key] = target
+
+    return sanitized
+
+
+def _load_ra_chat_vocabulary(supabase, ra_id: str) -> dict[str, dict[str, str]]:
+    try:
+        response = (
+            supabase.table("chat_local_vocabulary")
+            .select("token_map,phrase_map")
+            .eq("ra_id", ra_id)
+            .limit(1)
+            .execute()
+        )
+    except Exception:
+        return {"token_map": {}, "phrase_map": {}}
+
+    if not response.data:
+        return {"token_map": {}, "phrase_map": {}}
+
+    row = response.data[0] if isinstance(response.data[0], dict) else {}
+    return {
+        "token_map": _sanitize_custom_vocab_map(row.get("token_map")),
+        "phrase_map": _sanitize_custom_vocab_map(row.get("phrase_map")),
+    }
+
+
+def _apply_custom_vocabulary(query: str, vocab: dict[str, dict[str, str]] | None) -> str:
+    text = (query or "").strip()
+    if not text or not isinstance(vocab, dict):
+        return text
+
+    phrase_map = _sanitize_custom_vocab_map(vocab.get("phrase_map"))
+    token_map = _sanitize_custom_vocab_map(vocab.get("token_map"))
+
+    normalized = _normalize_text(text)
+
+    # Replace longer phrases first to keep deterministic substitution.
+    for src, target in sorted(phrase_map.items(), key=lambda item: len(item[0]), reverse=True):
+        normalized = re.sub(rf"\b{re.escape(src)}\b", target, normalized)
+
+    if token_map:
+        def _token_replacer(match):
+            token = _normalize_text(match.group(0))
+            return token_map.get(token, match.group(0))
+
+        normalized = re.sub(r"\b[a-z0-9_-]+\b", _token_replacer, normalized)
+
+    return re.sub(r"\s+", " ", normalized).strip()
+
+
+def _split_multi_step_commands(query: str) -> list[str]:
+    raw = (query or "").strip()
+    if not raw:
+        return []
+
+    text = re.sub(r"\s+", " ", raw)
+    parts = [part.strip(" ,;.") for part in MULTI_STEP_SEPARATOR_PATTERN.split(text)]
+    parts = [part for part in parts if part]
+
+    # Fallback for numbered instructions: "1. ... 2. ..."
+    if len(parts) <= 1:
+        numbered_parts = [
+            part.strip(" ,;.")
+            for part in re.split(r"\s+\d+\.\s+", f" 1. {text}")
+            if part.strip(" ,;.")
+        ]
+        if len(numbered_parts) > 1:
+            return numbered_parts
+
+    return parts
+
+
+def _is_followup_step_command(step_query: str) -> bool:
+    normalized = _normalize_natural_language_query(step_query)
+    return _contains_any(
+        normalized,
+        [
+            "dari hasil itu",
+            "dari hasil tadi",
+            "pakai data tadi",
+            "gunakan hasil sebelumnya",
+            "lanjutkan",
+        ],
+    )
+
+
 def _looks_like_student_query(query: str) -> bool:
     normalized_query = _normalize_text(query)
     keywords = [
@@ -71,7 +349,18 @@ def _looks_like_student_query(query: str) -> bool:
 
 def _contains_any(query: str, keywords: list[str]) -> bool:
     normalized_query = _normalize_text(query)
-    return any(keyword in normalized_query for keyword in keywords)
+    natural_query = _normalize_natural_language_query(query)
+
+    for keyword in keywords:
+        normalized_keyword = _normalize_text(keyword)
+        if normalized_keyword and normalized_keyword in normalized_query:
+            return True
+
+        natural_keyword = _normalize_natural_language_query(keyword)
+        if natural_keyword and natural_keyword in natural_query:
+            return True
+
+    return False
 
 
 def _is_requesting_all_data(query: str) -> bool:
@@ -475,25 +764,34 @@ def _build_system_data_context(supabase, current: dict, query: str) -> str | Non
 
 
 def _normalize_presensi_status(value: str | None) -> str | None:
-    normalized = _normalize_text(value or "")
+    normalized = _normalize_natural_language_query(value or "")
     if not normalized:
         return None
 
     if normalized in VALID_PRESENSI_STATUS:
         return normalized
 
-    if normalized in {"alfa", "tanpa keterangan", "tidak hadir", "tidak masuk", "absen"}:
+    if any(term in normalized for term in {"alpha", "alfa", "alpa", "tanpa keterangan", "tidak hadir", "tidak masuk", "absen", "bolos", "mangkir"}):
         return "alpha"
+
+    if "izin" in normalized:
+        return "izin"
+
+    if "sakit" in normalized:
+        return "sakit"
+
+    if normalized == "hadir":
+        return "hadir"
 
     return None
 
 
 def _parse_date_value(value: str | None) -> str | None:
-    normalized = _normalize_text(value or "")
+    normalized = _normalize_natural_language_query(value or "")
     if not normalized:
         return None
 
-    if normalized in {"hari ini", "today", "sekarang"}:
+    if normalized in {"hari ini", "today", "sekarang", "tanggal ini"}:
         return date.today().isoformat()
     if normalized in {"kemarin", "yesterday"}:
         return (date.today() - timedelta(days=1)).isoformat()
@@ -537,32 +835,489 @@ def _parse_json_object(text: str) -> dict | None:
     return None
 
 
+def _sanitize_person_name(value: str) -> str:
+    cleaned = re.sub(r"\s+", " ", (value or "").strip())
+    cleaned = re.sub(r"^(?:si|ananda|siswa|murid)\s+", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"^[\-,:;\s]+|[\-,:;\s]+$", "", cleaned)
+    return cleaned
+
+
+def _strip_name_prefix_noise(value: str) -> str:
+    cleaned = _sanitize_person_name(value)
+    prefix_pattern = (
+        r"^(?:tolong|mohon|bantu|catat|tandai|input|set|ubah|update|masukkan|daftarkan|"
+        r"pindahkan|pindah|geser|mutasi|si|siswa|murid|ananda)\s+"
+    )
+    previous = None
+    while cleaned and previous != cleaned:
+        previous = cleaned
+        cleaned = re.sub(prefix_pattern, "", cleaned, flags=re.IGNORECASE).strip()
+    return _sanitize_person_name(cleaned)
+
+
+def _looks_like_valid_name(value: str) -> bool:
+    candidate = _sanitize_person_name(value)
+    if len(candidate) < 2:
+        return False
+
+    lowered = candidate.lower()
+    tokens = set(lowered.split())
+    stop_terms = {
+        "siswa",
+        "murid",
+        "hadir",
+        "sakit",
+        "izin",
+        "alpha",
+        "alfa",
+        "tidak hadir",
+        "tidak masuk",
+        "absen",
+        "ke",
+        "dari",
+        "kelompok",
+        "kelas",
+        "rombel",
+        "hari ini",
+        "kemarin",
+    }
+    disallowed_tokens = {
+        "tolong",
+        "mohon",
+        "bantu",
+        "catat",
+        "tandai",
+        "input",
+        "set",
+        "ubah",
+        "update",
+        "masukkan",
+        "daftarkan",
+        "pindah",
+        "mutasi",
+        "geser",
+    }
+
+    if lowered in stop_terms:
+        return False
+
+    return len(tokens.intersection(disallowed_tokens)) == 0
+
+
+def _split_candidate_names(raw: str) -> list[str]:
+    text = _sanitize_person_name(raw)
+    if not text:
+        return []
+
+    chunks = re.split(r"\s*(?:,| dan | & | serta )\s*", text, flags=re.IGNORECASE)
+    names = []
+    for chunk in chunks:
+        name = _strip_name_prefix_noise(chunk)
+        if _looks_like_valid_name(name):
+            names.append(name)
+    return names
+
+
+def _extract_attendance_records_rule_based(query: str) -> list[dict]:
+    records = []
+    q = (query or "").strip()
+    if not q:
+        return []
+
+    date_match = re.search(r"(\d{4}-\d{2}-\d{2}|\d{2}[/-]\d{2}[/-]\d{4}|hari ini|kemarin)", q, flags=re.IGNORECASE)
+    tanggal_value = _parse_date_value(date_match.group(1)) if date_match else None
+
+    pattern = re.compile(
+        r"(?P<nama>[A-Za-z][A-Za-z' .-]{1,80})\s+(?P<status>hadir|sakit|izin|alpha|alfa|tidak hadir|tidak masuk|absen)",
+        flags=re.IGNORECASE,
+    )
+    for match in pattern.finditer(q):
+        nama = _strip_name_prefix_noise(match.group("nama"))
+        status = _normalize_presensi_status(match.group("status"))
+        if not _looks_like_valid_name(nama) or not status:
+            continue
+        records.append(
+            {
+                "nama_siswa": nama,
+                "status": status,
+                "tanggal": tanggal_value,
+                "keterangan": None,
+            }
+        )
+
+    return records
+
+
+def _extract_new_students_rule_based(query: str) -> list[dict]:
+    q = (query or "").strip()
+    if not q:
+        return []
+
+    patterns = [
+        re.compile(
+            r"(?:tambah(?:kan)?|daftarkan|input|masukkan)\s+(?:siswa\s+)?(?P<nama>.+?)\s+(?:ke|di)\s+(?:kelompok|kelas|rombel)\s+(?P<kelompok>[A-Za-z0-9 .-]{1,80})",
+            flags=re.IGNORECASE,
+        ),
+        re.compile(
+            r"(?:siswa\s+)?(?P<nama>.+?)\s+(?:masuk|gabung)\s+(?:ke|di)\s+(?:kelompok|kelas|rombel)\s+(?P<kelompok>[A-Za-z0-9 .-]{1,80})",
+            flags=re.IGNORECASE,
+        ),
+    ]
+
+    records = []
+    for pattern in patterns:
+        match = pattern.search(q)
+        if not match:
+            continue
+
+        raw_names = match.group("nama")
+        kelompok = _sanitize_person_name(match.group("kelompok"))
+        for name in _split_candidate_names(raw_names):
+            records.append(
+                {
+                    "nama_siswa": name,
+                    "nama_kelompok": kelompok,
+                    "nisn": None,
+                    "jenis_kelamin": None,
+                }
+            )
+
+        if records:
+            return records
+
+    return []
+
+
+def _extract_transfer_students_rule_based(query: str) -> list[dict]:
+    q = (query or "").strip()
+    if not q:
+        return []
+
+    with_origin = re.search(
+        r"(?:pindah(?:kan)?|mutasi(?:kan)?|geser(?:kan)?)\s+(?:siswa\s+)?(?P<nama>.+?)\s+dari\s+(?:kelompok|kelas|rombel)\s+(?P<asal>[A-Za-z0-9 .-]{1,80})\s+ke\s+(?:kelompok|kelas|rombel)\s+(?P<tujuan>[A-Za-z0-9 .-]{1,80})",
+        q,
+        flags=re.IGNORECASE,
+    )
+    if with_origin:
+        tujuan = _sanitize_person_name(with_origin.group("tujuan"))
+        asal = _sanitize_person_name(with_origin.group("asal"))
+        return [
+            {
+                "nama_siswa": name,
+                "kelompok_tujuan": tujuan,
+                "kelompok_asal": asal,
+            }
+            for name in _split_candidate_names(with_origin.group("nama"))
+        ]
+
+    without_origin = re.search(
+        r"(?:pindah(?:kan)?|mutasi(?:kan)?|geser(?:kan)?)\s+(?:siswa\s+)?(?P<nama>.+?)\s+ke\s+(?:kelompok|kelas|rombel)\s+(?P<tujuan>[A-Za-z0-9 .-]{1,80})",
+        q,
+        flags=re.IGNORECASE,
+    )
+    if without_origin:
+        tujuan = _sanitize_person_name(without_origin.group("tujuan"))
+        return [
+            {
+                "nama_siswa": name,
+                "kelompok_tujuan": tujuan,
+                "kelompok_asal": None,
+            }
+            for name in _split_candidate_names(without_origin.group("nama"))
+        ]
+
+    return []
+
+
+def _iter_query_variants(query: str):
+    yielded = set()
+    raw = (query or "").strip()
+    if raw:
+        yielded.add(raw)
+        yield raw
+
+    natural = _normalize_natural_language_query(query)
+    if natural and natural not in yielded:
+        yield natural
+
+
+def _looks_like_read_only_operational_query(query: str) -> bool:
+    normalized = _normalize_natural_language_query(query)
+    if not normalized:
+        return False
+
+    looks_like_info = _contains_any(
+        normalized,
+        [
+            "rekap",
+            "laporan",
+            "ringkasan",
+            "daftar",
+            "list",
+            "tampilkan",
+            "berikan",
+            "sebutkan",
+            "siapa",
+            "berapa",
+            "kapan",
+            "tanggal",
+            "jam",
+        ],
+    )
+    if not looks_like_info:
+        return False
+
+    has_strong_action_verb = _contains_any(
+        normalized,
+        [
+            "catat",
+            "tandai",
+            "input",
+            "set",
+            "ubah",
+            "update",
+            "masukkan",
+            "tambah",
+            "tambahkan",
+            "daftarkan",
+            "pindah",
+            "mutasi",
+            "geser",
+        ],
+    )
+    return not has_strong_action_verb
+
+
+def _extract_target_kelompok_name(query: str) -> str | None:
+    text = (query or "").strip()
+    if not text:
+        return None
+
+    patterns = [
+        r"(?:kelompok|kelas|rombel)\s+([A-Za-z0-9][A-Za-z0-9 .-]{0,79})",
+        r"\b([A-Za-z0-9][A-Za-z0-9 .-]{0,79})\s+(?:kelompok|kelas|rombel)\b",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, text, flags=re.IGNORECASE)
+        if not match:
+            continue
+
+        candidate = _sanitize_person_name(match.group(1))
+        candidate = re.split(r"\b(?:untuk|yang|di|ke|dari|agar|supaya)\b", candidate, maxsplit=1, flags=re.IGNORECASE)[0]
+        candidate = re.sub(r"^(?:kelompok|kelas|rombel)\s+", "", candidate, flags=re.IGNORECASE)
+        candidate = _sanitize_person_name(candidate)
+        if candidate:
+            return candidate
+
+    return None
+
+
+def _infer_latest_kelompok_from_recent_chat(supabase, room_id: str) -> str | None:
+    if not room_id:
+        return None
+
+    try:
+        rows = (
+            supabase.table("chat_history")
+            .select("role_msg,content,timestamp")
+            .eq("room_id", room_id)
+            .order("timestamp", desc=True)
+            .limit(16)
+            .execute()
+        ).data or []
+    except Exception:
+        return None
+
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        if row.get("role_msg") != "user":
+            continue
+        candidate = _extract_target_kelompok_name((row.get("content") or "").strip())
+        if candidate:
+            return candidate
+
+    return None
+
+
+def _format_student_list_by_kelompok(
+    supabase,
+    ra_id: str,
+    tahun_ajaran_id: str,
+    nama_kelompok_target: str,
+) -> str:
+    try:
+        kelompok_rows = (
+            supabase.table("kelompok")
+            .select("id,nama_kelompok")
+            .eq("ra_id", ra_id)
+            .eq("tahun_ajaran_id", tahun_ajaran_id)
+            .order("nama_kelompok")
+            .execute()
+        ).data or []
+    except Exception as exc:
+        return f"Gagal mengambil data kelompok: {exc}"
+
+    if not kelompok_rows:
+        return "Belum ada kelompok pada tahun ajaran aktif."
+
+    kelompok_row, candidates = _resolve_kelompok_by_name(kelompok_rows, nama_kelompok_target)
+    if not kelompok_row:
+        pilihan = ", ".join(candidates) if candidates else ", ".join(
+            [str(item.get("nama_kelompok") or "-") for item in kelompok_rows[:10] if isinstance(item, dict)]
+        )
+        return f"Kelompok '{nama_kelompok_target}' tidak ditemukan. Pilihan yang tersedia: {pilihan}."
+
+    try:
+        siswa_rows = (
+            supabase.table("siswa")
+            .select("nama")
+            .eq("ra_id", ra_id)
+            .eq("tahun_ajaran_id", tahun_ajaran_id)
+            .eq("kelompok_id", kelompok_row.get("id"))
+            .eq("status_aktif", True)
+            .order("nama")
+            .execute()
+        ).data or []
+    except Exception as exc:
+        return f"Gagal mengambil data siswa kelompok: {exc}"
+
+    names = [
+        (item.get("nama") or "").strip()
+        for item in siswa_rows
+        if isinstance(item, dict) and (item.get("nama") or "").strip()
+    ]
+    if not names:
+        return f"Belum ada siswa aktif pada {kelompok_row.get('nama_kelompok') or nama_kelompok_target}."
+
+    lines = [f"- {name}" for name in names[:80]]
+    return (
+        f"Daftar siswa aktif {kelompok_row.get('nama_kelompok') or nama_kelompok_target} (total {len(names)}):\n"
+        + "\n".join(lines)
+    )
+
+
 def _detect_admin_action_intent(query: str) -> str | None:
-    normalized = _normalize_text(query)
+    normalized = _normalize_natural_language_query(query)
+    if not normalized:
+        return None
+
+    if _looks_like_read_only_operational_query(normalized):
+        return None
 
     transfer_student = (
-        _contains_any(normalized, ["siswa", "murid", "peserta didik"])
+        _contains_any(normalized, ["siswa", "peserta didik"])
         and _contains_any(normalized, ["pindah", "mutasi", "geser"])
         and _contains_any(normalized, ["kelompok", "kelas", "rombel"])
     )
     if transfer_student:
         return "transfer_student"
 
-    create_student = (
-        _contains_any(normalized, ["siswa", "murid", "peserta didik"])
-        and _contains_any(normalized, ["tambah", "tambahkan", "daftarkan", "input", "masukkan", "buat"])
+    create_student_from_add_verbs = (
+        _contains_any(normalized, ["siswa", "peserta didik"])
+        and _contains_any(normalized, ["tambah", "tambahkan", "daftarkan", "input", "masukkan", "registrasi"])
+        and _contains_any(normalized, ["kelompok", "kelas", "rombel", "ke ", "di "])
     )
+    create_student_from_buat_siswa_baru = (
+        _contains_any(normalized, ["siswa baru", "murid baru", "peserta didik baru"])
+        and _contains_any(normalized, ["buat", "buatkan"])
+        and _contains_any(normalized, ["kelompok", "kelas", "rombel", "ke ", "di "])
+    )
+    create_student = create_student_from_add_verbs or create_student_from_buat_siswa_baru
     if create_student:
         return "create_student"
 
     attendance_action = (
-        _contains_any(normalized, ["presensi", "kehadiran", "tidak hadir", "tidak masuk", "izin", "sakit", "alpha", "alfa"])
-        and _contains_any(normalized, ["catat", "tandai", "input", "set", "ubah", "update", "masukkan", "tolong"])
+        _contains_any(normalized, ["presensi", "kehadiran", "tidak hadir", "tidak masuk", "izin", "sakit", "alpha", "alfa", "alpa", "absen"])
+        and _contains_any(normalized, ["catat", "tandai", "input", "set", "ubah", "update", "masukkan", "tolong", "mohon"])
     )
     if attendance_action:
         return "mark_attendance"
 
     return None
+
+
+def _is_explicit_action_request(query: str) -> bool:
+    normalized = _normalize_natural_language_query(query)
+    return _contains_any(
+        normalized,
+        [
+            "tolong",
+            "mohon",
+            "please",
+            "bantu",
+            "catat",
+            "tandai",
+            "set",
+            "ubah",
+            "update",
+            "tambah",
+            "tambahkan",
+            "daftarkan",
+            "input",
+            "masukkan",
+            "pindah",
+            "mutasi",
+            "geser",
+        ],
+    )
+
+
+def _detect_admin_action_intent_with_llm(query: str) -> str | None:
+    natural = _normalize_natural_language_query(query)
+    if not natural:
+        return None
+
+    prompt = f"""Klasifikasikan intent perintah administrasi dari chat guru.
+
+Konteks:
+- Input bisa typo, bahasa campuran Indonesia/daerah, dan tidak baku.
+- Prioritaskan aman: jangan menandai sebagai aksi jika masih ambigu.
+
+Pilih hanya salah satu intent berikut:
+- mark_attendance -> mencatat/mengubah kehadiran siswa
+- create_student -> menambah/daftarkan siswa
+- transfer_student -> pindah/mutasi siswa antar kelompok
+- null -> bukan perintah aksi administrasi
+
+Format output WAJIB JSON object:
+{{
+  "intent": "mark_attendance|create_student|transfer_student|null",
+  "is_action_request": true|false,
+  "confidence": 0.0
+}}
+
+Pesan asli: {query}
+Pesan dinormalisasi: {natural}
+Output JSON saja:"""
+
+    try:
+        raw = generate_response(prompt)
+    except Exception:
+        return None
+
+    parsed = _parse_json_object(raw) or {}
+    if not isinstance(parsed, dict):
+        return None
+
+    intent = _normalize_text(str(parsed.get("intent") or ""))
+    if intent in {"", "null", "none", "tidak ada"}:
+        return None
+
+    if intent not in {"mark_attendance", "create_student", "transfer_student"}:
+        return None
+
+    is_action_request = bool(parsed.get("is_action_request"))
+
+    try:
+        confidence = float(parsed.get("confidence") or 0)
+    except (TypeError, ValueError):
+        confidence = 0.0
+
+    if not is_action_request or confidence < 0.7:
+        return None
+
+    return intent
 
 
 def _resolve_kelompok_by_name(kelompok_rows: list[dict], nama_kelompok: str) -> tuple[dict | None, list[str]]:
@@ -629,10 +1384,18 @@ def _resolve_student_for_action(
 
 
 def _extract_attendance_records(query: str) -> list[dict]:
+    for query_variant in _iter_query_variants(query):
+        rule_based_records = _extract_attendance_records_rule_based(query_variant)
+        if rule_based_records:
+            return rule_based_records
+
+    natural = _normalize_natural_language_query(query)
+
     extraction_prompt = f"""Ekstrak data presensi dari pesan user menjadi JSON.
 
 Aturan:
 - Fokus hanya pada aksi pencatatan presensi/tidak hadir.
+- Input bisa typo atau campuran bahasa Indonesia/daerah.
 - Jangan membuat data baru yang tidak disebut user.
 - Status valid hanya: sakit, izin, alpha.
 - Jika user hanya bilang "tidak hadir/tidak masuk/absen" tanpa alasan, gunakan status alpha.
@@ -647,7 +1410,8 @@ Format output WAJIB persis JSON object:
 
 Jika tidak ada data yang jelas, kembalikan: {{"records": []}}
 
-Pesan user: {query}
+Pesan user (asli): {query}
+Pesan user (dinormalisasi): {natural}
 Output JSON saja:"""
 
     try:
@@ -670,7 +1434,7 @@ Output JSON saja:"""
             continue
 
         status = _normalize_presensi_status(item.get("status"))
-        if not status and _contains_any(query, ["tidak hadir", "tidak masuk", "absen"]):
+        if not status and _contains_any(f"{query} {natural}", ["tidak hadir", "tidak masuk", "absen"]):
             status = "alpha"
 
         normalized_records.append(
@@ -686,10 +1450,18 @@ Output JSON saja:"""
 
 
 def _extract_new_students(query: str) -> list[dict]:
+    for query_variant in _iter_query_variants(query):
+        rule_based_records = _extract_new_students_rule_based(query_variant)
+        if rule_based_records:
+            return rule_based_records
+
+    natural = _normalize_natural_language_query(query)
+
     extraction_prompt = f"""Ekstrak data siswa baru dari pesan user menjadi JSON.
 
 Aturan:
 - Fokus hanya jika user meminta tambah/daftarkan siswa.
+- Input bisa typo atau campuran bahasa Indonesia/daerah.
 - Jangan mengarang nama siswa atau kelompok.
 - Jika data tidak disebut, isi null.
 
@@ -707,7 +1479,8 @@ Format output WAJIB persis JSON object:
 
 Jika tidak ada data yang jelas, kembalikan: {{"records": []}}
 
-Pesan user: {query}
+Pesan user (asli): {query}
+Pesan user (dinormalisasi): {natural}
 Output JSON saja:"""
 
     try:
@@ -743,10 +1516,18 @@ Output JSON saja:"""
 
 
 def _extract_transfer_students(query: str) -> list[dict]:
+    for query_variant in _iter_query_variants(query):
+        rule_based_records = _extract_transfer_students_rule_based(query_variant)
+        if rule_based_records:
+            return rule_based_records
+
+    natural = _normalize_natural_language_query(query)
+
     extraction_prompt = f"""Ekstrak data pemindahan siswa antar kelompok dari pesan user menjadi JSON.
 
 Aturan:
 - Fokus hanya pada aksi pindah/mutasi siswa.
+- Input bisa typo atau campuran bahasa Indonesia/daerah.
 - Jangan mengarang nama siswa atau nama kelompok.
 - Jika kelompok asal tidak disebut, isi null.
 
@@ -763,7 +1544,8 @@ Format output WAJIB persis JSON object:
 
 Jika tidak ada data yang jelas, kembalikan: {{"records": []}}
 
-Pesan user: {query}
+Pesan user (asli): {query}
+Pesan user (dinormalisasi): {natural}
 Output JSON saja:"""
 
     try:
@@ -1113,7 +1895,25 @@ def _try_execute_transfer_student_action(supabase, current: dict, query: str) ->
 
 
 def _try_execute_admin_action(supabase, current: dict, query: str) -> str | None:
+    if _looks_like_read_only_operational_query(query):
+        return None
+
     intent = _detect_admin_action_intent(query)
+    if not intent and _is_explicit_action_request(query):
+        for query_variant in _iter_query_variants(query):
+            if _extract_transfer_students_rule_based(query_variant):
+                intent = "transfer_student"
+                break
+            if _extract_new_students_rule_based(query_variant):
+                intent = "create_student"
+                break
+            if _extract_attendance_records_rule_based(query_variant):
+                intent = "mark_attendance"
+                break
+
+    if not intent:
+        intent = _detect_admin_action_intent_with_llm(query)
+
     if not intent:
         return None
 
@@ -1129,11 +1929,643 @@ def _try_execute_admin_action(supabase, current: dict, query: str) -> str | None
     return None
 
 
-def _build_operational_query_response(supabase, current: dict, query: str) -> str | None:
-    normalized = _normalize_text(query)
+def _classify_chat_route(query: str) -> str:
+    steps = _split_multi_step_commands(query)
+    if len(steps) > 1:
+        return "multi_step"
+
+    if _detect_admin_action_intent(query):
+        return "admin_action"
+
+    if _is_explicit_action_request(query):
+        for query_variant in _iter_query_variants(query):
+            if _extract_transfer_students_rule_based(query_variant):
+                return "admin_action"
+            if _extract_new_students_rule_based(query_variant):
+                return "admin_action"
+            if _extract_attendance_records_rule_based(query_variant):
+                return "admin_action"
+
+    if _looks_like_read_only_operational_query(query):
+        return "operational_query"
+
+    normalized = _normalize_natural_language_query(query)
+    if _contains_any(
+        normalized,
+        [
+            "tanggal",
+            "jam",
+            "kepala",
+            "nama ra",
+            "profil",
+            "tahun ajaran",
+            "kalender",
+            "guru",
+            "pengguna",
+            "siswa",
+            "kelompok",
+            "presensi",
+            "surat",
+            "template",
+            "knowledge",
+            "notifikasi",
+            "chat room",
+        ],
+    ):
+        return "operational_query"
+
+    return "ai_fallback"
+
+
+def _execute_single_workflow_step(
+    supabase,
+    current: dict,
+    step_query: str,
+    room_id: str | None,
+) -> tuple[str, str]:
+    action_result = _try_execute_admin_action(supabase, current, step_query)
+    if action_result:
+        return "aksi", action_result
+
+    operational_result = _build_operational_query_response(
+        supabase,
+        current,
+        step_query,
+        room_id=room_id,
+    )
+    if operational_result:
+        return "operasional", operational_result
+
+    ai_result = _build_grounded_ai_response(supabase, current, step_query, room_id=room_id)
+    return "ai", ai_result
+
+
+def _try_execute_multi_step_workflow(
+    supabase,
+    current: dict,
+    query: str,
+    room_id: str | None,
+) -> str | None:
+    steps = _split_multi_step_commands(query)
+    if len(steps) < 2:
+        return None
+
+    results = []
+    previous_step_output = ""
+    label_map = {
+        "aksi": "Aksi Data",
+        "operasional": "Query Data",
+        "ai": "Penjelasan",
+    }
+
+    for idx, step in enumerate(steps, start=1):
+        step_input = step
+        if previous_step_output and _is_followup_step_command(step):
+            step_input = (
+                f"{step}\n\n"
+                "Konteks hasil langkah sebelumnya:\n"
+                f"{previous_step_output[:1200]}"
+            )
+
+        try:
+            step_kind, step_output = _execute_single_workflow_step(
+                supabase,
+                current,
+                step_input,
+                room_id=room_id,
+            )
+        except Exception as exc:
+            results.append(f"Langkah {idx} (Error): Gagal diproses ({exc}).")
+            continue
+
+        if not step_output:
+            results.append(f"Langkah {idx} ({label_map.get(step_kind, 'Proses')}): Tidak ada hasil.")
+            continue
+
+        previous_step_output = step_output
+        results.append(
+            f"Langkah {idx} ({label_map.get(step_kind, 'Proses')}):\n{step_output.strip()}"
+        )
+
+    if not results:
+        return None
+
+    return "Workflow multi-langkah selesai diproses:\n\n" + "\n\n".join(results)
+
+
+def _build_operational_query_response(supabase, current: dict, query: str, room_id: str | None = None) -> str | None:
+    normalized = _normalize_natural_language_query(query)
+    if not normalized:
+        return None
+
     ra_id = current["ra_id"]
     user_id = current["profile"]["id"]
-    tahun_ajaran_id = get_active_academic_year(supabase, ra_id, created_by=user_id)["id"]
+
+    tahun_ajaran_id: str | None = None
+    _CACHE_EMPTY = object()
+    ra_profile_row = _CACHE_EMPTY
+    active_year_row = _CACHE_EMPTY
+    profiles_rows = _CACHE_EMPTY
+    kelompok_cache: dict[str, list[dict]] = {}
+
+    def _format_date_id(value) -> str:
+        if value is None:
+            return "-"
+
+        raw = str(value).strip()
+        if not raw:
+            return "-"
+
+        iso_candidate = raw[:10]
+        try:
+            dt = datetime.strptime(iso_candidate, "%Y-%m-%d")
+        except ValueError:
+            return raw
+
+        bulan_map = {
+            1: "Januari",
+            2: "Februari",
+            3: "Maret",
+            4: "April",
+            5: "Mei",
+            6: "Juni",
+            7: "Juli",
+            8: "Agustus",
+            9: "September",
+            10: "Oktober",
+            11: "November",
+            12: "Desember",
+        }
+        return f"{dt.day} {bulan_map.get(dt.month, '-')} {dt.year}"
+
+    def _get_ra_profile() -> dict:
+        nonlocal ra_profile_row
+        if ra_profile_row is not _CACHE_EMPTY:
+            return ra_profile_row if isinstance(ra_profile_row, dict) else {}
+
+        try:
+            response = (
+                supabase.table("ra_profiles")
+                .select(
+                    "id,nama_ra,nama_kepala,alamat,telepon,email_lembaga,website,"
+                    "npsn,akreditasi,status_lembaga,bentuk_pendidikan,penyelenggara,"
+                    "kelurahan_desa,kecamatan,kabupaten_kota,provinsi,tahun_ajaran"
+                )
+                .eq("id", ra_id)
+                .limit(1)
+                .execute()
+            )
+            ra_profile_row = response.data[0] if response.data else {}
+        except Exception:
+            ra_profile_row = {}
+
+        return ra_profile_row if isinstance(ra_profile_row, dict) else {}
+
+    def _get_profiles() -> list[dict]:
+        nonlocal profiles_rows
+        if profiles_rows is not _CACHE_EMPTY:
+            return profiles_rows if isinstance(profiles_rows, list) else []
+
+        try:
+            response = (
+                supabase.table("profiles")
+                .select("id,nama,role,jabatan,email,telepon")
+                .eq("ra_id", ra_id)
+                .order("nama")
+                .limit(300)
+                .execute()
+            )
+            profiles_rows = [item for item in (response.data or []) if isinstance(item, dict)]
+        except Exception:
+            profiles_rows = []
+
+        return profiles_rows if isinstance(profiles_rows, list) else []
+
+    def _get_active_year_row() -> dict:
+        nonlocal active_year_row
+        if active_year_row is not _CACHE_EMPTY:
+            return active_year_row if isinstance(active_year_row, dict) else {}
+
+        try:
+            response = (
+                supabase.table("tahun_ajaran")
+                .select("id,label,is_active,hari_efektif_belajar")
+                .eq("ra_id", ra_id)
+                .eq("is_active", True)
+                .limit(1)
+                .execute()
+            )
+            active_year_row = response.data[0] if response.data else {}
+        except Exception:
+            active_year_row = {}
+
+        return active_year_row if isinstance(active_year_row, dict) else {}
+
+    def _get_kelompok_rows(active_year_id: str) -> list[dict]:
+        if active_year_id in kelompok_cache:
+            return kelompok_cache[active_year_id]
+
+        try:
+            response = (
+                supabase.table("kelompok")
+                .select(
+                    "id,nama_kelompok,wali_kelas_id,kode_rombel,tingkat,"
+                    "semester,kurikulum,ruang_kelas,kapasitas,status_rombel"
+                )
+                .eq("ra_id", ra_id)
+                .eq("tahun_ajaran_id", active_year_id)
+                .order("nama_kelompok")
+                .execute()
+            )
+            kelompok_cache[active_year_id] = [item for item in (response.data or []) if isinstance(item, dict)]
+        except Exception:
+            kelompok_cache[active_year_id] = []
+
+        return kelompok_cache[active_year_id]
+
+    def _get_tahun_ajaran_id() -> str:
+        nonlocal tahun_ajaran_id
+        if not tahun_ajaran_id:
+            active_row = _get_active_year_row()
+            active_id = active_row.get("id") if isinstance(active_row, dict) else None
+            if isinstance(active_id, str) and active_id:
+                tahun_ajaran_id = active_id
+            else:
+                tahun_ajaran_id = get_active_academic_year(supabase, ra_id, created_by=user_id)["id"]
+        return tahun_ajaran_id
+
+    source_data_query = _contains_any(
+        normalized,
+        ["dari mana data", "sumber data", "data dari mana", "ambil dari mana", "baca data", "membaca data"],
+    )
+    if source_data_query:
+        if _contains_any(normalized, ["kepala", "nama ra", "sekolah", "profil"]):
+            return (
+                "Untuk pertanyaan profil sekolah/kepala RA, saya membaca data internal aplikasi dari profil RA "
+                "dan data pengguna pada RA yang sama."
+            )
+        if _contains_any(normalized, ["siswa", "kelompok", "presensi"]):
+            return (
+                "Untuk pertanyaan siswa, kelompok, dan presensi, saya membaca langsung data operasional "
+                "tahun ajaran aktif di sistem."
+            )
+        return (
+            "Saya menggunakan data internal aplikasi sesuai modul yang ditanyakan "
+            "(profil RA, pengguna, kelompok, siswa, presensi, surat, notifikasi, knowledge, dan tahun ajaran)."
+        )
+
+    tanggal_query = _contains_any(
+        normalized,
+        ["tanggal berapa", "hari apa", "tanggal hari ini", "sekarang tanggal", "tanggal sekarang", "hari ini tanggal"],
+    )
+    if tanggal_query:
+        now_local = datetime.now()
+        hari_map = {
+            0: "Senin",
+            1: "Selasa",
+            2: "Rabu",
+            3: "Kamis",
+            4: "Jumat",
+            5: "Sabtu",
+            6: "Minggu",
+        }
+        bulan_map = {
+            1: "Januari",
+            2: "Februari",
+            3: "Maret",
+            4: "April",
+            5: "Mei",
+            6: "Juni",
+            7: "Juli",
+            8: "Agustus",
+            9: "September",
+            10: "Oktober",
+            11: "November",
+            12: "Desember",
+        }
+        hari = hari_map.get(now_local.weekday(), "-")
+        bulan = bulan_map.get(now_local.month, "-")
+        return f"Sekarang hari {hari}, tanggal {now_local.day} {bulan} {now_local.year}."
+
+    waktu_query = _contains_any(normalized, ["jam berapa", "waktu sekarang", "sekarang jam"]) and not tanggal_query
+    if waktu_query:
+        now_local = datetime.now()
+        return f"Sekarang pukul {now_local.strftime('%H:%M')} waktu server aplikasi."
+
+    nama_ra_query = _contains_any(
+        normalized,
+        [
+            "nama ra",
+            "nama sekolah",
+            "nama madrasah",
+            "sekolah ini",
+            "lembaga ini",
+            "nama lembaga",
+        ],
+    )
+    if nama_ra_query:
+        ra_profile = _get_ra_profile()
+        nama_ra = (ra_profile.get("nama_ra") or "").strip()
+        if nama_ra:
+            return f"Nama sekolah/RA yang tercatat saat ini adalah {nama_ra}."
+        return "Nama sekolah/RA belum diatur di profil RA."
+
+    konfirmasi_nama_ra_query = _contains_any(
+        normalized,
+        ["bukannya", "setahu saya", "apakah", "benar", "betul"],
+    ) and _contains_any(normalized, ["ra", "sekolah", "madrasah"])
+    if konfirmasi_nama_ra_query:
+        ra_profile = _get_ra_profile()
+        nama_ra = (ra_profile.get("nama_ra") or "").strip()
+        if nama_ra:
+            match = re.search(r"(?:ra|sekolah|madrasah)\s+([A-Za-z][A-Za-z0-9 .'-]{1,80})", query, flags=re.IGNORECASE)
+            if match:
+                candidate = _sanitize_person_name(match.group(1))
+                actual_norm = re.sub(r"^(?:ra|sekolah|madrasah)\s+", "", _normalize_text(nama_ra))
+                candidate_norm = re.sub(r"^(?:ra|sekolah|madrasah)\s+", "", _normalize_text(candidate))
+                if candidate_norm and (candidate_norm == actual_norm or candidate_norm in actual_norm):
+                    return f"Benar, di data saat ini nama sekolah tercatat {nama_ra}."
+                return f"Di data saat ini, nama sekolah tercatat {nama_ra}."
+
+    wali_kelas_query = _contains_any(normalized, ["wali kelas", "wali kelompok", "guru kelas", "siapa wali"])
+    if wali_kelas_query:
+        nama_kelompok_target = _extract_target_kelompok_name(query)
+        if not nama_kelompok_target:
+            return "Sebutkan kelompoknya. Contoh: 'Siapa wali kelas Kelompok A?'."
+
+        try:
+            active_year_id = _get_tahun_ajaran_id()
+            kelompok_rows = _get_kelompok_rows(active_year_id)
+        except Exception as exc:
+            return f"Gagal mengambil data wali kelas: {exc}"
+
+        kelompok_row, candidates = _resolve_kelompok_by_name(kelompok_rows, nama_kelompok_target)
+        if not kelompok_row:
+            pilihan = ", ".join(candidates) if candidates else ", ".join(
+                [str(item.get("nama_kelompok") or "-") for item in kelompok_rows[:10] if isinstance(item, dict)]
+            )
+            return f"Kelompok '{nama_kelompok_target}' tidak ditemukan. Pilihan yang tersedia: {pilihan}."
+
+        wali_kelas_id = kelompok_row.get("wali_kelas_id") if isinstance(kelompok_row, dict) else None
+        kelompok_label = kelompok_row.get("nama_kelompok") or nama_kelompok_target
+        if not wali_kelas_id:
+            return f"Wali kelas untuk {kelompok_label} belum diatur di sistem."
+
+        profile_map = {item.get("id"): item for item in _get_profiles() if item.get("id")}
+        profile_row = profile_map.get(wali_kelas_id)
+        if not isinstance(profile_row, dict):
+            return f"Wali kelas untuk {kelompok_label} sudah ditetapkan, tetapi profil gurunya tidak ditemukan."
+
+        nama_wali = (profile_row.get("nama") or "-")
+        return f"Wali kelas {kelompok_label} adalah {nama_wali}."
+
+    kepala_ra_query = _contains_any(
+        normalized,
+        [
+            "siapa kepala",
+            "nama kepala",
+            "kepala ra",
+            "kepala sekolah",
+            "kepala madrasah",
+            "kamad",
+            "kepsek",
+        ],
+    )
+    if kepala_ra_query:
+        ra_profile = _get_ra_profile()
+        nama_kepala = (ra_profile.get("nama_kepala") or "").strip()
+        if nama_kepala:
+            return f"Kepala RA yang tercatat saat ini adalah {nama_kepala}."
+
+        admins = [
+            item
+            for item in _get_profiles()
+            if _normalize_text(item.get("role") or "") in {"kepala_ra", "kepala", "admin_ra", "admin"}
+        ]
+        if not admins:
+            return "Data kepala RA belum diatur di sistem."
+
+        if len(admins) == 1:
+            return f"Profil dengan peran kepala/admin yang tercatat saat ini adalah {admins[0].get('nama') or '-'}."
+
+        names = [item.get("nama") or "-" for item in admins[:6]]
+        return "Ada beberapa profil kepala/admin yang tercatat: " + ", ".join(names) + "."
+
+    profil_ra_query = _contains_any(
+        normalized,
+        [
+            "profil ra",
+            "profil sekolah",
+            "informasi sekolah",
+            "data sekolah",
+            "alamat sekolah",
+            "kontak sekolah",
+            "npsn",
+            "akreditasi",
+            "website",
+        ],
+    )
+    if profil_ra_query:
+        ra_profile = _get_ra_profile()
+        if not ra_profile:
+            return "Profil RA belum tersedia di sistem."
+
+        nama_ra = ra_profile.get("nama_ra") or "-"
+        nama_kepala = ra_profile.get("nama_kepala") or "-"
+        alamat_parts = [
+            ra_profile.get("alamat") or "",
+            ra_profile.get("kelurahan_desa") or "",
+            ra_profile.get("kecamatan") or "",
+            ra_profile.get("kabupaten_kota") or "",
+            ra_profile.get("provinsi") or "",
+        ]
+        alamat_full = ", ".join([part for part in alamat_parts if str(part).strip()]) or "-"
+        return (
+            f"Profil RA: {nama_ra}. Kepala: {nama_kepala}. "
+            f"NPSN: {ra_profile.get('npsn') or '-'}. Akreditasi: {ra_profile.get('akreditasi') or '-'}. "
+            f"Alamat: {alamat_full}. Telepon: {ra_profile.get('telepon') or '-'}. "
+            f"Email: {ra_profile.get('email_lembaga') or '-'}. Website: {ra_profile.get('website') or '-'}"
+        )
+
+    profile_saya_query = _contains_any(normalized, ["siapa saya", "profil saya", "jabatan saya", "role saya", "akun saya"])
+    if profile_saya_query:
+        my_profile = current.get("profile") or {}
+        nama = my_profile.get("nama") or "-"
+        role = (my_profile.get("role") or "-").lower()
+        email = my_profile.get("email") or "-"
+        return f"Profil Anda: nama {nama}, role {role}, email {email}."
+
+    tahun_ajaran_query = _contains_any(
+        normalized,
+        [
+            "tahun ajaran aktif",
+            "tahun ajaran sekarang",
+            "tahun ajaran berjalan",
+            "ta aktif",
+            "ta sekarang",
+            "hari efektif belajar",
+        ],
+    )
+    if tahun_ajaran_query:
+        active_row = _get_active_year_row()
+        if not active_row:
+            try:
+                active_row = get_active_academic_year(supabase, ra_id, created_by=user_id)
+            except Exception as exc:
+                return f"Gagal mengambil tahun ajaran aktif: {exc}"
+
+        label = active_row.get("label") or "-"
+        hari_efektif = active_row.get("hari_efektif_belajar")
+        if hari_efektif in {5, 6}:
+            return f"Tahun ajaran aktif saat ini: {label} (hari efektif belajar {hari_efektif} hari per minggu)."
+        return f"Tahun ajaran aktif saat ini: {label}."
+
+    kalender_query = _contains_any(
+        normalized,
+        [
+            "kalender pendidikan",
+            "event akademik",
+            "jadwal libur",
+            "hari libur",
+            "tanggal merah",
+            "libur",
+        ],
+    )
+    if kalender_query:
+        try:
+            active_year_id = _get_tahun_ajaran_id()
+        except Exception as exc:
+            return f"Gagal menentukan tahun ajaran aktif: {exc}"
+
+        today = date.today().isoformat()
+        try:
+            cal_query = (
+                supabase.table("kalender_pendidikan")
+                .select("tanggal,nama_event,is_holiday,sumber")
+                .eq("ra_id", ra_id)
+                .eq("tahun_ajaran_id", active_year_id)
+                .order("tanggal")
+            )
+            if _contains_any(normalized, ["hari ini", "tanggal ini"]):
+                cal_rows = cal_query.eq("tanggal", today).limit(20).execute().data or []
+            else:
+                cal_rows = cal_query.gte("tanggal", today).limit(12).execute().data or []
+        except Exception as exc:
+            return f"Gagal mengambil kalender pendidikan: {exc}"
+
+        if not cal_rows:
+            return "Belum ada data kalender pendidikan pada tahun ajaran aktif."
+
+        lines = []
+        for item in cal_rows[:10]:
+            if not isinstance(item, dict):
+                continue
+            label = "libur" if item.get("is_holiday") else "kegiatan"
+            lines.append(
+                f"- {_format_date_id(item.get('tanggal'))}: {item.get('nama_event') or '-'} ({label}, sumber {item.get('sumber') or '-'})"
+            )
+        return "Kalender pendidikan:\n" + "\n".join(lines)
+
+    guru_query = _contains_any(
+        normalized,
+        ["daftar guru", "list guru", "data guru", "jumlah guru", "berapa guru", "gtk", "pengajar"],
+    )
+    if guru_query:
+        rows = _get_profiles()
+        guru_rows = [
+            item
+            for item in rows
+            if _normalize_text(item.get("role") or "") in {"guru", "guru_ra"}
+            or "guru" in _normalize_text(item.get("jabatan") or "")
+        ]
+
+        if not guru_rows:
+            return "Belum ada data guru pada RA ini."
+
+        request_count_only = _contains_any(normalized, ["jumlah", "berapa", "total"]) and not _contains_any(
+            normalized, ["siapa", "nama", "daftar", "list"]
+        )
+        if request_count_only:
+            return f"Jumlah guru yang tercatat saat ini: {len(guru_rows)} orang."
+
+        lines = [f"- {item.get('nama') or '-'}" for item in guru_rows[:25]]
+        return f"Daftar guru (total {len(guru_rows)}):\n" + "\n".join(lines)
+
+    pengguna_query = _contains_any(normalized, ["daftar pengguna", "data pengguna", "list user", "jumlah pengguna", "akun pengguna"])
+    if pengguna_query:
+        rows = _get_profiles()
+        if not rows:
+            return "Belum ada data pengguna pada RA ini."
+
+        request_count_only = _contains_any(normalized, ["jumlah", "berapa", "total"]) and not _contains_any(
+            normalized, ["siapa", "nama", "daftar", "list"]
+        )
+        if request_count_only:
+            return f"Jumlah pengguna yang tercatat saat ini: {len(rows)} akun."
+
+        lines = [
+            f"- {item.get('nama') or '-'} ({(_normalize_text(item.get('role') or '-') or '-')})"
+            for item in rows[:30]
+        ]
+        return f"Daftar pengguna (total {len(rows)}):\n" + "\n".join(lines)
+
+    presensi_belum_list_query = _contains_any(
+        normalized,
+        ["siapa yang belum", "daftar belum", "siapa belum", "belum dicatat", "belum presensi"],
+    ) and _contains_any(normalized, ["presensi", "kehadiran", "absen"]) 
+    if presensi_belum_list_query:
+        today = date.today().isoformat()
+        try:
+            active_year_id = _get_tahun_ajaran_id()
+            kelompok_rows = _get_kelompok_rows(active_year_id)
+
+            siswa_query = (
+                supabase.table("siswa")
+                .select("id,nama,kelompok_id")
+                .eq("ra_id", ra_id)
+                .eq("tahun_ajaran_id", active_year_id)
+                .eq("status_aktif", True)
+            )
+
+            target_name = _extract_target_kelompok_name(query)
+            if target_name:
+                kelompok_row, _ = _resolve_kelompok_by_name(kelompok_rows, target_name)
+                if not kelompok_row:
+                    return f"Kelompok '{target_name}' tidak ditemukan untuk pengecekan presensi."
+                siswa_query = siswa_query.eq("kelompok_id", kelompok_row.get("id"))
+
+            siswa_rows = siswa_query.order("nama").execute().data or []
+            siswa_rows = [item for item in siswa_rows if isinstance(item, dict) and item.get("id")]
+            if not siswa_rows:
+                return "Tidak ada siswa aktif yang bisa dicek presensinya."
+
+            siswa_ids = [item.get("id") for item in siswa_rows if item.get("id")]
+            presensi_rows = (
+                supabase.table("presensi")
+                .select("siswa_id")
+                .eq("tanggal", today)
+                .eq("tahun_ajaran_id", active_year_id)
+                .in_("siswa_id", siswa_ids)
+                .execute()
+            ).data or []
+        except Exception as exc:
+            return f"Gagal mengambil daftar presensi belum tercatat: {exc}"
+
+        recorded = {
+            row.get("siswa_id")
+            for row in presensi_rows
+            if isinstance(row, dict) and row.get("siswa_id")
+        }
+        pending_names = [item.get("nama") or "-" for item in siswa_rows if item.get("id") not in recorded]
+
+        if not pending_names:
+            return "Semua siswa aktif sudah memiliki catatan presensi hari ini."
+
+        lines = [f"- {name}" for name in pending_names[:50]]
+        return (
+            f"Siswa yang belum dicatat presensinya hari ini (total {len(pending_names)}):\n"
+            + "\n".join(lines)
+        )
 
     presensi_query = _contains_any(
         normalized,
@@ -1142,11 +2574,12 @@ def _build_operational_query_response(supabase, current: dict, query: str) -> st
     if presensi_query:
         today = date.today().isoformat()
         try:
+            active_year_id = _get_tahun_ajaran_id()
             siswa_rows = (
                 supabase.table("siswa")
                 .select("id")
                 .eq("ra_id", ra_id)
-                .eq("tahun_ajaran_id", tahun_ajaran_id)
+                .eq("tahun_ajaran_id", active_year_id)
                 .eq("status_aktif", True)
                 .execute()
             ).data or []
@@ -1159,7 +2592,7 @@ def _build_operational_query_response(supabase, current: dict, query: str) -> st
                 supabase.table("presensi")
                 .select("status")
                 .eq("tanggal", today)
-                .eq("tahun_ajaran_id", tahun_ajaran_id)
+                .eq("tahun_ajaran_id", active_year_id)
                 .in_("siswa_id", siswa_ids)
                 .execute()
             ).data or []
@@ -1183,11 +2616,12 @@ def _build_operational_query_response(supabase, current: dict, query: str) -> st
     )
     if siswa_kelompok_query:
         try:
+            active_year_id = _get_tahun_ajaran_id()
             kelompok_rows = (
                 supabase.table("kelompok")
                 .select("id,nama_kelompok")
                 .eq("ra_id", ra_id)
-                .eq("tahun_ajaran_id", tahun_ajaran_id)
+                .eq("tahun_ajaran_id", active_year_id)
                 .order("nama_kelompok")
                 .execute()
             ).data or []
@@ -1195,7 +2629,7 @@ def _build_operational_query_response(supabase, current: dict, query: str) -> st
                 supabase.table("siswa")
                 .select("kelompok_id")
                 .eq("ra_id", ra_id)
-                .eq("tahun_ajaran_id", tahun_ajaran_id)
+                .eq("tahun_ajaran_id", active_year_id)
                 .eq("status_aktif", True)
                 .execute()
             ).data or []
@@ -1228,6 +2662,345 @@ def _build_operational_query_response(supabase, current: dict, query: str) -> st
             return "Belum ada data kelompok untuk ditampilkan."
 
         return "Jumlah siswa aktif per kelompok:\n" + "\n".join(lines[:12]) + f"\nTotal siswa aktif: {total}."
+
+    total_siswa_query = _contains_any(
+        normalized,
+        ["jumlah siswa", "total siswa", "berapa siswa", "siswa aktif"],
+    ) and not _contains_any(normalized, ["per kelompok", "kelompok", "kelas", "rombel"])
+    if total_siswa_query:
+        try:
+            active_year_id = _get_tahun_ajaran_id()
+            siswa_rows = (
+                supabase.table("siswa")
+                .select("id")
+                .eq("ra_id", ra_id)
+                .eq("tahun_ajaran_id", active_year_id)
+                .eq("status_aktif", True)
+                .execute()
+            ).data or []
+        except Exception as exc:
+            return f"Gagal mengambil jumlah siswa: {exc}"
+
+        total = len([row for row in siswa_rows if isinstance(row, dict)])
+        return f"Total siswa aktif pada tahun ajaran berjalan: {total} siswa."
+
+    daftar_kelompok_query = _contains_any(
+        normalized,
+        ["daftar kelompok", "list kelompok", "kelompok apa saja", "kelas apa saja", "rombel apa saja"],
+    )
+    if daftar_kelompok_query:
+        try:
+            active_year_id = _get_tahun_ajaran_id()
+            kelompok_rows = _get_kelompok_rows(active_year_id)
+        except Exception as exc:
+            return f"Gagal mengambil daftar kelompok: {exc}"
+
+        valid_rows = [item for item in kelompok_rows if isinstance(item, dict) and item.get("nama_kelompok")]
+        if not valid_rows:
+            return "Belum ada kelompok pada tahun ajaran aktif."
+
+        profile_map = {item.get("id"): item for item in _get_profiles() if item.get("id")}
+        lines = []
+        for item in valid_rows[:20]:
+            wali_id = item.get("wali_kelas_id")
+            wali_name = "-"
+            if isinstance(wali_id, str) and wali_id and isinstance(profile_map.get(wali_id), dict):
+                wali_name = profile_map[wali_id].get("nama") or "-"
+            lines.append(f"- {item.get('nama_kelompok') or '-'} (wali: {wali_name})")
+
+        return "Kelompok yang tersedia:\n" + "\n".join(lines)
+
+    detail_kelompok_query = _contains_any(
+        normalized,
+        ["detail kelompok", "data kelompok", "info kelompok"],
+    ) and _contains_any(normalized, ["kelompok", "kelas", "rombel"]) and not _contains_any(
+        normalized, ["daftar siswa", "list siswa", "nama siswa", "rekap siswa"]
+    )
+    if detail_kelompok_query:
+        target_name = _extract_target_kelompok_name(query)
+        if not target_name:
+            return "Sebutkan nama kelompoknya. Contoh: 'Detail kelompok A'."
+
+        try:
+            active_year_id = _get_tahun_ajaran_id()
+            kelompok_rows = _get_kelompok_rows(active_year_id)
+        except Exception as exc:
+            return f"Gagal mengambil data kelompok: {exc}"
+
+        kelompok_row, candidates = _resolve_kelompok_by_name(kelompok_rows, target_name)
+        if not kelompok_row:
+            pilihan = ", ".join(candidates) if candidates else ", ".join(
+                [str(item.get("nama_kelompok") or "-") for item in kelompok_rows[:10] if isinstance(item, dict)]
+            )
+            return f"Kelompok '{target_name}' tidak ditemukan. Pilihan yang tersedia: {pilihan}."
+
+        try:
+            siswa_rows = (
+                supabase.table("siswa")
+                .select("id")
+                .eq("ra_id", ra_id)
+                .eq("tahun_ajaran_id", active_year_id)
+                .eq("status_aktif", True)
+                .eq("kelompok_id", kelompok_row.get("id"))
+                .execute()
+            ).data or []
+        except Exception as exc:
+            return f"Gagal menghitung siswa kelompok: {exc}"
+
+        profile_map = {item.get("id"): item for item in _get_profiles() if item.get("id")}
+        wali_name = "-"
+        wali_id = kelompok_row.get("wali_kelas_id")
+        if isinstance(wali_id, str) and wali_id and isinstance(profile_map.get(wali_id), dict):
+            wali_name = profile_map[wali_id].get("nama") or "-"
+
+        total_siswa = len([item for item in siswa_rows if isinstance(item, dict)])
+        return (
+            f"Detail {kelompok_row.get('nama_kelompok') or target_name}: wali kelas {wali_name}, "
+            f"jumlah siswa aktif {total_siswa}, kode rombel {kelompok_row.get('kode_rombel') or '-'}, "
+            f"tingkat {kelompok_row.get('tingkat') or '-'}, status rombel {kelompok_row.get('status_rombel') or '-'}"
+        )
+
+    daftar_siswa_kelompok_query = (
+        _contains_any(normalized, ["daftar siswa", "list siswa", "data siswa", "nama siswa", "rekap siswa", "semua siswa", "nama"]) 
+        and _contains_any(normalized, ["kelompok", "kelas", "rombel"])
+    )
+    if daftar_siswa_kelompok_query:
+        target_name = _extract_target_kelompok_name(query)
+        if not target_name:
+            inferred = _infer_latest_kelompok_from_recent_chat(supabase, room_id) if room_id else None
+            if inferred and _contains_any(normalized, ["yang tidak termasuk", "jangan dimasukkan", "hanya yang termasuk", "hanya yang terdaftar"]):
+                target_name = inferred
+
+        if not target_name:
+            return "Sebutkan nama kelompoknya. Contoh: 'Daftar siswa kelompok A'."
+
+        try:
+            active_year_id = _get_tahun_ajaran_id()
+        except Exception as exc:
+            return f"Gagal menentukan tahun ajaran aktif: {exc}"
+
+        return _format_student_list_by_kelompok(
+            supabase,
+            ra_id=ra_id,
+            tahun_ajaran_id=active_year_id,
+            nama_kelompok_target=target_name,
+        )
+
+    strict_filter_followup_query = _contains_any(
+        normalized,
+        ["yang tidak termasuk", "jangan dimasukkan", "hanya yang termasuk", "hanya yang terdaftar"],
+    )
+    if strict_filter_followup_query and room_id:
+        inferred = _infer_latest_kelompok_from_recent_chat(supabase, room_id)
+        if inferred:
+            try:
+                active_year_id = _get_tahun_ajaran_id()
+            except Exception as exc:
+                return f"Gagal menentukan tahun ajaran aktif: {exc}"
+            return _format_student_list_by_kelompok(
+                supabase,
+                ra_id=ra_id,
+                tahun_ajaran_id=active_year_id,
+                nama_kelompok_target=inferred,
+            )
+
+    detail_siswa_query = _contains_any(normalized, ["detail siswa", "profil siswa", "data siswa"]) and not _contains_any(
+        normalized, ["kelompok", "kelas", "rombel"]
+    )
+    if detail_siswa_query:
+        match = re.search(r"(?:detail|profil|data)\s+siswa\s+([A-Za-z][A-Za-z' .-]{1,80})", query, flags=re.IGNORECASE)
+        if not match:
+            return None
+
+        nama_target = _sanitize_person_name(match.group(1))
+        try:
+            active_year_id = _get_tahun_ajaran_id()
+            siswa_rows = (
+                supabase.table("siswa")
+                .select("nama,tingkat_rombel,nisn,status_aktif,tanggal_lahir,jenis_kelamin")
+                .eq("ra_id", ra_id)
+                .eq("tahun_ajaran_id", active_year_id)
+                .ilike("nama", f"%{nama_target}%")
+                .order("nama")
+                .limit(8)
+                .execute()
+            ).data or []
+        except Exception as exc:
+            return f"Gagal mengambil detail siswa: {exc}"
+
+        if not siswa_rows:
+            return f"Siswa dengan nama '{nama_target}' tidak ditemukan."
+
+        if len(siswa_rows) > 1:
+            options = [item.get("nama") for item in siswa_rows if isinstance(item, dict) and item.get("nama")]
+            return "Ditemukan beberapa nama serupa: " + ", ".join(options[:6]) + ". Sebutkan nama lebih lengkap."
+
+        siswa = siswa_rows[0] if isinstance(siswa_rows[0], dict) else {}
+        if not siswa:
+            return f"Siswa dengan nama '{nama_target}' tidak ditemukan."
+
+        status_label = "Aktif" if siswa.get("status_aktif") else "Nonaktif"
+        return (
+            f"Detail siswa {siswa.get('nama') or nama_target}: "
+            f"Kelompok {siswa.get('tingkat_rombel') or '-'}, NISN {siswa.get('nisn') or '-'}, "
+            f"Jenis kelamin {siswa.get('jenis_kelamin') or '-'}, Tanggal lahir {siswa.get('tanggal_lahir') or '-'}, "
+            f"Status {status_label}."
+        )
+
+    surat_query = _contains_any(
+        normalized,
+        ["surat terbaru", "daftar surat", "list surat", "jumlah surat", "arsip surat", "nomor surat"],
+    )
+    if surat_query:
+        try:
+            surat_rows = (
+                supabase.table("surat")
+                .select("nomor_surat,judul,created_at")
+                .eq("ra_id", ra_id)
+                .order("created_at", desc=True)
+                .limit(20)
+                .execute()
+            ).data or []
+        except Exception as exc:
+            return f"Gagal mengambil data surat: {exc}"
+
+        if not surat_rows:
+            return "Belum ada arsip surat pada RA ini."
+
+        count_only = _contains_any(normalized, ["jumlah", "berapa", "total"]) and not _contains_any(
+            normalized, ["daftar", "list", "terbaru", "nomor"]
+        )
+        if count_only:
+            return f"Total arsip surat saat ini: {len(surat_rows)} data terbaru terambil."
+
+        lines = []
+        for item in surat_rows[:10]:
+            if not isinstance(item, dict):
+                continue
+            lines.append(
+                f"- {item.get('nomor_surat') or '-'} | {item.get('judul') or '-'} | {_format_date_id(item.get('created_at'))}"
+            )
+        return f"Surat terbaru (total {len(surat_rows)} data terbaru):\n" + "\n".join(lines)
+
+    template_surat_query = _contains_any(
+        normalized,
+        ["template surat", "daftar template", "jenis surat", "template yang ada"],
+    )
+    if template_surat_query:
+        try:
+            template_rows = (
+                supabase.table("template_surat")
+                .select("nama_template,jenis_surat")
+                .eq("ra_id", ra_id)
+                .order("nama_template")
+                .limit(50)
+                .execute()
+            ).data or []
+        except Exception as exc:
+            return f"Gagal mengambil data template surat: {exc}"
+
+        if not template_rows:
+            return "Belum ada template surat pada RA ini."
+
+        lines = [
+            f"- {item.get('nama_template') or '-'} ({item.get('jenis_surat') or '-'})"
+            for item in template_rows[:20]
+            if isinstance(item, dict)
+        ]
+        return f"Template surat tersedia (total {len(template_rows)}):\n" + "\n".join(lines)
+
+    knowledge_query = _contains_any(
+        normalized,
+        ["knowledge", "knowledge base", "dokumen", "materi", "file knowledge", "dokumen kb"],
+    )
+    if knowledge_query:
+        try:
+            docs_rows = (
+                supabase.table("knowledge_docs")
+                .select("nama_file,uploaded_at")
+                .eq("ra_id", ra_id)
+                .order("uploaded_at", desc=True)
+                .limit(20)
+                .execute()
+            ).data or []
+        except Exception as exc:
+            return f"Gagal mengambil data knowledge base: {exc}"
+
+        if not docs_rows:
+            return "Belum ada dokumen knowledge base pada RA ini."
+
+        count_only = _contains_any(normalized, ["jumlah", "berapa", "total"]) and not _contains_any(
+            normalized, ["daftar", "list", "terbaru"]
+        )
+        if count_only:
+            return f"Jumlah dokumen knowledge base saat ini: {len(docs_rows)} dokumen (data terbaru)."
+
+        lines = [
+            f"- {item.get('nama_file') or '-'} | {_format_date_id(item.get('uploaded_at'))}"
+            for item in docs_rows[:10]
+            if isinstance(item, dict)
+        ]
+        return f"Dokumen knowledge terbaru (total {len(docs_rows)} data terbaru):\n" + "\n".join(lines)
+
+    notifikasi_query = _contains_any(
+        normalized,
+        ["notifikasi", "pemberitahuan", "notif belum dibaca", "jumlah notif"],
+    )
+    if notifikasi_query:
+        try:
+            notif_rows = (
+                supabase.table("notifikasi")
+                .select("judul,dibaca,created_at")
+                .eq("user_id", user_id)
+                .order("created_at", desc=True)
+                .limit(30)
+                .execute()
+            ).data or []
+        except Exception as exc:
+            return f"Gagal mengambil notifikasi: {exc}"
+
+        if not notif_rows:
+            return "Tidak ada notifikasi untuk akun Anda saat ini."
+
+        unread = sum(1 for item in notif_rows if isinstance(item, dict) and not item.get("dibaca"))
+        count_only = _contains_any(normalized, ["jumlah", "berapa", "total"]) and not _contains_any(
+            normalized, ["daftar", "list", "judul"]
+        )
+        if count_only:
+            return f"Notifikasi Anda: total {len(notif_rows)} terbaru, belum dibaca {unread}."
+
+        lines = []
+        for item in notif_rows[:10]:
+            if not isinstance(item, dict):
+                continue
+            status_notif = "belum dibaca" if not item.get("dibaca") else "dibaca"
+            lines.append(f"- {item.get('judul') or '-'} ({status_notif}, {_format_date_id(item.get('created_at'))})")
+
+        return f"Notifikasi terbaru (belum dibaca {unread}):\n" + "\n".join(lines)
+
+    chat_room_query = _contains_any(normalized, ["chat room", "ruang chat", "jumlah room", "daftar room"])
+    if chat_room_query:
+        try:
+            room_rows = (
+                supabase.table("chat_rooms")
+                .select("nama,tipe")
+                .eq("ra_id", ra_id)
+                .order("nama")
+                .limit(80)
+                .execute()
+            ).data or []
+        except Exception as exc:
+            return f"Gagal mengambil daftar room chat: {exc}"
+
+        if not room_rows:
+            return "Belum ada room chat pada RA ini."
+
+        lines = [
+            f"- {item.get('nama') or '-'} ({item.get('tipe') or '-'})"
+            for item in room_rows[:20]
+            if isinstance(item, dict)
+        ]
+        return f"Daftar room chat (total {len(room_rows)}):\n" + "\n".join(lines)
 
     return None
 
@@ -1280,6 +3053,7 @@ def _build_grounded_ai_response(supabase, current: dict, query: str, room_id: st
     grounding_rule = (
         "Instruksi tambahan: Jika pertanyaan user terkait data operasional RA, utamakan konteks data internal sistem ini. "
         "Jika data internal atau knowledge base tidak cukup, katakan data belum ditemukan/tersedia dan jangan menebak. "
+        "Jangan mengarang nama sekolah, nama kepala RA, atau identitas institusi. "
         "Saat menjawab user, gunakan bahasa non-teknis, ringkas, dan jangan menampilkan label/field mentah "
         "seperti [PRESENSI], total_siswa, belum_dicatat, nama tabel, atau format JSON."
     )
@@ -1347,6 +3121,102 @@ def _save_assistant_message(supabase, user_id: str, room_id: str, content: str, 
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"{error_prefix}: {exc}",
         ) from exc
+
+
+def _ensure_chat_admin_permission(current: dict):
+    role = ((current.get("profile") or {}).get("role") or "").lower()
+    if not _is_admin_role(role):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Hanya Kepala/Admin yang dapat mengatur kamus chat lokal.",
+        )
+
+
+@router.get("/vocabulary", response_model=ChatVocabularySettingsResponse)
+def get_chat_vocabulary_settings(current=Depends(get_current_user_profile)):
+    supabase = get_supabase_client()
+    ra_id = current["ra_id"]
+    settings_row = _load_ra_chat_vocabulary(supabase, ra_id)
+
+    return {
+        "success": True,
+        "message": "Pengaturan kamus chat lokal berhasil diambil",
+        "data": settings_row,
+    }
+
+
+@router.put("/vocabulary", response_model=ChatVocabularySettingsResponse)
+def upsert_chat_vocabulary_settings(
+    payload: ChatVocabularySettingsRequest,
+    current=Depends(get_current_user_profile),
+):
+    _ensure_chat_admin_permission(current)
+
+    supabase = get_supabase_client()
+    ra_id = current["ra_id"]
+    user_id = current["profile"]["id"]
+
+    token_map = _sanitize_custom_vocab_map(payload.token_map)
+    phrase_map = _sanitize_custom_vocab_map(payload.phrase_map)
+
+    try:
+        supabase.table("chat_local_vocabulary").upsert(
+            {
+                "ra_id": ra_id,
+                "token_map": token_map,
+                "phrase_map": phrase_map,
+                "updated_by": user_id,
+            },
+            on_conflict="ra_id",
+        ).execute()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Gagal menyimpan kamus chat lokal: {exc}",
+        ) from exc
+
+    return {
+        "success": True,
+        "message": "Kamus chat lokal berhasil diperbarui",
+        "data": {
+            "token_map": token_map,
+            "phrase_map": phrase_map,
+        },
+    }
+
+
+@router.delete("/vocabulary", response_model=ChatVocabularySettingsResponse)
+def reset_chat_vocabulary_settings(current=Depends(get_current_user_profile)):
+    _ensure_chat_admin_permission(current)
+
+    supabase = get_supabase_client()
+    ra_id = current["ra_id"]
+    user_id = current["profile"]["id"]
+
+    try:
+        supabase.table("chat_local_vocabulary").upsert(
+            {
+                "ra_id": ra_id,
+                "token_map": {},
+                "phrase_map": {},
+                "updated_by": user_id,
+            },
+            on_conflict="ra_id",
+        ).execute()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Gagal mereset kamus chat lokal: {exc}",
+        ) from exc
+
+    return {
+        "success": True,
+        "message": "Kamus chat lokal berhasil direset",
+        "data": {
+            "token_map": {},
+            "phrase_map": {},
+        },
+    }
 
 
 @router.post("/rooms", response_model=CreateChatRoomResponse, status_code=status.HTTP_201_CREATED)
@@ -1651,7 +3521,34 @@ def send_chat_message(
             "data": {"user_message": user_message, "bot_message": bot_message},
         }
 
-    action_result_text = _try_execute_admin_action(supabase, current, payload.content)
+    local_vocab = _load_ra_chat_vocabulary(supabase, ra_id)
+    effective_query = _apply_custom_vocabulary(payload.content, local_vocab) or payload.content
+
+    workflow_result_text = _try_execute_multi_step_workflow(
+        supabase,
+        current,
+        effective_query,
+        room_id=room_id,
+    )
+    if workflow_result_text:
+        bot_message = _save_assistant_message(
+            supabase,
+            user_id,
+            room_id,
+            workflow_result_text,
+            "Gagal menyimpan respons workflow multi-langkah",
+        )
+
+        return {
+            "success": True,
+            "message": "Workflow multi-langkah berhasil diproses",
+            "data": {
+                "user_message": user_message,
+                "bot_message": bot_message,
+            },
+        }
+
+    action_result_text = _try_execute_admin_action(supabase, current, effective_query)
     if action_result_text:
         bot_message = _save_assistant_message(
             supabase,
@@ -1670,7 +3567,7 @@ def send_chat_message(
             },
         }
 
-    operational_result_text = _build_operational_query_response(supabase, current, payload.content)
+    operational_result_text = _build_operational_query_response(supabase, current, effective_query, room_id=room_id)
     if operational_result_text:
         bot_message = _save_assistant_message(
             supabase,
@@ -1690,7 +3587,7 @@ def send_chat_message(
         }
 
     try:
-        ai_response_text = _build_grounded_ai_response(supabase, current, payload.content, room_id=room_id)
+        ai_response_text = _build_grounded_ai_response(supabase, current, effective_query, room_id=room_id)
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -1829,21 +3726,33 @@ async def send_voice_message(
             "transcription": transcription,
         }
 
-    action_result_text = _try_execute_admin_action(supabase, current, transcription)
-    if action_result_text:
-        ai_response_text = action_result_text
+    local_vocab = _load_ra_chat_vocabulary(supabase, ra_id)
+    effective_query = _apply_custom_vocabulary(transcription, local_vocab) or transcription
+
+    workflow_result_text = _try_execute_multi_step_workflow(
+        supabase,
+        current,
+        effective_query,
+        room_id=room_id,
+    )
+    if workflow_result_text:
+        ai_response_text = workflow_result_text
     else:
-        operational_result_text = _build_operational_query_response(supabase, current, transcription)
-        if operational_result_text:
-            ai_response_text = operational_result_text
+        action_result_text = _try_execute_admin_action(supabase, current, effective_query)
+        if action_result_text:
+            ai_response_text = action_result_text
         else:
-            try:
-                ai_response_text = _build_grounded_ai_response(supabase, current, transcription, room_id=room_id)
-            except Exception as exc:
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail=f"Gagal menghasilkan respons AI: {exc}",
-                ) from exc
+            operational_result_text = _build_operational_query_response(supabase, current, effective_query, room_id=room_id)
+            if operational_result_text:
+                ai_response_text = operational_result_text
+            else:
+                try:
+                    ai_response_text = _build_grounded_ai_response(supabase, current, effective_query, room_id=room_id)
+                except Exception as exc:
+                    raise HTTPException(
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        detail=f"Gagal menghasilkan respons AI: {exc}",
+                    ) from exc
 
     bot_message = _save_assistant_message(
         supabase,

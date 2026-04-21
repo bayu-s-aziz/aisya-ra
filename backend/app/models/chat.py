@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class CreateChatRoomRequest(BaseModel):
@@ -62,3 +62,14 @@ class VoiceMessageResponse(BaseModel):
     message: str
     data: dict
     transcription: str
+
+
+class ChatVocabularySettingsRequest(BaseModel):
+    token_map: dict[str, str] = Field(default_factory=dict)
+    phrase_map: dict[str, str] = Field(default_factory=dict)
+
+
+class ChatVocabularySettingsResponse(BaseModel):
+    success: bool
+    message: str
+    data: dict
