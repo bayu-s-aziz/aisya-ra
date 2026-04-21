@@ -68,6 +68,19 @@ def test_extract_attendance_records_works_with_colloquial_input():
     assert records[0]["status"] == "alpha"
 
 
+def test_extract_attendance_records_handles_declarative_absence_sentence():
+    records = _extract_attendance_records("Hari ini Rafa tidak hadir karena sakit")
+
+    assert len(records) == 1
+    assert records[0]["nama_siswa"].lower() == "rafa"
+    assert records[0]["status"] == "sakit"
+
+
+def test_detect_intent_for_declarative_attendance_sentence():
+    intent = _detect_admin_action_intent("Hari ini Rafa tidak hadir karena sakit")
+    assert intent == "mark_attendance"
+
+
 def test_reporting_query_not_classified_as_create_student_action():
     intent = _detect_admin_action_intent("Buatkan rekap absensi siswa kelompok B")
     assert intent is None

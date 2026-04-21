@@ -918,21 +918,54 @@ def _split_candidate_names(raw: str) -> list[str]:
     return names
 
 
+def _normalize_attendance_name_candidate(value: str) -> str:
+    cleaned = _strip_name_prefix_noise(value)
+    cleaned = re.sub(r"^(?:hari ini|kemarin|tanggal ini|pada hari ini|pada kemarin)\s+", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\s+(?:karena|sebab|dengan|yang)\s*$", "", cleaned, flags=re.IGNORECASE)
+    return _sanitize_person_name(cleaned)
+
+
 def _extract_attendance_records_rule_based(query: str) -> list[dict]:
     records = []
-    q = (query or "").strip()
+    q = _normalize_natural_language_query(query or "")
     if not q:
         return []
 
-    date_match = re.search(r"(\d{4}-\d{2}-\d{2}|\d{2}[/-]\d{2}[/-]\d{4}|hari ini|kemarin)", q, flags=re.IGNORECASE)
+    date_match = re.search(r"(\d{4}-\d{2}-\d{2}|\d{2}[/-]\d{2}[/-]\d{4}|hari ini|kemarin|tanggal ini)", q, flags=re.IGNORECASE)
     tanggal_value = _parse_date_value(date_match.group(1)) if date_match else None
 
-    pattern = re.compile(
-        r"(?P<nama>[A-Za-z][A-Za-z' .-]{1,80})\s+(?P<status>hadir|sakit|izin|alpha|alfa|tidak hadir|tidak masuk|absen)",
+    # Case 1: "Rafa tidak hadir karena sakit" / "Rafa tidak masuk".
+    pattern_absent = re.compile(
+        r"(?P<nama>[A-Za-z][A-Za-z' .-]{1,80}?)\s+(?:tidak hadir|tidak masuk|absen)(?:\s+(?:karena|sebab)\s+(?P<alasan>sakit|izin))?",
         flags=re.IGNORECASE,
     )
-    for match in pattern.finditer(q):
-        nama = _strip_name_prefix_noise(match.group("nama"))
+    consumed_ranges: list[tuple[int, int]] = []
+    for match in pattern_absent.finditer(q):
+        nama = _normalize_attendance_name_candidate(match.group("nama"))
+        alasan = _normalize_presensi_status(match.group("alasan"))
+        status = alasan or "alpha"
+        if not _looks_like_valid_name(nama) or not status:
+            continue
+        consumed_ranges.append((match.start(), match.end()))
+        records.append(
+            {
+                "nama_siswa": nama,
+                "status": status,
+                "tanggal": tanggal_value,
+                "keterangan": None,
+            }
+        )
+
+    # Case 2: "Rafa sakit" / "Rafa izin" / "Rafa hadir".
+    pattern_direct_status = re.compile(
+        r"(?P<nama>[A-Za-z][A-Za-z' .-]{1,80}?)\s+(?P<status>hadir|sakit|izin|alpha|alfa|alpa)\b",
+        flags=re.IGNORECASE,
+    )
+    for match in pattern_direct_status.finditer(q):
+        if any(start <= match.start() < end for start, end in consumed_ranges):
+            continue
+
+        nama = _normalize_attendance_name_candidate(match.group("nama"))
         status = _normalize_presensi_status(match.group("status"))
         if not _looks_like_valid_name(nama) or not status:
             continue
@@ -945,7 +978,20 @@ def _extract_attendance_records_rule_based(query: str) -> list[dict]:
             }
         )
 
-    return records
+    deduped_records: list[dict] = []
+    seen = set()
+    for item in records:
+        key = (
+            _normalize_text(item.get("nama_siswa") or ""),
+            _normalize_text(item.get("status") or ""),
+            item.get("tanggal") or "",
+        )
+        if not key[0] or key in seen:
+            continue
+        seen.add(key)
+        deduped_records.append(item)
+
+    return deduped_records
 
 
 def _extract_new_students_rule_based(query: str) -> list[dict]:
@@ -1232,6 +1278,13 @@ def _detect_admin_action_intent(query: str) -> str | None:
         and _contains_any(normalized, ["catat", "tandai", "input", "set", "ubah", "update", "masukkan", "tolong", "mohon"])
     )
     if attendance_action:
+        return "mark_attendance"
+
+    attendance_statement = (
+        bool(_extract_attendance_records_rule_based(normalized))
+        and not _contains_any(normalized, ["siapa", "berapa", "rekap", "daftar", "list", "tampilkan"])
+    )
+    if attendance_statement:
         return "mark_attendance"
 
     return None
