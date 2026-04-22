@@ -4,7 +4,6 @@ from datetime import date, datetime, timedelta, timezone
 import re
 from typing import Any
 from uuid import UUID
-
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 
 from app.database import get_supabase_client
@@ -25,7 +24,11 @@ from app.utils.gemini import generate_response
 from app.utils.whisper import transcribe_audio
 from app.utils.retrieval import retrieve_relevant_context, build_rag_prompt
 from app.routers.dashboard import get_dashboard_guru, get_dashboard_kepala
-from app.utils.academic_year import get_active_academic_year
+from app.utils.academic_year import (
+    activate_academic_year,
+    get_active_academic_year,
+    normalize_academic_year_label,
+)
 from app.utils.dashboard_chat_formatter import (
     build_dashboard_text_from_endpoint,
     is_refresh_command,
@@ -506,7 +509,8 @@ def _build_presensi_context(supabase, ra_id: str, tahun_ajaran_id: str) -> str |
             .execute()
         )
         siswa_list = siswa_resp.data or []
-        siswa_ids = [item.get("id") for item in siswa_list if item.get("id")]
+        siswa_map = {item["id"]: item["nama"] for item in siswa_list if item.get("id")}
+        siswa_ids = list(siswa_map.keys())
 
         if not siswa_ids:
             return "Belum ada siswa aktif untuk data presensi."
@@ -523,17 +527,39 @@ def _build_presensi_context(supabase, ra_id: str, tahun_ajaran_id: str) -> str |
     except Exception:
         return None
 
-    total = len(siswa_ids)
-    hadir = sum(1 for row in presensi_rows if row.get("status") == "hadir")
-    sakit = sum(1 for row in presensi_rows if row.get("status") == "sakit")
-    izin = sum(1 for row in presensi_rows if row.get("status") == "izin")
-    alpha = sum(1 for row in presensi_rows if row.get("status") == "alpha")
-    belum = max(total - len(presensi_rows), 0)
+    grouped_status: dict[str, list[str]] = {"hadir": [], "sakit": [], "izin": [], "alpha": []}
+    recorded_ids = set()
+    for row in presensi_rows:
+        sid = row.get("siswa_id")
+        status = row.get("status")
+        if sid in siswa_map and status in grouped_status:
+            grouped_status[status].append(siswa_map[sid])
+            recorded_ids.add(sid)
 
-    return (
-        f"Rekap presensi tanggal {today}: total_siswa={total}, hadir={hadir}, sakit={sakit}, "
-        f"izin={izin}, alpha={alpha}, belum_dicatat={belum}"
-    )
+    belum_dicatat = [nama for sid, nama in siswa_map.items() if sid not in recorded_ids]
+    
+    summary = f"Rekap presensi hari ini ({today}):\n"
+    summary += f"- Hadir: {len(grouped_status['hadir'])} siswa\n"
+    
+    if grouped_status["sakit"]:
+        summary += f"- Sakit: {', '.join(grouped_status['sakit'])}\n"
+    else:
+        summary += "- Sakit: -\n"
+        
+    if grouped_status["izin"]:
+        summary += f"- Izin: {', '.join(grouped_status['izin'])}\n"
+    else:
+        summary += "- Izin: -\n"
+        
+    if grouped_status["alpha"]:
+        summary += f"- Alpha: {', '.join(grouped_status['alpha'])}\n"
+    else:
+        summary += "- Alpha: -\n"
+        
+    if belum_dicatat:
+        summary += f"- Belum dicatat: {len(belum_dicatat)} siswa\n"
+        
+    return summary
 
 
 def _build_rpph_context(supabase, ra_id: str, tahun_ajaran_id: str) -> str | None:
@@ -693,6 +719,45 @@ def _build_chat_rooms_context(supabase, ra_id: str) -> str | None:
     return f"Total chat room: {len(rooms)}\nDaftar room:\n" + "\n".join(lines)
 
 
+def _build_ra_profile_context(supabase, ra_id: str) -> str | None:
+    try:
+        response = (
+            supabase.table("ra_profiles")
+            .select(
+                "nama_ra,nama_kepala,npsn,nomor_statistik,status_lembaga,bentuk_pendidikan,"
+                "penyelenggara,akreditasi,alamat,telepon,email_lembaga,website,"
+                "kelurahan_desa,kecamatan,kabupaten_kota,provinsi,kode_pos,tahun_ajaran"
+            )
+            .eq("id", ra_id)
+            .limit(1)
+            .execute()
+        )
+        data = response.data[0] if response.data else None
+    except Exception:
+        return None
+
+    if not data:
+        return "Informasi profil lembaga belum diatur."
+
+    alamat_full = ", ".join([
+        data.get("alamat") or "",
+        data.get("kelurahan_desa") or "",
+        data.get("kecamatan") or "",
+        data.get("kabupaten_kota") or "",
+        data.get("provinsi") or "",
+        data.get("kode_pos") or "",
+    ]).strip(", ")
+
+    return (
+        f"Nama RA: {data.get('nama_ra') or '-'}\n"
+        f"Kepala RA: {data.get('nama_kepala') or '-'}\n"
+        f"NPSN: {data.get('npsn') or '-'}\n"
+        f"Alamat: {alamat_full or '-'}\n"
+        f"Status: {data.get('status_lembaga') or '-'} | Akreditasi: {data.get('akreditasi') or '-'}\n"
+        f"Kontak: Telp {data.get('telepon') or '-'} | Email {data.get('email_lembaga') or '-'} | Web {data.get('website') or '-'}"
+    )
+
+
 def _build_system_data_context(supabase, current: dict, query: str) -> str | None:
     ra_id = current["ra_id"]
     user_id = current["profile"]["id"]
@@ -703,6 +768,12 @@ def _build_system_data_context(supabase, current: dict, query: str) -> str | Non
 
     request_all_data = _is_requesting_all_data(query)
     sections = []
+
+    # New section for RA Profile
+    if request_all_data or _contains_any(query, ["ra", "lembaga", "sekolah", "profil", "kepala", "alamat", "npsn", "akreditasi", "madrasah", "yayasan", "paud", "tk", "kb"]):
+        ra_profile = _build_ra_profile_context(supabase, ra_id)
+        if ra_profile:
+            sections.append(("PROFIL LEMBAGA/RA", ra_profile))
 
     if request_all_data or _looks_like_student_query(query):
         students = _build_students_context(supabase, ra_id, tahun_ajaran_id, query)
@@ -1331,11 +1402,15 @@ Pilih hanya salah satu intent berikut:
 - mark_attendance -> mencatat/mengubah kehadiran siswa
 - create_student -> menambah/daftarkan siswa
 - transfer_student -> pindah/mutasi siswa antar kelompok
+- update_school_profile -> mengubah informasi profil sekolah/lembaga/RA (nama kepala, alamat, dll)
+- update_gtk_info -> mengubah informasi profil profil guru/pegawai (nama, jabatan, telepon)
+- manage_kelompok -> membuat atau mengubah data kelompok/rombel/kelas
+- manage_academic_year -> mengubah atau memilih tahun ajaran aktif
 - null -> bukan perintah aksi administrasi
 
 Format output WAJIB JSON object:
 {{
-  "intent": "mark_attendance|create_student|transfer_student|null",
+  "intent": "mark_attendance|create_student|transfer_student|update_school_profile|update_gtk_info|manage_kelompok|manage_academic_year|null",
   "is_action_request": true|false,
   "confidence": 0.0
 }}
@@ -1357,7 +1432,16 @@ Output JSON saja:"""
     if intent in {"", "null", "none", "tidak ada"}:
         return None
 
-    if intent not in {"mark_attendance", "create_student", "transfer_student"}:
+    allowed_intents = {
+        "mark_attendance", 
+        "create_student", 
+        "transfer_student", 
+        "update_school_profile", 
+        "update_gtk_info", 
+        "manage_kelompok", 
+        "manage_academic_year"
+    }
+    if intent not in allowed_intents:
         return None
 
     is_action_request = bool(parsed.get("is_action_request"))
@@ -1630,6 +1714,96 @@ Output JSON saja:"""
         )
 
     return normalized_records
+
+
+def _extract_school_profile_update(query: str) -> dict:
+    natural = _normalize_natural_language_query(query)
+    prompt = f"""Ekstrak perubahan data profil sekolah/RA dari pesan user menjadi JSON.
+
+Aturan:
+- Fokus pada: nama_kepala, npsn, alamat, telepon, email_lembaga, website.
+- Isikan null untuk field yang tidak disebutkan perubahannya.
+- Jangan mengarang data.
+
+Format output WAJIB persis JSON object:
+{{
+  "nama_kepala": "...|null",
+  "npsn": "...|null",
+  "alamat": "...|null",
+  "telepon": "...|null",
+  "email_lembaga": "...|null",
+  "website": "...|null"
+}}
+
+Pesan user: {query}
+Pesan dinormalisasi: {natural}
+Output JSON saja:"""
+
+    try:
+        raw = generate_response(prompt)
+        parsed = _parse_json_object(raw)
+        return parsed if isinstance(parsed, dict) else {}
+    except Exception:
+        return {}
+
+
+def _extract_gtk_update(query: str) -> dict:
+    natural = _normalize_natural_language_query(query)
+    prompt = f"""Ekstrak pembaruan data Guru/Pegawai dari pesan user menjadi JSON.
+
+Aturan Penting:
+- HANYA ekstrak: nama (target), jabatan_baru, telepon_baru, nama_baru.
+- 'target_name' adalah nama guru yang ingin diubah.
+- Jika ada perubahan nama, isikan di 'nama_baru'.
+- Isikan null jika tidak disebutkan.
+
+Format output WAJIB:
+{{
+  "target_name": "...",
+  "nama_baru": "...|null",
+  "jabatan_baru": "...|null",
+  "telepon_baru": "...|null"
+}}
+
+Pesan user: {query}
+Output JSON saja:"""
+
+    try:
+        raw = generate_response(prompt)
+        parsed = _parse_json_object(raw)
+        return parsed if isinstance(parsed, dict) else {}
+    except Exception:
+        return {}
+
+
+def _extract_kelompok_config(query: str) -> dict:
+    natural = _normalize_natural_language_query(query)
+    prompt = f"""Ekstrak pengaturan kelompok/rombel dari pesan user menjadi JSON.
+
+Field:
+- 'nama_kelompok': nama rombel yang dimaksud.
+- 'kode_rombel': kode rombel (jika ada).
+- 'tingkat': tingkat (A/B/dst).
+- 'wali_kelas_nama': nama guru/wali kelas (jika disebut).
+
+Format output WAJIB:
+{{
+  "nama_kelompok": "...",
+  "kode_rombel": "...|null",
+  "tingkat": "...|null",
+  "wali_kelas_nama": "...|null"
+}}
+
+Pesan user: {query}
+Output JSON saja:"""
+
+    try:
+        raw = generate_response(prompt)
+        parsed = _parse_json_object(raw)
+        return parsed if isinstance(parsed, dict) else {}
+    except Exception:
+        return {}
+
 
 
 def _try_execute_attendance_action(supabase, current: dict, query: str) -> str:
@@ -1947,6 +2121,172 @@ def _try_execute_transfer_student_action(supabase, current: dict, query: str) ->
     return "Belum ada siswa yang berhasil dipindahkan:\n" + "\n".join(issue_lines[:6])
 
 
+def _try_execute_school_profile_action(supabase, current: dict, query: str) -> str:
+    ra_id = current["ra_id"]
+    update_data = _extract_school_profile_update(query)
+    
+    # Filter only non-null fields
+    payload = {k: v for k, v in update_data.items() if v is not None}
+    if not payload:
+        return "Saya tidak menemukan informasi spesifik untuk diubah pada profil sekolah. Contoh: 'Alamat RA ganti ke Jl. Mawar'."
+
+    try:
+        supabase.table("ra_profiles").update(payload).eq("id", ra_id).execute()
+        
+        changes = ", ".join([f"{k.replace('_', ' ')}: {v}" for k, v in payload.items()])
+        return f"Berhasil memperbarui profil sekolah: {changes}."
+    except Exception as exc:
+        return f"Gagal memperbarui profil sekolah: {exc}"
+
+
+def _try_execute_gtk_info_action(supabase, current: dict, query: str) -> str:
+    ra_id = current["ra_id"]
+    update_data = _extract_gtk_update(query)
+    
+    target_name = update_data.get("target_name")
+    if not target_name:
+        return "Sebutkan nama guru yang ingin diubah datanya. Contoh: 'Update telepon Ibu Lilis ke 0812...'."
+
+    try:
+        # Search for the profile
+        profile_resp = supabase.table("profiles").select("id,nama").eq("ra_id", ra_id).ilike("nama", f"%{target_name}%").limit(5).execute()
+        profiles = profile_resp.data or []
+        
+        if not profiles:
+            return f"Data guru dengan nama '{target_name}' tidak ditemukan."
+        if len(profiles) > 1:
+            names = ", ".join([p["nama"] for p in profiles])
+            return f"Ditemukan beberapa nama serupa: {names}. Mohon sebutkan nama lebih lengkap."
+            
+        profile_id = profiles[0]["id"]
+        
+        # Prepare payload - SECURITY: Limit fields
+        payload = {}
+        if update_data.get("nama_baru"): payload["nama"] = update_data["nama_baru"]
+        if update_data.get("jabatan_baru"): payload["jabatan"] = update_data["jabatan_baru"]
+        if update_data.get("telepon_baru"): payload["telepon"] = update_data["telepon_baru"]
+        
+        if not payload:
+            return f"Saya menemukan data {profiles[0]['nama']}, tapi tidak ada instruksi perubahan yang valid (hanya Nama, Jabatan, Telepon yang diizinkan)."
+
+        supabase.table("profiles").update(payload).eq("id", profile_id).execute()
+        changes = ", ".join([f"{k}: {v}" for k, v in payload.items()])
+        return f"Berhasil memperbarui data {profiles[0]['nama']}: {changes}."
+    except Exception as exc:
+        return f"Gagal memperbarui data guru: {exc}"
+
+
+def _try_execute_manage_kelompok_action(supabase, current: dict, query: str) -> str:
+    ra_id = current["ra_id"]
+    user_id = current["profile"]["id"]
+    tahun_ajaran_id = get_active_academic_year(supabase, ra_id, created_by=user_id)["id"]
+    
+    config = _extract_kelompok_config(query)
+    nama_kelompok = config.get("nama_kelompok")
+    if not nama_kelompok:
+        return "Sebutkan nama kelompok yang ingin dikelola. Contoh: 'Buat kelompok baru Kelompok C'."
+
+    try:
+        # Check if exists
+        existing_resp = supabase.table("kelompok").select("id").eq("ra_id", ra_id).eq("tahun_ajaran_id", tahun_ajaran_id).ilike("nama_kelompok", f"%{nama_kelompok}%").limit(1).execute()
+        existing = existing_resp.data[0] if existing_resp.data else None
+        
+        # Resolve wali kelas if provided
+        wali_kelas_id = None
+        wali_kelas_nama = config.get("wali_kelas_nama")
+        if wali_kelas_nama:
+            guru_resp = supabase.table("profiles").select("id,nama").eq("ra_id", ra_id).ilike("nama", f"%{wali_kelas_nama}%").limit(5).execute()
+            gurus = guru_resp.data or []
+            if gurus:
+                wali_kelas_id = gurus[0]["id"]
+
+        payload = {
+            "nama_kelompok": nama_kelompok,
+            "ra_id": ra_id,
+            "tahun_ajaran_id": tahun_ajaran_id,
+        }
+        if config.get("kode_rombel"): payload["kode_rombel"] = config["kode_rombel"]
+        if config.get("tingkat"): payload["tingkat"] = config["tingkat"]
+        if wali_kelas_id: payload["wali_kelas_id"] = wali_kelas_id
+
+        if existing:
+            supabase.table("kelompok").update(payload).eq("id", existing["id"]).execute()
+            return f"Berhasil memperbarui data kelompok {nama_kelompok}."
+        else:
+            supabase.table("kelompok").insert(payload).execute()
+            return f"Berhasil membuat kelompok baru: {nama_kelompok}."
+            
+    except Exception as exc:
+        return f"Gagal mengelola data kelompok: {exc}"
+
+
+def _extract_academic_year_config(query: str) -> dict:
+    natural = _normalize_natural_language_query(query)
+    prompt = f"""Ekstrak pemilihan/pengaturan tahun ajaran dari pesan user menjadi JSON.
+
+Field:
+- 'label': label tahun ajaran (format YYYY/YYYY, misal: 2026/2027).
+- 'is_activate': true jika user meminta mengaktifkan/pindah ke tahun tersebut.
+
+Format output WAJIB:
+{{
+  "label": "...|null",
+  "is_activate": true|false
+}}
+
+Pesan user: {query}
+Output JSON saja:"""
+
+    try:
+        raw = generate_response(prompt)
+        parsed = _parse_json_object(raw)
+        return parsed if isinstance(parsed, dict) else {}
+    except Exception:
+        return {}
+
+
+def _try_execute_academic_year_action(supabase, current: dict, query: str) -> str:
+    ra_id = current["ra_id"]
+    config = _extract_academic_year_config(query)
+    label = config.get("label")
+    
+    if not label:
+        return "Sebutkan tahun ajaran yang dimaksud. Contoh: 'Aktifkan tahun ajaran 2026/2027'."
+
+    try:
+        normalized_label = normalize_academic_year_label(label)
+    except Exception:
+        return f"Format tahun ajaran '{label}' tidak valid. Gunakan format YYYY/YYYY, contoh: 2026/2027."
+
+    try:
+        # Search for year with this label
+        response = (
+            supabase.table("tahun_ajaran")
+            .select("id,label,is_active")
+            .eq("ra_id", ra_id)
+            .eq("label", normalized_label)
+            .limit(1)
+            .execute()
+        )
+        year_row = response.data[0] if response.data else None
+        
+        if not year_row:
+            return f"Tahun ajaran {normalized_label} belum terdaftar di sistem. Silakan buat dahulu melalui menu manajemen tahun ajaran."
+
+        if config.get("is_activate"):
+            if year_row.get("is_active"):
+                return f"Tahun ajaran {normalized_label} sudah aktif."
+            
+            from app.utils.academic_year import activate_academic_year
+            activate_academic_year(supabase, ra_id, year_row["id"])
+            return f"Berhasil mengaktifkan tahun ajaran {normalized_label}."
+            
+        return f"Saya menemukan data tahun ajaran {normalized_label}, tetapi tidak ada perintah spesifik (seperti 'aktifkan')."
+        
+    except Exception as exc:
+        return f"Gagal mengelola tahun ajaran: {exc}"
+
+
 def _try_execute_admin_action(supabase, current: dict, query: str) -> str | None:
     if _looks_like_read_only_operational_query(query):
         return None
@@ -1978,6 +2318,18 @@ def _try_execute_admin_action(supabase, current: dict, query: str) -> str | None
 
     if intent == "transfer_student":
         return _try_execute_transfer_student_action(supabase, current, query)
+
+    if intent == "update_school_profile":
+        return _try_execute_school_profile_action(supabase, current, query)
+
+    if intent == "update_gtk_info":
+        return _try_execute_gtk_info_action(supabase, current, query)
+
+    if intent == "manage_kelompok":
+        return _try_execute_manage_kelompok_action(supabase, current, query)
+
+    if intent == "manage_academic_year":
+        return _try_execute_academic_year_action(supabase, current, query)
 
     return None
 
@@ -2619,6 +2971,73 @@ def _build_operational_query_response(supabase, current: dict, query: str, room_
             f"Siswa yang belum dicatat presensinya hari ini (total {len(pending_names)}):\n"
             + "\n".join(lines)
         )
+
+    presensi_rekap_query = _contains_any(
+        normalized,
+        ["rekap absensi", "rekap presensi", "daftar hadir", "ringkasan hadir", "rekapitulasi"],
+    ) and _contains_any(normalized, ["presensi", "kehadiran", "absen", "hari ini"])
+    if presensi_rekap_query:
+        today = date.today().isoformat()
+        try:
+            active_year_id = _get_tahun_ajaran_id()
+            kelompok_rows = _get_kelompok_rows(active_year_id)
+            
+            target_name = _extract_target_kelompok_name(query)
+            target_kelompok = None
+            if target_name:
+                target_kelompok, _ = _resolve_kelompok_by_name(kelompok_rows, target_name)
+            
+            siswa_query = (
+                supabase.table("siswa")
+                .select("id,nama,kelompok_id")
+                .eq("ra_id", ra_id)
+                .eq("tahun_ajaran_id", active_year_id)
+                .eq("status_aktif", True)
+            )
+            if target_kelompok:
+                siswa_query = siswa_query.eq("kelompok_id", target_kelompok["id"])
+            
+            siswa_list = siswa_query.execute().data or []
+            siswa_map = {s["id"]: s["nama"] for s in siswa_list if s.get("id")}
+            siswa_ids = list(siswa_map.keys())
+            
+            if not siswa_ids:
+                return f"Tidak ada data siswa aktif untuk {target_name or 'semua kelompok'}."
+
+            presensi_rows = (
+                supabase.table("presensi")
+                .select("siswa_id,status")
+                .eq("tanggal", today)
+                .eq("tahun_ajaran_id", active_year_id)
+                .in_("siswa_id", siswa_ids)
+                .execute()
+            ).data or []
+        except Exception as exc:
+            return f"Gagal mengambil rekap presensi: {exc}"
+
+        stats = {"hadir": [], "sakit": [], "izin": [], "alpha": []}
+        recorded_ids = set()
+        for p in presensi_rows:
+            sid = p.get("siswa_id")
+            status = p.get("status")
+            if sid in siswa_map and status in stats:
+                stats[status].append(siswa_map[sid])
+                recorded_ids.add(sid)
+        
+        not_recorded = [name for sid, name in siswa_map.items() if sid not in recorded_ids]
+        
+        label = f"Kelompok {target_kelompok['nama_kelompok']}" if target_kelompok else "Semua Kelompok"
+        res = f"Rekapitulasi Presensi {label} ({_format_date_id(today)}):\n"
+        res += f"✅ Hadir: {len(stats['hadir'])} siswa\n"
+        res += f"🤒 Sakit: {', '.join(stats['sakit']) if stats['sakit'] else '-'}\n"
+        res += f"✉️ Izin: {', '.join(stats['izin']) if stats['izin'] else '-'}\n"
+        res += f"❌ Alpha: {', '.join(stats['alpha']) if stats['alpha'] else '-'}\n"
+        if not_recorded:
+            res += f"⏳ Belum dicatat: {len(not_recorded)} siswa"
+            if len(not_recorded) <= 5:
+                res += f" ({', '.join(not_recorded)})"
+        
+        return res
 
     presensi_query = _contains_any(
         normalized,

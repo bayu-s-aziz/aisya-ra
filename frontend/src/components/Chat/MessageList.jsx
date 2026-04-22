@@ -138,7 +138,7 @@ function MessageList({ messages, isBotTyping, loadingInitial, loadingMore, error
   ]
 
   return (
-    <div className="relative flex h-full flex-col bg-[radial-gradient(circle_at_top,_#eef2ff_0%,_#f7f7f8_35%,_#f7f7f8_100%)]">
+    <div className="relative flex h-full flex-col bg-[#fdfdfd]">
       <div
         ref={containerRef}
         className="flex-1 overflow-y-auto px-3 py-4 md:px-6"
@@ -165,17 +165,30 @@ function MessageList({ messages, isBotTyping, loadingInitial, loadingMore, error
           ) : null}
 
           {!loadingInitial && sortedMessages.length === 0 ? (
-            <div className="rounded-3xl border border-[#dbe3ec] bg-white/90 px-6 py-8 text-center shadow-sm backdrop-blur">
-              <p className="text-lg font-semibold text-[#0f172a]">Mulai percakapan dengan AISYA</p>
-              <p className="mt-2 text-sm text-[#667085]">Tulis pertanyaan Anda, lalu AI akan membantu dengan jawaban yang terstruktur.</p>
-              <div className="mt-5 grid gap-2 text-left">
-                {quickIdeas.map((idea) => (
-                  <div
+            <div className="mx-auto mt-10 max-w-2xl rounded-[24px] border border-[#f1f5f9] bg-white px-6 py-10 text-center shadow-sm">
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#0f172a] shadow-md">
+                <span className="text-xl font-bold text-white">AI</span>
+              </div>
+              <p className="text-xl font-semibold text-[#0f172a]">Ruang Perencanaan</p>
+              <p className="mt-2 text-sm text-[#64748b]">Apa yang ingin Anda selesaikan di sesi ini?</p>
+              <div className="mt-8 flex flex-wrap justify-center gap-2">
+                {['/absensi', '/surat', '/rekap', '/rpph'].map((idea) => (
+                  <button
                     key={idea}
-                    className="rounded-xl border border-[#e4e7ec] bg-white px-3 py-2 text-sm text-[#344054]"
+                    type="button"
+                    onClick={() => {
+                        const input = document.querySelector('textarea[name="chat-input"]')
+                        if (input) {
+                          const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set
+                          setter.call(input, idea + ' ')
+                          input.dispatchEvent(new Event('input', { bubbles: true }))
+                          input.focus()
+                        }
+                    }}
+                    className="rounded-full border border-[#e2e8f0] bg-[#f8fafc] px-4 py-2 text-sm font-medium text-[#334155] hover:bg-[#e2e8f0] hover:text-[#0f172a] shadow-sm transition-all"
                   >
                     {idea}
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>

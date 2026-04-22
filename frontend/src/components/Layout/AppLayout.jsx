@@ -206,6 +206,8 @@ function AppLayout() {
   const userMenuRef = useRef(null)
   const switchTimerRef = useRef(null)
 
+  const initializeChatContext = useChatStore((state) => state.initializeContext)
+
   const {
     selectedRoomId: contextSelectedRoomId,
     selectedDocId,
@@ -255,6 +257,8 @@ function AppLayout() {
         const me = await fetchAuthMeData(token)
         setProfile(me?.profile || null)
         setRaProfile(me?.ra_profile || null)
+        // Initialize chat context (RA ID, Academic Year) for UI cards
+        initializeChatContext()
       } catch {
         setProfile(null)
         setRaProfile(null)

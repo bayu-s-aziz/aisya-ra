@@ -1,4 +1,12 @@
 import PropTypes from 'prop-types'
+import { useState } from 'react'
+import { useChatStore } from '../../store/chatStore'
+import { savePresensiBatch } from '../../lib/settingsManagement'
+import DocumentDraftCard from './Cards/DocumentDraftCard'
+import ActionConfirmationCard from './Cards/ActionConfirmationCard'
+import DataTableCard from './Cards/DataTableCard'
+import StatusResultCard from './Cards/StatusResultCard'
+import StatusIndicator from './Cards/StatusIndicator'
 
 function formatTime(timestamp) {
   if (!timestamp) return ''
@@ -118,6 +126,57 @@ function MessageBubble({ message }) {
   const isPending = message?.status === 'pending'
   const isFailed = message?.status === 'failed'
 
+  const raProfile = useChatStore((state) => state.raProfile)
+  const activeAcademicYearId = useChatStore((state) => state.activeAcademicYearId)
+  const [confirmStatus, setConfirmStatus] = useState('pending')
+  const [tableStatus, setTableStatus] = useState('pending')
+  const [errorMessage, setErrorMessage] = useState('')
+
+  const handleConfirm = () => {
+    console.log('Action confirmed')
+    setConfirmStatus('success')
+    // TODO: integrate actual save logic here (e.g., API call to Supabase)
+  }
+
+  const handleCancel = () => {
+    console.log('Action cancelled')
+    setConfirmStatus('pending')
+    // TODO: handle cancel logic if needed
+  }
+
+  const handleSaveTable = async (data) => {
+    const token = localStorage.getItem('aisya_access_token')
+    if (!token || !raProfile?.id || !activeAcademicYearId) {
+      setErrorMessage('Konteks sistem (RA ID/Tahun Ajaran) tidak ditemukan. Silakan refresh halaman.')
+      setTableStatus('failed')
+      return
+    }
+
+    console.log('Saving table data to backend:', data)
+    
+    try {
+      // Build payload for savePresensiBatch
+      const payload = {
+        tanggal: new Date().toISOString().split('T')[0], // today
+        kelompok_id: message?.kelompok_id || null, // Best effort from message metadata if exists
+        records: data.map(row => ({
+          siswa_id: row.id,
+          status: row.status.toLowerCase(),
+          keterangan: '',
+          sumber_pencatatan: 'ai_chat_workspace'
+        }))
+      }
+
+      const result = await savePresensiBatch(token, payload)
+      console.log('Save result:', result)
+      setTableStatus('success')
+    } catch (err) {
+      console.error('Failed to save attendance:', err)
+      setErrorMessage(err?.response?.data?.detail || err?.message || 'Gagal menyimpan presensi ke database.')
+      setTableStatus('failed')
+    }
+  }
+
   return (
     <div className={`message-enter mb-6 flex w-full ${isUser ? 'justify-end' : 'justify-start'}`}>
       <div className={`min-w-0 text-sm ${isUser ? 'max-w-[88%] md:max-w-[76%]' : 'w-full max-w-[52rem]'}`}>
@@ -148,7 +207,83 @@ function MessageBubble({ message }) {
             </a>
           ) : null}
 
-          <RichText text={message?.content || ''} />
+          {/* Render UI cards based on special markers */}
+          {(() => {
+            const content = message?.content || ''
+            
+            // 1. Handle Table Marker
+            if (content.includes('[[TABLE]]')) {
+              const parts = content.split('[[TABLE]]')
+              const jsonStr = parts[1]?.trim() || '[]'
+              let tableData = []
+              try {
+                tableData = JSON.parse(jsonStr)
+              } catch (e) {
+                console.error('Failed to parse table JSON:', e)
+              }
+              
+              return (
+                <>
+                  <RichText text={parts[0]} />
+                  <DataTableCard 
+                    rows={tableData} 
+                    onSave={handleSaveTable} 
+                    status={tableStatus}
+                  />
+                  {tableStatus === 'success' && (
+                    <StatusResultCard status="success" message="Data kehadiran berhasil diperbarui ke database." />
+                  )}
+                  {tableStatus === 'failed' && (
+                    <StatusResultCard status="failed" message={errorMessage} />
+                  )}
+                </>
+              )
+            }
+
+            // 2. Handle Loading/Thinking Marker
+            if (content.includes('[[LOADING]]')) {
+              const parts = content.split('[[LOADING]]')
+              const label = parts[1]?.trim() || undefined
+              return (
+                <>
+                  <RichText text={parts[0]} />
+                  <StatusIndicator label={label} />
+                </>
+              )
+            }
+
+            // 3. Handle Draft Marker
+            if (content.includes('[[DRAFT]]')) {
+              const parts = content.split('[[DRAFT]]')
+              const excerpt = parts[1]?.trim() || ''
+              return (
+                <>
+                  <RichText text={parts[0]} />
+                  <DocumentDraftCard excerpt={excerpt} />
+                </>
+              )
+            }
+
+            // 4. Handle Confirm Action Marker
+            if (content.includes('[[CONFIRM]]')) {
+              const parts = content.split('[[CONFIRM]]')
+              const description = parts[1]?.trim() || ''
+              return (
+                <>
+                  <RichText text={parts[0]} />
+                  <ActionConfirmationCard 
+                    description={description} 
+                    status={confirmStatus} 
+                    onConfirm={handleConfirm} 
+                    onCancel={handleCancel} 
+                  />
+                </>
+              )
+            }
+
+            return <RichText text={content} />
+          })()}
+          
 
           <div className="mt-2 flex items-center gap-2 text-[11px] leading-none text-[#98a2b3]">
             {timeLabel ? <span>{timeLabel}</span> : null}

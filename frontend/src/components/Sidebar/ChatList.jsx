@@ -137,20 +137,22 @@ function ChatList({
           type="button"
           aria-label="Buat chat baru"
           onClick={handleCreateNewChat}
-          className="inline-flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-[#111827] transition-colors hover:bg-white"
+          className="inline-flex w-full items-center justify-between gap-2 rounded-xl bg-[#0f172a] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#1e293b] active:scale-[0.98]"
         >
-          <PencilSquareIcon className="h-4 w-4" />
-          New chat
+          <span className="flex items-center gap-2">
+            <PencilSquareIcon className="h-4 w-4" />
+            Chat Baru
+          </span>
         </button>
 
         <button
           type="button"
           aria-label="Cari chat"
           onClick={() => setShowSearch((prev) => !prev)}
-          className="inline-flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-[#111827] transition-colors hover:bg-white"
+          className="inline-flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-[#475467] transition-colors hover:bg-white hover:text-[#0f172a]"
         >
           <MagnifyingGlassIcon className="h-4 w-4" />
-          Search chats
+          Cari percakapan
         </button>
 
         <div>
@@ -158,13 +160,13 @@ function ChatList({
             type="button"
             aria-label="Buka aplikasi"
             onClick={() => setIsAppsOpen((prev) => !prev)}
-            className="inline-flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm font-medium text-[#111827] transition-colors hover:bg-white"
+            className="inline-flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2 text-sm font-medium text-[#475467] transition-colors hover:bg-white hover:text-[#0f172a]"
           >
             <span className="inline-flex items-center gap-2">
               <Squares2X2Icon className="h-4 w-4" />
-              Apps
+              Menu Administrasi
             </span>
-            <ChevronDownIcon className={["h-4 w-4 text-[#667085] transition-transform", isAppsOpen ? 'rotate-180' : 'rotate-0'].join(' ')} />
+            <ChevronDownIcon className={["h-4 w-4 text-[#98a2b3] transition-transform", isAppsOpen ? 'rotate-180' : 'rotate-0'].join(' ')} />
           </button>
 
           {isAppsOpen && hasAppMenuItems ? (
@@ -209,8 +211,8 @@ function ChatList({
         ) : null}
       </div>
 
-      <div className="px-4 pt-3 pb-2">
-        <p className="text-xs font-semibold tracking-[0.02em] text-[#98a2b3]">{listTitle}</p>
+      <div className="px-4 pt-4 pb-2">
+        <p className="text-xs font-bold tracking-wider uppercase text-[#94a3b8]">{listTitle}</p>
       </div>
 
       <div className="flex-1 overflow-y-auto">

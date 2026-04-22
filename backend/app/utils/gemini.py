@@ -1,6 +1,6 @@
 from typing import Optional
 
-from google import genai
+from google import genai    
 
 from app.config import settings
 
@@ -15,10 +15,9 @@ SYSTEM_PROMPT = (
     "- Jangan mengasumsikan nama sekolah, kepala RA, atau data profil lain tanpa konteks data yang tersedia."
 )
 DEFAULT_MODEL_CANDIDATES = [
-    "gemini-2.5-flash",
     "gemini-2.0-flash",
-    "gemini-1.5-flash-latest",
     "gemini-1.5-flash",
+    "gemini-1.5-flash-latest",
 ]
 
 
@@ -37,10 +36,15 @@ def _is_quota_or_rate_limit_error(exc: Exception) -> bool:
     )
 
 
-def _fallback_response() -> str:
+def _fallback_response(exc: Optional[Exception] = None) -> str:
+    if exc and _is_quota_or_rate_limit_error(exc):
+        return (
+            "Maaf, kuota layanan AI sedang habis. "
+            "Silakan coba lagi beberapa saat lagi."
+        )
     return (
-        "Maaf, layanan AI sedang sibuk atau kuota API sedang habis. "
-        "Silakan coba lagi beberapa saat lagi."
+        "Maaf, terjadi kendala teknis saat menghubungi layanan AI. "
+        "Silakan coba lagi atau hubungi admin jika masalah berlanjut."
     )
 
 
@@ -75,18 +79,12 @@ def generate_response(prompt: str, context: Optional[str] = None) -> str:
                     return text
             except Exception as exc:
                 last_error = exc
-                if _is_model_not_found_error(exc):
-                    continue
-                gemini_error = exc
-                break
+                # Try the next candidate model for any error (quota, structural, etc.)
+                continue
 
-        if not gemini_error:
-            gemini_error = last_error
-
-    if gemini_error and _is_quota_or_rate_limit_error(gemini_error):
-        return _fallback_response()
+        gemini_error = last_error
 
     if not settings.GEMINI_API_KEY:
         raise ValueError("GEMINI_API_KEY belum diset di environment variables")
 
-    return _fallback_response()
+    return _fallback_response(gemini_error)

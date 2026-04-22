@@ -13,7 +13,7 @@ const STATUS_OPTIONS = [
   { value: 'alpha', label: 'Alpha' },
 ]
 
-const DEFAULT_STATUS = 'hadir'
+const DEFAULT_STATUS = null
 const VALID_STATUS = new Set(STATUS_OPTIONS.map((item) => item.value))
 const MODE_OPTIONS = [
   { value: 'harian', label: 'Harian' },
@@ -45,7 +45,7 @@ function getTodayIsoDate() {
 }
 
 function normalizeStatus(status) {
-  return VALID_STATUS.has(status) ? status : DEFAULT_STATUS
+  return VALID_STATUS.has(status) ? status : null
 }
 
 function formatDateLabel(value) {
@@ -213,9 +213,10 @@ function PresensiManagementPanel() {
 
   const recordsToSave = useMemo(() => {
     return Object.entries(statusMap)
+      .filter(([_, status]) => status !== null) // Hanya kirim yang sudah memiliki status
       .map(([siswaId, status]) => ({
         siswa_id: siswaId,
-        status: normalizeStatus(status),
+        status: status,
         keterangan: keteranganMap[siswaId]?.trim() || undefined,
         sumber_pencatatan: 'manual_panel',
       }))
@@ -253,11 +254,16 @@ function PresensiManagementPanel() {
       sakit: 0,
       izin: 0,
       alpha: 0,
+      belum_dicatat: 0,
     }
 
     ;(rekap?.detail || []).forEach((item) => {
       const currentStatus = normalizeStatus(statusMap[item.siswa_id])
-      summaryMap[currentStatus] = (summaryMap[currentStatus] || 0) + 1
+      if (currentStatus) {
+        summaryMap[currentStatus] = (summaryMap[currentStatus] || 0) + 1
+      } else {
+        summaryMap.belum_dicatat += 1
+      }
     })
 
     return summaryMap
@@ -319,7 +325,7 @@ function PresensiManagementPanel() {
   }, [selectedKelompokId, selectedDate, recordsToSave, selectedKelompokName, loadRekap])
 
   const summary = rekap
-    ? `Total siswa: ${rekap.total_siswa} | Hadir: ${statusSummary.hadir} | Sakit: ${statusSummary.sakit} | Izin: ${statusSummary.izin} | Alpha: ${statusSummary.alpha}`
+    ? `Total siswa: ${rekap.total_siswa} | Hadir: ${statusSummary.hadir} | Sakit: ${statusSummary.sakit} | Izin: ${statusSummary.izin} | Alpha: ${statusSummary.alpha} | Belum Dicatat: ${statusSummary.belum_dicatat}`
     : ''
 
   const summaryPeriode = periodeRekap

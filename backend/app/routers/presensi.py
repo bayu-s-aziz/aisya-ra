@@ -115,14 +115,13 @@ async def upsert_presensi_batch(
             else:
                 inserted += 1
         elif existing:
+            # Pertahankan data existing jika tidak ada request baru
             status_value = existing["status"]
             keterangan_value = existing.get("keterangan")
             sumber_value = existing.get("sumber_pencatatan") or "manual_panel"
         else:
-            status_value = StatusPresensi.hadir.value
-            keterangan_value = None
-            sumber_value = "manual_panel"
-            inserted += 1
+            # Jangan buat record baru jika tidak ada data request dan belum ada data existing
+            continue
 
         upsert_rows.append({
             "siswa_id": siswa_id,

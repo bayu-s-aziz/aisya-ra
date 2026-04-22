@@ -111,6 +111,10 @@ export const useChatStore = create((set, get) => ({
   sending: false,
   sendError: '',
 
+  // Context for UI Cards
+  raProfile: null,
+  activeAcademicYearId: null,
+
   realtimeConnected: false,
   realtimeError: '',
 
@@ -512,6 +516,32 @@ export const useChatStore = create((set, get) => ({
         activeRoomChannel = null
       }
       set({ realtimeConnected: false })
+    }
+  },
+
+  initializeContext: async () => {
+    const token = localStorage.getItem('aisya_access_token')
+    if (!token) return
+
+    try {
+      // Fetch academic years to get the active one
+      const response = await api.get('/tahun-ajaran', { 
+        headers: { Authorization: `Bearer ${token}` } 
+      })
+      const activeId = response?.data?.active_id || null
+      
+      // authMe already fetched in AppLayout, but let's ensure we have RA ID
+      const meResponse = await api.get('/auth/me', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const raProfile = meResponse?.data?.data?.ra_profile || null
+
+      set({ 
+        activeAcademicYearId: activeId,
+        raProfile: raProfile
+      })
+    } catch (err) {
+      console.error('Failed to initialize chat context:', err)
     }
   },
 

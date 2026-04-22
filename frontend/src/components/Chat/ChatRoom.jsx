@@ -94,31 +94,53 @@ function mergeMessagesForView(list) {
 
 function EmptyChatState({ onOpenSidebar }) {
   const suggestions = [
-    'Buatkan ide kegiatan tematik untuk besok',
-    'Tolong ringkas isi rapat guru minggu ini',
-    'Susun draft pesan untuk wali murid',
+    { label: 'Catat kehadiran kelas', icon: '📝' },
+    { label: 'Buat draf surat undangan', icon: '✉️' },
+    { label: 'Susun RPPH', icon: '📚' },
+    { label: 'Buat rekap absen bulan ini', icon: '📊' },
   ]
 
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-6 bg-[radial-gradient(circle_at_top,_#eef2ff_0%,_#f8fafc_45%,_#f8fafc_100%)] px-4">
-      <div className="max-w-2xl rounded-3xl border border-[#e2e8f0] bg-white px-8 py-8 text-center shadow-sm">
-        <h1 className="text-2xl font-semibold text-[#0f172a]">AISYA Assistant</h1>
-        <p className="mt-2 text-sm text-[#64748b]">Pilih percakapan di sidebar kiri atau buat ruang baru untuk memulai.</p>
-        <div className="mt-5 grid gap-2 text-left">
+    <div className="flex h-full flex-col items-center justify-center gap-6 px-4" style={{
+      background: 'radial-gradient(ellipse at top, #f1f5f9 0%, #ffffff 70%)'
+    }}>
+      <div className="max-w-3xl w-full">
+        <div className="text-center mb-8">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#1e293b] to-[#0f172a] shadow-lg">
+            <span className="text-2xl font-bold text-white">AI</span>
+          </div>
+          <h1 className="text-3xl font-semibold tracking-tight text-[#0f172a]">Selamat Datang di AISYA</h1>
+          <p className="mt-2 text-base text-[#64748b]">Asisten cerdas untuk manajemen administrasi madrasah Anda.</p>
+        </div>
+        
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:gap-4">
           {suggestions.map((suggestion) => (
-            <div
-              key={suggestion}
-              className="rounded-xl border border-[#e4e7ec] bg-[#f8fafc] px-3 py-2 text-sm text-[#344054]"
+            <button
+              key={suggestion.label}
+              type="button"
+              className="group flex flex-col items-start rounded-2xl border border-[#e2e8f0] bg-white p-5 text-left transition-all hover:border-[#cbd5e1] hover:bg-[#f8fafc] hover:shadow-sm"
+              onClick={() => {
+                // In a real implementation we would populate the composer here
+                const input = document.querySelector('textarea[name="chat-input"]')
+                if (input) {
+                  const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set
+                  setter.call(input, suggestion.label)
+                  input.dispatchEvent(new Event('input', { bubbles: true }))
+                  input.focus()
+                }
+              }}
             >
-              {suggestion}
-            </div>
+              <span className="mb-2 text-2xl">{suggestion.icon}</span>
+              <span className="text-sm font-medium text-[#1e293b]">{suggestion.label}</span>
+              <span className="mt-1 text-xs text-[#64748b] opacity-0 transition-opacity group-hover:opacity-100">Gunakan prompt ini →</span>
+            </button>
           ))}
         </div>
       </div>
       <button
         type="button"
         onClick={onOpenSidebar}
-        className="rounded-full bg-[#0f172a] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#020617] md:hidden"
+        className="mt-8 rounded-full bg-[#0f172a] px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[#020617] md:hidden"
       >
         Buka Sidebar
       </button>
