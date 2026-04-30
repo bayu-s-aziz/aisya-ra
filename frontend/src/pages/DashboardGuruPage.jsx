@@ -3,18 +3,18 @@ import api from '../lib/api'
 
 function StatCard({ title, value, subtitle, tone = 'slate' }) {
   const tones = {
-    emerald: 'bg-emerald-50 text-emerald-700 ring-emerald-100',
-    blue: 'bg-blue-50 text-blue-700 ring-blue-100',
-    amber: 'bg-amber-50 text-amber-700 ring-amber-100',
-    red: 'bg-red-50 text-red-700 ring-red-100',
-    slate: 'bg-slate-50 text-slate-700 ring-slate-100',
+    emerald: 'border-l-4 border-emerald-600 bg-emerald-50 text-emerald-900',
+    blue: 'border-l-4 border-blue-600 bg-blue-50 text-blue-900',
+    amber: 'border-l-4 border-amber-500 bg-amber-50 text-amber-900',
+    red: 'border-l-4 border-red-600 bg-red-50 text-red-900',
+    slate: 'border-l-4 border-slate-500 bg-slate-50 text-slate-900',
   }
 
   return (
-    <div className={`rounded-lg p-4 ring-1 ${tones[tone] || tones.slate}`}>
-      <p className="text-xs font-medium uppercase tracking-wide opacity-80">{title}</p>
-      <p className="mt-2 text-2xl font-semibold">{value}</p>
-      {subtitle ? <p className="mt-1 text-xs opacity-80">{subtitle}</p> : null}
+    <div className={`rounded-md p-4 shadow-sm ${tones[tone] || tones.slate}`}>
+      <p className="text-xs font-bold uppercase tracking-wider opacity-80">{title}</p>
+      <p className="mt-2 text-2xl font-bold">{value}</p>
+      {subtitle ? <p className="mt-1 text-xs font-medium opacity-80">{subtitle}</p> : null}
     </div>
   )
 }
@@ -50,9 +50,12 @@ function DashboardGuruPage() {
   return (
     <div className="min-h-screen bg-slate-50 px-4 py-8">
       <div className="mx-auto w-full max-w-6xl space-y-6">
-        <div className="rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-          <h1 className="text-2xl font-semibold text-slate-900">Dashboard Guru</h1>
-          <p className="mt-1 text-sm text-slate-600">Ringkasan aktivitas harian dan mingguan</p>
+        <div className="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-200">
+          <div className="bg-emerald-800 px-6 py-5 text-white">
+            <h1 className="text-2xl font-bold tracking-tight">Dashboard Guru</h1>
+            <p className="mt-1 text-sm text-emerald-100">Ringkasan aktivitas harian dan mingguan</p>
+          </div>
+          <div className="p-6">
 
           {error ? <div className="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div> : null}
 
@@ -120,15 +123,15 @@ function DashboardGuruPage() {
                 <h2 className="text-sm font-semibold text-slate-900">Rekap Presensi Per Kelompok</h2>
                 <div className="mt-3 overflow-x-auto">
                   <table className="w-full border-collapse text-sm">
-                    <thead>
-                      <tr className="border-b border-slate-200 text-left">
-                        <th className="px-3 py-2">Kelompok</th>
-                        <th className="px-3 py-2">Total</th>
-                        <th className="px-3 py-2">Hadir</th>
-                        <th className="px-3 py-2">Sakit</th>
-                        <th className="px-3 py-2">Izin</th>
-                        <th className="px-3 py-2">Alpha</th>
-                        <th className="px-3 py-2">Belum</th>
+                    <thead className="bg-emerald-700 text-white">
+                      <tr className="text-left">
+                        <th className="px-3 py-3 font-semibold">Kelompok</th>
+                        <th className="px-3 py-3 font-semibold">Total</th>
+                        <th className="px-3 py-3 font-semibold">Hadir</th>
+                        <th className="px-3 py-3 font-semibold">Sakit</th>
+                        <th className="px-3 py-3 font-semibold">Izin</th>
+                        <th className="px-3 py-3 font-semibold">Alpha</th>
+                        <th className="px-3 py-3 font-semibold">Belum</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -149,6 +152,7 @@ function DashboardGuruPage() {
               </div>
             </>
           ) : null}
+          </div>
         </div>
       </div>
     </div>

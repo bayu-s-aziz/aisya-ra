@@ -3,22 +3,7 @@ import api from '../lib/api'
 import ChatBubble from '../components/ChatBubble'
 import ChatInput from '../components/ChatInput'
 
-function detectRpphIntent(text) {
-  const normalized = text.toLowerCase().trim()
-  if (!/(buat|generate)\s+rpph/.test(normalized)) {
-    return null
-  }
-
-  const temaMatch = text.match(/tema\s+(.+?)(?:\s+subtema|$)/i)
-  const subtemaMatch = text.match(/subtema\s+(.+?)(?:\s+kelompok|\s+hari|$)/i)
-  const hariMatch = text.match(/hari\s+(.+)$/i)
-
-  return {
-    tema: temaMatch?.[1]?.trim() || '',
-    subtema: subtemaMatch?.[1]?.trim() || '',
-    hari: hariMatch?.[1]?.trim() || 'Senin',
-  }
-}
+// LLM-first intent routing is now handled entirely by the backend
 
 function todayDateValue() {
   const now = new Date()
@@ -175,11 +160,7 @@ function ChatPage() {
   const handleSendMessage = async (content) => {
     if (!activeRoomId || !content.trim()) return
 
-    const intent = detectRpphIntent(content)
-    if (intent) {
-      await handleGenerateRpphFromIntent(content, intent)
-      return
-    }
+    // Intent is now handled centrally by the backend via LLM.
 
     const token = localStorage.getItem('aisya_access_token')
     if (!token) {
@@ -207,6 +188,11 @@ function ChatPage() {
       }
       if (bot_message) {
         setMessages((prev) => [...prev, bot_message])
+        
+        if (bot_message.intent === 'buat_rpph') {
+          // Trigger RPPH generation UI based on backend AI's parsed parameters
+          await generateRpphFromParams(bot_message.parameters || {})
+        }
       }
     } catch (err) {
       setError(err?.response?.data?.detail || 'Gagal mengirim pesan')
@@ -215,48 +201,25 @@ function ChatPage() {
     }
   }
 
-  const handleGenerateRpphFromIntent = async (rawPrompt, intent) => {
+  const generateRpphFromParams = async (params) => {
     const token = localStorage.getItem('aisya_access_token')
-    if (!token) {
-      setError('Anda harus login terlebih dahulu')
-      return
-    }
+    if (!token) return
 
     setGeneratingRpph(true)
     setRpphError('')
     setRpphSuccess('')
 
     const fallbackKelompok = kelompokOptions[0]
-    const kelompokName = fallbackKelompok?.nama_kelompok || intent.kelompok || 'Kelompok A'
-
-    const userTempId = `rpph-user-${Date.now()}`
-    const botTempId = `rpph-bot-${Date.now()}`
-
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: userTempId,
-        role_msg: 'user',
-        content: rawPrompt,
-        timestamp: new Date().toISOString(),
-      },
-      {
-        id: botTempId,
-        role_msg: 'assistant',
-        content: 'Sedang membuat draft RPPH, mohon tunggu...'
-      ,
-        timestamp: new Date().toISOString(),
-      },
-    ])
+    const kelompokName = params.kelompok || fallbackKelompok?.nama_kelompok || 'Kelompok A'
 
     try {
       const response = await api.post(
         '/rpph/generate',
         {
-          tema: intent.tema || 'Tema Umum',
-          subtema: intent.subtema || 'Subtema Umum',
+          tema: params.tema || 'Tema Umum',
+          subtema: params.subtema || 'Subtema Umum',
           kelompok: kelompokName,
-          hari: intent.hari || 'Senin',
+          hari: params.hari || 'Senin',
         },
         {
           headers: {
@@ -268,25 +231,14 @@ function ChatPage() {
       const generated = response?.data?.data || {}
       const normalized = normalizeGeneratedRpph(generated)
       setRpphDraft({
-        tema: intent.tema || 'Tema Umum',
-        subtema: intent.subtema || 'Subtema Umum',
+        tema: params.tema || 'Tema Umum',
+        subtema: params.subtema || 'Subtema Umum',
         tanggal: todayDateValue(),
         kelompok_id: fallbackKelompok?.id || '',
         ...normalized,
       })
 
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === botTempId
-            ? {
-                ...msg,
-                content: 'Draft RPPH berhasil dibuat. Silakan review di panel kanan, lalu simpan jika sudah sesuai.',
-              }
-            : msg
-        )
-      )
     } catch (err) {
-      setMessages((prev) => prev.filter((msg) => msg.id !== botTempId))
       setRpphError(err?.response?.data?.detail || 'Gagal generate RPPH')
     } finally {
       setGeneratingRpph(false)
@@ -390,6 +342,10 @@ function ChatPage() {
       }
       if (bot_message) {
         setMessages((prev) => [...prev, bot_message])
+        
+        if (bot_message.intent === 'buat_rpph') {
+          await generateRpphFromParams(bot_message.parameters || {})
+        }
       }
     } catch (err) {
       // Remove temp message on error
@@ -405,8 +361,8 @@ function ChatPage() {
   return (
     <div className="flex h-screen bg-slate-50">
       {/* Sidebar */}
-      <div className="w-64 border-r border-slate-200 bg-white">
-        <div className="border-b border-slate-200 p-4">
+      <div className="w-64 border-r border-slate-200 bg-white flex flex-col">
+        <div className="border-b border-slate-200 bg-slate-100 p-4">
           <h2 className="text-lg font-semibold text-slate-900">Ruang Chat</h2>
         </div>
         <div className="overflow-y-auto">
@@ -428,13 +384,15 @@ function ChatPage() {
       {/* Main Chat Area */}
       <div className="flex flex-1 flex-col">
         {/* Header */}
-        <div className="border-b border-slate-200 bg-white px-6 py-4">
-          <h1 className="text-xl font-semibold text-slate-900">{activeRoom?.nama || 'Pilih Ruang Chat'}</h1>
-          {activeRoom ? <p className="text-sm text-slate-500">{activeRoom.tipe}</p> : null}
+        <div className="border-b border-slate-200 bg-slate-100 px-6 py-4 flex items-center">
+          <div>
+            <h1 className="text-xl font-semibold text-slate-900">{activeRoom?.nama || 'Pilih Ruang Chat'}</h1>
+            {activeRoom ? <p className="text-sm text-slate-500">{activeRoom.tipe}</p> : null}
+          </div>
         </div>
 
         {/* Messages */}
-        <div ref={messageContainerRef} className="flex-1 overflow-y-auto px-6 py-4">
+        <div ref={messageContainerRef} className="flex-1 overflow-y-auto px-6 py-4 bg-[#efeae2]">
           {error ? <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div> : null}
 
           {loading ? (

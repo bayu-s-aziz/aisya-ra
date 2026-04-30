@@ -3999,75 +3999,42 @@ def send_chat_message(
     local_vocab = _load_ra_chat_vocabulary(supabase, ra_id)
     effective_query = _apply_custom_vocabulary(payload.content, local_vocab) or payload.content
 
-    workflow_result_text = _try_execute_multi_step_workflow(
-        supabase,
-        current,
-        effective_query,
-        room_id=room_id,
-    )
-    if workflow_result_text:
-        bot_message = _save_assistant_message(
-            supabase,
-            user_id,
-            room_id,
-            workflow_result_text,
-            "Gagal menyimpan respons workflow multi-langkah",
-        )
-
-        return {
-            "success": True,
-            "message": "Workflow multi-langkah berhasil diproses",
-            "data": {
-                "user_message": user_message,
-                "bot_message": bot_message,
-            },
-        }
-
-    action_result_text = _try_execute_admin_action(supabase, current, effective_query)
-    if action_result_text:
-        bot_message = _save_assistant_message(
-            supabase,
-            user_id,
-            room_id,
-            action_result_text,
-            "Gagal menyimpan respons aksi admin",
-        )
-
-        return {
-            "success": True,
-            "message": "Aksi administrasi berhasil diproses",
-            "data": {
-                "user_message": user_message,
-                "bot_message": bot_message,
-            },
-        }
-
-    operational_result_text = _build_operational_query_response(supabase, current, effective_query, room_id=room_id)
-    if operational_result_text:
-        bot_message = _save_assistant_message(
-            supabase,
-            user_id,
-            room_id,
-            operational_result_text,
-            "Gagal menyimpan respons query operasional",
-        )
-
-        return {
-            "success": True,
-            "message": "Query operasional berhasil diproses",
-            "data": {
-                "user_message": user_message,
-                "bot_message": bot_message,
-            },
-        }
-
+    context_text = _build_system_data_context(supabase, current, effective_query)
+    
+    from app.utils.gemini import analyze_chat_intent
     try:
-        ai_response_text = _build_grounded_ai_response(supabase, current, effective_query, room_id=room_id)
+        intent_data = analyze_chat_intent(effective_query, context_text)
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Gagal menghasilkan respons AI: {exc}",
+            detail=f"Gagal menganalisis intent AI: {exc}",
         ) from exc
+
+    intent = intent_data.get("intent", "tanya_jawab")
+    params = intent_data.get("parameters", {})
+    ai_response_text = intent_data.get("reply_message") or "Pesan diproses."
+
+    if intent == "catat_presensi":
+        records = params.get("records", [])
+        if records:
+            tahun_ajaran_id = get_active_academic_year(supabase, ra_id, created_by=user_id)["id"]
+            for record in records:
+                nama_siswa = record.get("nama_siswa")
+                status_val = record.get("status")
+                tanggal_val = record.get("tanggal") or datetime.now(timezone.utc).date().isoformat()
+                
+                siswa_row, error_kind, candidates = _resolve_student_for_action(supabase, ra_id, tahun_ajaran_id, nama_siswa)
+                if isinstance(siswa_row, dict) and siswa_row.get("id"):
+                    # Insert or update
+                    supabase.table("presensi").upsert({
+                        "siswa_id": siswa_row["id"],
+                        "tahun_ajaran_id": tahun_ajaran_id,
+                        "tanggal": tanggal_val,
+                        "status": status_val,
+                        "keterangan": record.get("keterangan"),
+                        "created_by": user_id,
+                        "updated_at": datetime.now(timezone.utc).isoformat()
+                    }, on_conflict="siswa_id,tanggal,tahun_ajaran_id").execute()
 
     bot_message = _save_assistant_message(
         supabase,
@@ -4076,10 +4043,14 @@ def send_chat_message(
         ai_response_text,
         "Gagal menyimpan respons bot",
     )
+    
+    # Inject intent and parameters so frontend can act on them if needed (e.g., buat_rpph)
+    bot_message["intent"] = intent
+    bot_message["parameters"] = params
 
     return {
         "success": True,
-        "message": "Pesan berhasil dikirim dan diproses",
+        "message": "Pesan berhasil diproses",
         "data": {
             "user_message": user_message,
             "bot_message": bot_message,
@@ -4204,30 +4175,42 @@ async def send_voice_message(
     local_vocab = _load_ra_chat_vocabulary(supabase, ra_id)
     effective_query = _apply_custom_vocabulary(transcription, local_vocab) or transcription
 
-    workflow_result_text = _try_execute_multi_step_workflow(
-        supabase,
-        current,
-        effective_query,
-        room_id=room_id,
-    )
-    if workflow_result_text:
-        ai_response_text = workflow_result_text
-    else:
-        action_result_text = _try_execute_admin_action(supabase, current, effective_query)
-        if action_result_text:
-            ai_response_text = action_result_text
-        else:
-            operational_result_text = _build_operational_query_response(supabase, current, effective_query, room_id=room_id)
-            if operational_result_text:
-                ai_response_text = operational_result_text
-            else:
-                try:
-                    ai_response_text = _build_grounded_ai_response(supabase, current, effective_query, room_id=room_id)
-                except Exception as exc:
-                    raise HTTPException(
-                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                        detail=f"Gagal menghasilkan respons AI: {exc}",
-                    ) from exc
+    context_text = _build_system_data_context(supabase, current, effective_query)
+    
+    from app.utils.gemini import analyze_chat_intent
+    try:
+        intent_data = analyze_chat_intent(effective_query, context_text)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Gagal menganalisis intent AI: {exc}",
+        ) from exc
+
+    intent = intent_data.get("intent", "tanya_jawab")
+    params = intent_data.get("parameters", {})
+    ai_response_text = intent_data.get("reply_message") or "Voice message diproses."
+
+    if intent == "catat_presensi":
+        records = params.get("records", [])
+        if records:
+            tahun_ajaran_id = get_active_academic_year(supabase, ra_id, created_by=user_id)["id"]
+            for record in records:
+                nama_siswa = record.get("nama_siswa")
+                status_val = record.get("status")
+                tanggal_val = record.get("tanggal") or datetime.now(timezone.utc).date().isoformat()
+                
+                siswa_row, error_kind, candidates = _resolve_student_for_action(supabase, ra_id, tahun_ajaran_id, nama_siswa)
+                if isinstance(siswa_row, dict) and siswa_row.get("id"):
+                    # Insert or update
+                    supabase.table("presensi").upsert({
+                        "siswa_id": siswa_row["id"],
+                        "tahun_ajaran_id": tahun_ajaran_id,
+                        "tanggal": tanggal_val,
+                        "status": status_val,
+                        "keterangan": record.get("keterangan"),
+                        "created_by": user_id,
+                        "updated_at": datetime.now(timezone.utc).isoformat()
+                    }, on_conflict="siswa_id,tanggal,tahun_ajaran_id").execute()
 
     bot_message = _save_assistant_message(
         supabase,
@@ -4236,6 +4219,9 @@ async def send_voice_message(
         ai_response_text,
         "Gagal menyimpan respons bot",
     )
+    
+    bot_message["intent"] = intent
+    bot_message["parameters"] = params
 
     return {
         "success": True,

@@ -1,0 +1,1011 @@
+4.1 Pendekatan Penelitian  
+Penelitian ini menggunakan pendekatan rekayasa sistem informasi  jalur prototype  dengan 
+tujuan menghasilkan produk perangkat lunak yang dapat digunakan untuk membantu 
+proses administrasi guru di Raudhatul Athfal (RA) Al -Islam Gunungcupu. Produk yang 
+dikembangkan adalah AISYA -RA ( Artificial Intelligence  System  untuk Administrasi 
+Raudhatul Athfal), yaitu sistem informasi manajemen administrasi guru berbasis Chatbot  
+yang terintegrasi dengan Large Language Model  (LLM). Dengan demikian, penelitian ini 
+tidak hanya berfokus pada penyusunan rancangan konseptual, tetapi juga pada proses 
+membangun, menguji, menerapkan, dan mengevaluasi sistem dalam lingkungan 
+operasional mitra.  
+Metode pengembangan yang digunakan adalah Agile  umum atau Agile  konvensional. 
+Agile  dalam penelitian ini tidak diterapkan sebagai framework  formal seperti Scrum  atau 
+Kanban , karena pengembangan dilakukan oleh satu pengembang dan tidak memerlukan 
+struktur tim yang kompleks. Agile  dipahami  sebagai pendekatan pengembangan 
+perangkat lunak yang iteratif, inkremental, fleksibel terhadap perubahan kebutuhan, serta 
+menempatkan pengguna sebagai sumber umpan balik utama selama proses 
+pengembangan.  
+Pemilihan Agile  didasarkan pada karakteristik kebutuhan pengguna di RA Al -Islam 
+Gunungcupu yang belum dapat dirumuskan secara lengkap sejak awal penelitian. 
+Kebutuhan guru dan Kepala RA dapat berkembang setelah pengguna melihat dan 
+mencoba prototipe sistem. Oleh karena i tu, AISYA -RA dikembangkan melalui beberapa 
+iterasi agar setiap fitur dapat divalidasi secara bertahap, diperbaiki berdasarkan umpan 
+balik pengguna, dan disesuaikan dengan alur kerja administrasi yang berjalan di 
+lingkungan mitra.  
+Setiap tahapan pada metode Agile  tidak dijalankan secara kaku dan linier, melainkan 
+diterapkan secara berulang dalam tiga iterasi pengembangan. Pada setiap iterasi, peneliti 
+melakukan perencanaan kebutuhan, perancangan ringan, implementasi fitur, pengujian BAB IV 
+METODOLOGI PENELITIAN 
+fungsional, review pengguna, dan penyempurnaan sistem. Pola ini digunakan agar produk 
+akhir tetap mempertahankan tujuan utama penelitian, yaitu menghadirkan sistem 
+administrasi guru berbasis Chatbot  yang sederhana, adaptif, dan berdampak langsung 
+bagi RA Al -Islam Gunungcupu.  
+4.2 Subjek dan Objek Penelitian  
+4.2.1 Subjek Penelitian  
+Subjek dalam penelitian ini adalah pengguna yang terlibat langsung dalam proses 
+administrasi di RA Al -Islam Gunungcupu, yaitu Kepala RA dan Guru RA. Kepala RA 
+diposisikan sebagai pengguna dengan kewenangan manajerial yang membutuhkan akses 
+untuk memantau k elengkapan administrasi, melihat rekap data, serta memvalidasi arah 
+pengembangan sistem. Sementara itu, Guru RA diposisikan sebagai pengguna 
+operasional yang berinteraksi secara langsung dengan fitur Chatbot , pembuatan rencana 
+pelaksanaan pembelajaran hari an (RPPH) , pencatatan presensi siswa, dan pembuatan 
+surat resmi.  
+Pemilihan subjek tersebut didasarkan pada peran keduanya dalam proses administrasi 
+harian. Kepala RA dan Guru RA tidak hanya menjadi responden pada tahap akhir 
+penelitian, tetapi juga dilibatkan sebagai mitra dalam siklus Agile . Keterlibatan tersebut 
+dilakukan pada tahap identifikasi kebutuhan awal, review  hasil iterasi, validasi rancangan, 
+pengujian fitur, serta evaluasi penggunaan sistem setelah Deployment  operasional. 
+Dengan pola ini, kebutuhan sistem tidak ditentukan semata -mata berdasarkan asumsi 
+penge mbang, tetapi dibentuk melalui umpan balik pengguna yang menjadi sasaran utama 
+sistem.  
+Jumlah subjek penelitian disesuaikan dengan kondisi pengguna aktif yang tersedia di RA 
+Al-Islam Gunungcupu pada saat penelitian dilakukan. Apabila jumlah guru dan Kepala 
+RA masih memungkinkan untuk dijangkau seluruhnya, maka seluruh pengguna aktif 
+dilibatk an dalam pengujian dan evaluasi. Pendekatan ini dipilih agar hasil evaluasi lebih 
+merepresentasikan kondisi nyata penggunaan AISYA -RA di lingkungan mitra.  
+4.2.2 Objek Penelitian  
+Objek dalam penelitian ini adalah AISYA -RA, yaitu sistem informasi manajemen 
+administrasi guru berbasis Chatbot  dengan dukungan teknologi Large Language Model  
+(LLM) . Sistem ini dirancang untuk membantu proses administrasi guru di RA Al -Islam 
+Gunungcupu, khususnya penyusunan RPPH (Rencana Pelaksanaan Pembelajaran 
+Harian), pencatatan presensi siswa, pengelolaan surat resmi, pencarian arsip, dan 
+pemantauan administrasi oleh Kepala RA.  
+Chatbot  pada AISYA -RA tidak hanya diposisikan sebagai fitur AI ( Artificial 
+Intelligence ) generatif untuk menghasilkan teks, tetapi juga sebagai antarmuka 
+percakapan yang berfungsi sebagai alat kendali operasional sistem administrasi. Melalui 
+Chatbot , pengguna dapat memberikan instruksi menggunakan bahasa alami untuk 
+mengakses atau menjalankan fungsi sistem, seperti meminta pembuatan RPPH, mencatat 
+presensi, membuat surat, mencari data tertentu, atau meminta ringkasan informasi 
+administratif. Posisi i ni penting karena pengguna di lingkungan RA lebih familier dengan 
+pola komunikasi berbasis pesan dibandingkan dengan navigasi aplikasi yang kompleks.  
+Objek penelitian juga mencakup komponen teknis yang mendukung sistem, yaitu 
+frontend  berbasis React.js, backend  berbasis FastAPI, layanan LLM melalui Gemini API, 
+basis data PostgreSQL yang dikelola melalui Supabase, server aplikasi DigitalOcean 
+Droplet , serta subdomain  dari ra -alislam.sch.id sebagai alamat akses sistem. Dengan 
+cakupan tersebut, objek penelitian tidak hanya berupa perangkat lunak sebagai produk 
+akhir, tetapi juga mencakup proses pengembangan, artefak perancangan, implementasi, 
+Deployment , dan evaluasi dampak penggunaan sistem.  
+4.3 Alat dan Bahan Penelitian  
+4.3.1 Alat Penelitian  
+Alat penelitian merupakan perangkat, layanan, dan aplikasi yang digunakan untuk 
+mendukung proses pengumpulan data, perancangan, pengembangan, pengujian, 
+Deployment , dan evaluasi AISYA -RA. Dalam penelitian ini, alat penelitian dibagi 
+menjadi perangkat keras, perangkat lunak, dan infrastruktur Deployment . Pemisahan ini 
+dilakukan agar kebutuhan teknis penelitian dapat dijelaskan secara sistematis sesuai peran 
+masing -masing komponen dalam siklus Agile . 
+Perangkat keras digunakan untuk pengembangan lokal, pengujian antarmuka, dan akses 
+pengguna lapangan. Infrastruktur Deployment  digunakan agar sistem dapat berjalan 
+secara daring dan digunakan oleh mitra selama periode implementasi operasional. 
+Rincian perangkat keras dan infrastruktur penelitian disajikan pada Tabel 4.1.  
+Tabel 4.1 Rincian Perangkat Keras dan Infrastruktur Penelitian  
+No. Komponen  Spesifikasi  Fungsi dalam Penelitian  
+1 Laptop 
+pengembang  Lenovo ThinkPad L440;  
+Intel Core i3 -4000M 2,0 GHz;  
+2 core /4 thread ;  
+RAM 16 GB DDR3;  
+SSD 256 GB;  
+Windows 11 Pro 64 -bit dengan 
+WSL ( Windows Sub -system  
+for Linux ) Ubuntu 24.04 LTS.  Media utama untuk penulisan 
+kode frontend  dan backend , 
+pengujian lokal, pengelolaan 
+proyek, serta penyusunan 
+dokumentasi. WSL digunakan 
+agar lingkungan pengembangan 
+lebih konsisten dengan 
+lingkungan server.  
+2 Smartphone  
+pengguna  Minimal Android 7.0 atau 
+setara; RAM minimal 2 GB, 
+serta koneksi Wi -Fi atau data 
+seluler.  Alat bantu pengujian tampilan 
+mobile -responsive  dan media 
+akses pengguna lapangan. 
+Spesifikasi minimum digunakan 
+sebagai batas kelayakan akses, 
+karena guru menggunakan 
+perangkat pribadi masing -
+masing.  
+3 Koneksi jaringan 
+pengembangan  Wi-Fi dengan kecepatan 
+unduh 40 Mbps.  Digunakan selama 
+pengembangan, pengujian, akses 
+Gemini API, koneksi Supabase, 
+Deployment  ke server, dan 
+komunikasi dengan layanan 
+cloud . 
+4 Koneksi jaringan 
+pengguna lapangan  Data seluler 4G/LTE atau Wi -
+Fi sekolah.  Digunakan oleh guru dan Kepala 
+RA saat mengakses AISYA -RA 
+No. Komponen  Spesifikasi  Fungsi dalam Penelitian  
+selama Deployment  operasional 
+di RA Al -Islam Gunungcupu.  
+5 Server cloud  
+aplikasi  DigitalOcean Droplet  Basic  - 
+Intel; 2 vCPUs; 4 GB RAM; 
+120 GB Disk; region  
+sgp1/Singapura.  Server aplikasi untuk 
+menjalankan frontend  React.js, 
+backend  FastAPI, Docker, 
+reverse proxy , konfigurasi 
+domain, dan layanan pendukung 
+aplikasi. Database  utama tidak 
+dijalankan pada server ini.  
+6 Layanan database  
+cloud  Supabase Managed  
+PostgreSQL.  Layanan untuk menjalankan dan 
+mengelola PostgreSQL sebagai 
+basis data utama AISYA -RA. 
+Digunakan untuk menyimpan 
+data pengguna, siswa, presensi, 
+RPPH, surat, riwayat Chatbot , 
+log perintah, dan dokumen 
+pengetahuan.  
+7 Domain/ subdomain  Subdomain  “aisya” dari 
+domain ra -alislam.sch.id.  Alamat akses resmi AISYA -RA 
+agar sistem dapat dibuka melalui 
+browser oleh guru dan Kepala 
+RA dengan alamat yang lebih 
+mudah dikenali oleh mitra.  
+ 
+Perangkat lunak digunakan untuk membangun aplikasi, menyimpan data, 
+mengintegrasikan layanan AI, menyusun artefak perancangan, dan menjalankan aplikasi 
+pada lingkungan Deployment . Rincian perangkat lunak dan layanan yang digunakan 
+disajikan pada Tabel 4.2.  
+Tabel 4.2 Rincian Perangkat Lunak dan Layanan Penelitian  
+No. Perangkat 
+Lunak/Layanan  Versi/Model  Fungsi dalam Penelitian  
+1 Python  3.11+  Bahasa pemrograman utama pada sisi 
+backend  untuk membangun logika bisnis, 
+integrasi layanan AI, dan pengolahan data 
+administrasi.  
+2 FastAPI  0.110+  Framework  backend  untuk membangun 
+REST API, autentikasi, validasi data, 
+integrasi Chatbot , komunikasi dengan 
+PostgreSQL pada Supabase, dan 
+pemanggilan layanan Gemini API.  
+3 React.js  18+ Pustaka JavaScript untuk membangun 
+antarmuka web berbasis komponen, termasuk 
+halaman login , ruang Chatbot , modul 
+administrasi, dan dashboard  Pengguna.  
+4 JavaScript  ES2022+  Bahasa pemrograman antarmuka yang 
+mendukung interaktivitas halaman web, 
+komunikasi API, dan pengelolaan tampilan 
+dinamis pada frontend . 
+5 PostgreSQL  Managed  
+PostgreSQL 
+melalui Supabase  Sistem manajemen basis data relasional yang 
+digunakan untuk menyimpan data AISYA -
+RA. PostgreSQL tetap menjadi basis data 
+utama, sedangkan Supabase menjadi platform  
+pengelolaannya.  
+6 Supabase  Cloud  Database  
+Platform  Platform  cloud  untuk menjalankan dan 
+mengelola PostgreSQL, termasuk koneksi 
+Database  dari backend . Apabila RAG 
+(Retrieval -Augmented  Generation ) 
+memerlukan penyimpanan embedding , 
+Supabase dapat mendukung pengembangan 
+tabel dokumen pengetahuan melalui 
+ekosistem PostgreSQL.  
+No. Perangkat 
+Lunak/Layanan  Versi/Model  Fungsi dalam Penelitian  
+7 Gemini API  gemini -2.5-flash;  
+gemini -2.5-pro Layanan LLM untuk pemrosesan bahasa 
+alami, penafsiran maksud perintah Chatbot , 
+pembuatan draf RPPH, penyusunan draf 
+surat, dan pembentukan respons 
+administratif.  
+8 Docker  26+ Platform  container ization  untuk menjaga 
+konsistensi lingkungan pengembangan, 
+pengujian, dan Deployment  aplikasi pada 
+DigitalOcean Droplet . 
+9 Visual Studio 
+Code  1.88+  Editor kode untuk menulis dan mengelola 
+kode frontend , backend , konfigurasi 
+Deployment , dan dokumentasi teknis.  
+10 draw.io  29.+ Alat bantu pemodelan untuk menyusun Use 
+Case Diagram , Activity Diagram , Sequence 
+Diagram , Class Diagram , dan ERD.  
+ 
+4.3.2 Bahan Penelitian  
+Bahan penelitian adalah data, dokumen, dan sumber informasi yang digunakan sebagai 
+dasar perancangan fitur AISYA -RA. Bahan utama berasal dari proses administrasi nyata 
+di RA Al -Islam Gunungcupu, sehingga fitur yang dikembangkan tidak hanya mengikuti 
+asumsi  pengembang, tetapi juga mengikuti kebutuhan dan format kerja yang berlaku di 
+lembaga.  
+Bahan penelitian dikumpulkan secara bertahap sesuai kebutuhan iterasi. Format RPPH, 
+contoh surat, dan format presensi digunakan sejak awal untuk mendukung perancangan 
+fitur inti. Dokumen lokal sekolah dan pedoman administrasi dikumpulkan secara 
+bertahap, t erutama untuk mendukung fitur RAG pada iterasi ketiga. Rincian bahan 
+penelitian disajikan pada Tabel 4.3.  
+ 
+Tabel 4.3 Rincian Bahan Penelitian  
+No. Bahan Penelitian  Sumber  Fungsi dalam Penelitian  
+1 Format RPPH 
+yang berlaku  Dokumen 
+administrasi RA 
+Al-Islam 
+Gunungcupu  Menjadi acuan struktur keluaran 
+RPPH otomatis agar sesuai kebutuhan 
+pedagogik dan administratif lembaga.  
+2 Contoh surat 
+dinas resmi  Arsip surat RA 
+Al-Islam 
+Gunungcupu  Menjadi referensi template  dan format 
+keluaran modul manajemen surat.  
+3 Format presensi 
+manual  Dokumen 
+presensi harian 
+guru Menjadi dasar perancangan atribut 
+data, alur pencatatan, dan rekap 
+presensi digital.  
+4 Data identitas 
+guru Arsip 
+administrasi 
+tenaga pendidik  Menjadi dasar data pengguna, hak 
+akses, dan relasi guru dengan modul 
+administrasi.  
+5 Data identitas 
+siswa  Arsip 
+administrasi 
+peserta didik  Menjadi dasar relasi siswa dengan 
+kelompok belajar dan modul presensi.  
+6 Pedoman 
+administrasi dan 
+dokumen lokal 
+sekolah  Dokumen 
+internal mitra  Menjadi konteks pendukung fitur 
+Chatbot  dan basis pengetahuan RAG 
+pada iterasi ketiga.  
+7 Catatan umpan 
+balik pengguna  Review  akhir 
+setiap iterasi  Menjadi dasar penyempurnaan 
+backlog , perubahan rancangan, dan 
+penyesuaian fitur pada iterasi 
+berikutnya.  
+ 
+  
+4.4 Instrumen dan Teknik Pengumpulan Data  
+4.4.1 Instrumen Penelitian  
+Instrumen penelitian digunakan untuk membantu peneliti mengumpulkan data 
+kebutuhan, memandu proses validasi, menguji fungsi sistem, dan mengevaluasi hasil 
+implementasi. Karena penelitian menggunakan Agile , instrumen tidak hanya digunakan 
+pada awal dan akhir penelitian, tetapi juga pada sesi review  setiap iterasi. Instrumen yang 
+digunakan disajikan pada Tabel 4.4.  
+Tabel 4.4 Instrumen Penelitian  
+No. Instrumen  Tujuan Penggunaan  Waktu Penggunaan  
+1 Pedoman observasi 
+terstruktur  Mencatat proses administrasi 
+yang berjalan, hambatan kerja, 
+waktu pengerjaan, dan pola 
+interaksi pengguna dengan 
+sistem.  Awal penelitian dan selama 
+Deployment  operasional.  
+2 Panduan 
+wawancara semi -
+terstruktur  Menggali kebutuhan, kendala, 
+harapan, dan umpan balik 
+pengguna terhadap hasil 
+iterasi.  Identifikasi awal dan review  
+setiap iterasi.  
+3 Lembar product 
+backlog  Mencatat kebutuhan sistem, 
+prioritas fitur, dan perubahan 
+kebutuhan berdasarkan umpan 
+balik pengguna.  Setelah identifikasi awal dan 
+diperbarui pada setiap iterasi.  
+4 Lembar skenario 
+Black Box Testing  Menguji fungsi sistem 
+berdasarkan input  dan output 
+yang diharapkan tanpa melihat 
+struktur kode.  Akhir setiap iterasi dan 
+sebelum Deployment  
+operasional.  
+5 Lembar pengukuran 
+waktu administrasi  Membandingkan waktu 
+pengerjaan administrasi 
+sebelum dan sesudah 
+penggunaan AISYA -RA. Sebelum penggunaan sistem 
+dan setelah Deployment  
+operasional.  
+No. Instrumen  Tujuan Penggunaan  Waktu Penggunaan  
+6 Kuesioner System 
+Usability  Scale  
+(SUS)  Mengukur tingkat kemudahan 
+penggunaan dan penerimaan 
+pengguna terhadap AISYA -
+RA. Setelah sistem digunakan 
+secara operasional minimal 30 
+hari. 
+ 
+4.4.2 Observasi  
+Observasi dilakukan secara langsung di RA Al -Islam Gunungcupu untuk memahami 
+proses administrasi guru yang berjalan sebelum sistem digunakan. Fokus observasi awal 
+meliputi penyusunan RPPH, pencatatan presensi siswa, pembuatan surat resmi, pencarian 
+arsip, dan proses pemantauan administrasi oleh Kepala RA. Hasil observasi digunakan 
+untuk menemukan permasalahan, memperkirakan prioritas fitur, dan menyusun backlog  
+awal.  
+Dalam pendekatan Agile , observasi tidak berhenti pada tahap awal. Observasi dilanjutkan 
+pada saat pengguna mencoba hasil iterasi dan selama Deployment  operasional. Observasi 
+lanjutan dilakukan untuk melihat apakah Chatbot  sebagai antarmuka kendali sistem 
+benar -benar mempermudah pengguna, apakah alur administrasi menjadi lebih singkat, 
+dan apakah terdapat hambatan baru yang perlu dicatat sebagai bahan penyempurnaan 
+sistem.  
+4.4.3 Wawancara  
+Wawancara dilakukan secara semi -terstruktur kepada Kepala RA dan Guru RA. 
+Wawancara awal digunakan untuk menggali permasalahan administrasi, kebiasaan kerja 
+pengguna, tingkat kenyamanan menggunakan aplikasi digital, serta harapan terhadap 
+sistem yang akan dibangun. Wawancara juga digunakan untuk memahami bagaimana 
+pengguna menginginkan Chatbot  berfungsi sebagai alat kendali sistem administrasi, 
+bukan hanya sebagai fitur tanya jawab atau pembuat teks otomatis.  
+Wawancara dilakukan kembali pada akhir setiap iterasi. Pada akhir Iterasi 1, wawancara 
+difokuskan pada kemudahan akses sistem, tampilan login , dan pemahaman pengguna 
+terhadap Chatbot  dasar. Pada akhir Iterasi 2, wawancara difokuskan pada kesesuaian alur 
+RPPH, presensi, surat, dan penggunaan perintah Chatbot  untuk mengakses modul 
+administrasi. Pada akhir Iterasi 3, wawancara diarahkan pada kesiapan sistem untuk 
+digunakan secara operasional serta kelayakan Deployment  melalui subdomain  resmi 
+lembaga.  
+4.4.4 Studi Dokumentasi  
+Studi dokumentasi dilakukan terhadap arsip dan dokumen administrasi yang digunakan 
+oleh RA Al -Islam Gunungcupu. Dokumen yang dikaji meliputi format RPPH, contoh 
+surat resmi, format presensi, data guru, data siswa, dan pedoman administrasi lain yang 
+relevan . Hasil studi dokumentasi digunakan untuk memastikan bahwa struktur data, 
+format keluaran, dan alur kerja sistem sesuai dengan praktik nyata di lembaga.  
+Dalam konteks pengembangan Chatbot  dan RAG ( Retrieval -Augmented  Generation ), 
+studi dokumentasi juga digunakan untuk menentukan dokumen lokal yang dapat menjadi 
+konteks jawaban sistem. Dokumen tersebut tidak langsung digunakan seluruhnya pada 
+awal penelitian, tetapi diintegrasikan secara bertahap sesuai kebutuhan iterasi. Dengan 
+demikian, studi dokumentasi mendukung prinsip Agile  karena bahan yang dikaji dan 
+digunakan mengikuti prioritas fitur yang sedang dikembangkan.  
+4.5 Tahapan Penelitian Menggunakan Metode Agile  
+Tahapan penelitian ini disusun dengan mengacu pada tahapan  metode  Agile , yaitu 
+Planning , Design , Develop , Test,  dan Deployment . Kelima tahapan tersebut menjadi 
+kerangka utama dalam penyusunan proses penelitian, sedangkan istilah identifikasi 
+kebutuhan, product backlog , perencanaan iterasi, perancangan artefak, implementasi 
+fitur, Black Box Testing , review, penyempurnaan, dan Deployment  diposisikan sebagai 
+bagian operasional dari tahapan Agile  tersebut.  
+Penerapan Agile  pada penelitian ini dilakukan melalui tiga iterasi pengembangan. Iterasi 
+pertama berfokus pada fondasi sistem dan Chatbot  dasar, iterasi kedua berfokus pada 
+modul administrasi inti, dan iterasi ketiga berfokus pada penyempurnaan sistem, RAG, 
+dashboard , serta kesiapan Deployment  operasional. Dengan pola ini, pengembangan 
+AISYA -RA tetap terarah tetapi masih fleksibel terhadap perubahan kebutuhan pengguna  
+Tahapan penelitian disusun dengan menjadikan Agile  sebagai kerangka utama 
+pengembangan AISYA -RA. Tahapan tersebut dimulai dari identifikasi kebutuhan awal, 
+penyusunan product backlog , perencanaan iterasi, pelaksanaan iterasi, pengujian, review 
+pengguna, penyempurnaan, Deployment , dan evaluasi akhir. Dalam penelitian ini, tahap 
+Deployment  pada siklus Agile  tidak hanya dimaknai sebagai penerapan akhir ke server 
+produksi, tetapi juga mencakup penyajian hasil increment pada lingkungan lokal atau 
+terbatas agar dapat diuji dan direview oleh pengguna. Deployment  terbatas dilakukan 
+pada iterasi awal untuk memastikan prototipe dapat dicoba secara bertahap, sedangkan 
+Deployment  operasional dilakukan setelah sistem dinyatakan siap digunakan pada 
+lingkungan kerja nyata.  
+Urutan ini menunjukkan bahwa penelitian tidak dilakukan secara linier, tetapi melalui 
+siklus yang memungkinkan perubahan kebutuhan dan penyesuaian rancangan 
+berdasarkan umpan balik pengguna pada setiap iterasi.  
+ 
+Gambar 4.1 Bagan Alur Penelitian AISYA -RA 
+Gambar 4.1 menggambarkan alur penelitian AISYA -RA yang dimulai dari studi awal, 
+identifikasi kebutuhan, penyusunan backlog , dan perencanaan iterasi. Setelah itu, 
+pengembangan dilakukan melalui tiga iterasi Agile . Setiap iterasi memuat kegiatan 
+perancangan ringan, implementasi fitur, pengujian, review pengguna, penyempurnaan, 
+dan Deployment  terbatas pada lingkungan lokal atau pengembangan. Deployment  terbatas 
+ini dilakukan agar setiap increment dapat dicoba dan dievaluasi sebelum pengembangan 
+
+dilanjutkan ke iterasi berikutnya. Setelah seluruh iterasi  selesai, sistem diterapkan 
+melalui Deployment  operasional, digunakan oleh mitra selama minimal 30 hari, kemudian 
+dievaluasi melalui pengukuran efisiensi waktu administrasi dan System Usability  Scale  
+(SUS).  
+4.5.1 Planning  (Perencanaan)  
+Tahap Planning  merupakan tahap perencanaan kebutuhan dan arah pengembangan 
+sistem. Pada tahap ini peneliti melakukan identifikasi kebutuhan awal melalui observasi, 
+wawancara, dan studi dokumentasi. Hasil identifikasi kebutuhan tidak dianggap sebagai 
+kebutuhan final, mel ainkan sebagai dasar penyusunan product backlog  awal yang dapat 
+berubah setelah pengguna memberikan umpan balik pada akhir setiap iterasi.  
+Berdasarkan hasil identifikasi kebutuhan, AISYA -RA tidak hanya membutuhkan fitur 
+administrasi digital, tetapi juga membutuhkan cara interaksi yang mudah dipahami oleh 
+pengguna. Karena guru RA lebih familier dengan pola komunikasi berbasis pesan, 
+Chatbot  dirancang sebagai antarmuka percakapan yang membantu pengguna 
+menjalankan fungsi administrasi melalui bahasa alami. Dengan demikian, Chatbot  tidak 
+hanya berperan sebagai pemanfaatan AI generatif, tetapi juga sebagai penghubung antara 
+pengguna dengan modul -modul Sistem Informasi Manajemen Administrasi Guru.  
+Kebutuhan awal yang diperoleh kemudian dikelompokkan menjadi kebutuhan fungsional 
+dan nonfungsional. Kebutuhan fungsional mencakup autentikasi  pengguna, Chatbot  
+sebagai kendali sistem, pembuatan RPPH, presensi siswa, manajemen surat, dashboard  
+pengguna, riwayat percakapan, serta RAG berbasis dokumen lokal. Kebutuhan 
+nonfungsional mencakup kemudahan penggunaan, akses melalui Smartphone , keamanan 
+hak akses, ketersediaan sistem melalui internet, kejelasan respons sistem, dan 
+kemampuan sistem untuk digunakan se cara operasional oleh mitra.  Hasil dari identifikasi 
+kebutuhan disusun menjadi product backlog  yang disajikan pada Tabel  4.5. 
+ 
+Tabel 4.5 Product  backlog  AISYA -RA 
+Prioritas  Item Backlog  Uraian Kebutuhan  Rencana 
+Iterasi  
+Tinggi  Autentikasi dan 
+manajemen 
+pengguna  Pengguna dapat masuk ke sistem 
+sesuai peran sebagai Guru RA atau 
+Kepala RA.  Iterasi 1  
+Tinggi  Chatbot  sebagai 
+kendali sistem  Chatbot  menerima instruksi bahasa 
+alami dan mengarahkan pengguna 
+ke fungsi administrasi yang sesuai.  Iterasi 1 -3 
+Tinggi  Riwayat 
+percakapan 
+Chatbot  Sistem menyimpan sesi dan pesan 
+untuk mendukung penelusuran 
+interaksi dan evaluasi perintah 
+pengguna.  Iterasi 1  
+Tinggi  Pembuatan RPPH  Guru dapat membuat draf RPPH 
+berdasarkan instruksi dan format 
+lembaga.  Iterasi 2  
+Tinggi  Presensi siswa  Guru dapat mencatat dan merekap 
+kehadiran siswa secara digital.  Iterasi 2  
+Tinggi  Manajemen surat 
+resmi  Pengguna dapat membuat, 
+meninjau, dan menyimpan surat 
+resmi berdasarkan template . Iterasi 2  
+Sedang  Dashboard  
+pengguna  Pengguna dapat mengakses pusat 
+kendali visual berbasis web yang 
+terintegrasi.  Iterasi 3  
+Sedang  RAG berbasis 
+dokumen lokal  Chatbot  dapat memberikan respons 
+yang lebih kontekstual berdasarkan 
+dokumen lokal sekolah.  Iterasi 3  
+Sedang  Deployment  
+operasional  Aplikasi dijalankan pada 
+DigitalOcean, Database  Iterasi 3  
+Prioritas  Item Backlog  Uraian Kebutuhan  Rencana 
+Iterasi  
+menggunakan PostgreSQL 
+Supabase, dan sistem diakses 
+melalui subdomain  ra-
+alislam.sch.id.  
+Sedang  Evaluasi efisiensi 
+dan SUS  Sistem dievaluasi berdasarkan 
+perbandingan waktu administrasi 
+dan tingkat penerimaan pengguna.  Setelah 
+Deployment  
+ 
+Berdasarkan product backlog , pengembangan AISYA -RA dibagi ke dalam tiga iterasi. 
+Pembagian iterasi dilakukan dengan mempertimbangkan prioritas fitur, ketergantungan 
+teknis, dan kesiapan sistem untuk diuji secara bertahap. Iterasi pertama difokuskan pada 
+fondasi sistem dan Chatbot  dasar. Iterasi kedua difokuskan pada modul administrasi inti. 
+Iterasi ketiga difokuskan pada penyempurnaan, Retrieval -Augmented  Generation  (RAG ), 
+dashboard , Deployment , dan kesiapan operasional.  Rincian rencana iterasi 
+pengembangan AISYA dapat dilihat pada Tabel 4. 6. 
+Tabel 4.6 Rencana Iterasi Pengembangan AISYA -RA 
+Iterasi  Fokus  Alasan Penempatan  Target Luaran  
+Iterasi 
+1 Fondasi sistem dan 
+Chatbot  dasar  Autentikasi, struktur 
+pengguna, koneksi 
+frontend -backend , koneksi 
+awal LLM, dan 
+penyimpanan riwayat perlu 
+dibangun lebih dahulu 
+sebagai dasar modul 
+berikutnya.  Sistem dapat 
+dijalankan pada 
+lingkungan 
+lokal/terbatas, 
+pengguna dapat login , 
+Chatbot  dasar berjalan, 
+dan riwayat 
+percakapan dapat 
+tersimpan.  
+Iterasi  Fokus  Alasan Penempatan  Target Luaran  
+Iterasi 
+2 Modul administrasi 
+inti RPPH, presensi, dan surat 
+merupakan kebutuhan 
+utama yang paling sering 
+digunakan guru dalam 
+aktivitas administrasi 
+harian.  Modul RPPH, presensi, 
+dan surat dapat 
+dijalankan pada 
+lingkungan 
+lokal/terbatas serta 
+dapat diakses melalui 
+menu maupun perintah 
+Chatbot . 
+Iterasi 
+3 Penyempurnaan, 
+RAG, dashboard , 
+dan kesiapan 
+operasional  Setelah fitur inti berjalan, 
+sistem perlu diperkuat 
+dengan dashboard , konteks 
+dokumen lokal, perbaikan 
+antarmuka, dan 
+Deployment  agar siap 
+digunakan oleh mitra.  Sistem stabil, 
+deployment  secara 
+operasional, dapat 
+diakses melalui 
+subdomain , terhubung 
+dengan PostgreSQL 
+Supabase, dan siap 
+digunakan minimal 30 
+hari. 
+ 
+4.5.2 Design  (Desain)  
+Tahap Design  dilakukan melalui perancangan ringan yang disesuaikan dengan kebutuhan 
+setiap iterasi. Perancangan dalam penelitian ini tidak diposisikan sebagai dokumen final 
+yang harus selesai seluruhnya sebelum pengembangan dimulai, melainkan sebagai 
+artefak pendukung  untuk membantu pengembang, pembimbing, dan pengguna 
+memahami alur sistem yang sedang dibangun.  
+Artefak perancangan yang digunakan meliputi Use Case Diagram , Activity Diagram , 
+Sequence Diagram , Class Diagram , Entity Relationship Diagram  (ERD), wireframe , dan 
+rancangan arsitektur sistem. Artefak tersebut diperbarui sesuai hasil pengujian dan review 
+pengguna. Dengan demikian, tahap Design  tetap sejalan dengan prinsip Agile  karena 
+rancangan sistem berkembang mengikuti kebutuhan yang sudah divalidasi pada setiap 
+iterasi . Daftar artefak design  yang dihasilkan pada tahap ini  dapat dilihat pada Tabel 4. 7. 
+Tabel 4.7 Artefak Design  dalam Siklus Agile  
+Artefak  Fungsi  Perkembangan dalam Iterasi  
+Use Case 
+Diagram  Menggambarkan aktor dan 
+layanan sistem.  Awal Iterasi 1 untuk ruang lingkup 
+dasar, diperbarui pada Iterasi 2 untuk 
+modul administrasi, dan diperluas pada 
+Iterasi 3 untuk dashboard  serta RAG.  
+Activity 
+Diagram  Menggambarkan alur kerja 
+fitur.  Disusun sesuai fitur yang sedang 
+dibangun: login  dan Chatbot  dasar 
+pada Iterasi 1, RPPH/presensi/surat 
+pada Iterasi 2, dashboard  dan RAG 
+pada Iterasi 3.  
+Sequence 
+Diagram  Menggambarkan interaksi 
+antar komponen 
+berdasarkan urutan waktu.  Dimulai dari alur Chatbot  dasar, lalu 
+diperluas untuk interaksi frontend , 
+backend , PostgreSQL Supabase, 
+Gemini API, dan RAG.  
+Class Diagram  Menggambarkan struktur 
+konseptual sistem.  Dimulai dari class inti, lalu diperluas 
+seiring bertambahnya modul 
+administrasi, Chatbot  service , dan 
+komponen RAG.  
+ERD  Menggambarkan 
+rancangan teknis basis 
+data.  Dimulai dari entitas inti, diperluas 
+untuk modul administrasi, lalu 
+ditambah knowledge  docs dan 
+command  log pada iterasi akhir.  
+Wireframe  Menggambarkan 
+rancangan antarmuka.  Dibuat dan diperbarui sesuai 
+kebutuhan halaman atau modul pada 
+setiap iterasi.  
+Arsitektur 
+Sistem  Menggambarkan struktur 
+teknis frontend , backend , Ditetapkan secara awal pada Iterasi 1 
+dan disempurnakan pada Iterasi 3 
+Artefak  Fungsi  Perkembangan dalam Iterasi  
+LLM, Database , dan 
+Deployment . untuk DigitalOcean, Supabase, dan 
+subdomain . 
+ 
+Pada Iterasi 1, perancangan difokuskan pada halaman login , ruang Chatbot , autentikasi 
+pengguna, relasi data inti, dan alur komunikasi frontend -backend -LLM . Pada Iterasi 2, 
+rancangan diperluas untuk modul RPPH, presensi, dan surat. Pada Iterasi 3, rancangan 
+disempurnakan untuk dashboard , RAG, command  log, knowledge  document , dan 
+arsitektur Deployment  operasional.  
+4.5.3 Develop  (Pengembangan)  
+Tahap Develop  merupakan tahap implementasi fitur berdasarkan backlog  yang telah 
+dipilih pada setiap iterasi. Pengembangan dilakukan secara bertahap agar setiap fitur yang 
+selesai dapat diuji dan ditinjau oleh pengguna sebelum fitur berikutnya dikembangkan. 
+Frontend  AISYA -RA dibangun menggunakan React.js, backend  menggunakan FastAPI, 
+basis data menggunakan PostgreSQL yang dikelola melalui Supabase, dan layanan LLM 
+menggunakan Gemini API.  
+Pelaksanaan iterasi juga menerapkan batas waktu atau timebox  agar ritme pengembangan 
+tetap terukur. Setiap iterasi direncanakan berlangsung sekitar dua sampai tiga minggu. 
+Selain itu, fitur atau modul baru dinyatakan selesai apabila memenuhi Definition of Done  
+(DoD) , yaitu kode dapat dijalankan tanpa error  pada lingkungan pengembangan lokal, 
+antarmuka sesuai dengan wireframe  yang telah divalidasi, dan fungsi inti telah lolos 
+skenario Black Box Testing  internal.  Pelaksanaan tahap develop  ini dapat dilihat pa da 
+Tabel 4. 8. 
+Tabel 4.8 Develop  pada Iterasi Agile  AISYA -RA 
+Iterasi  Backlog  yang 
+Dikerjakan  Implementasi Utama  Luaran Iterasi  
+Iterasi 
+1 Autentikasi pengguna, 
+role Guru RA dan 
+Kepala RA, halaman Pembuatan halaman 
+login , endpoint  
+autentikasi, ruang Prototipe awal dapat 
+dijalankan melalui 
+Deployment  terbatas 
+Iterasi  Backlog  yang 
+Dikerjakan  Implementasi Utama  Luaran Iterasi  
+login , halaman Chatbot , 
+koneksi frontend -
+backend , integrasi awal 
+Gemini API, dan 
+penyimpanan riwayat 
+percakapan.  Chatbot  dasar, koneksi 
+ke Gemini API, koneksi 
+awal ke PostgreSQL 
+Supabase, dan 
+penyimpanan chat room  
+serta chat history . pada lingkungan 
+lokal/pengembangan, 
+pengguna dapat login , 
+Chatbot  dasar 
+berjalan, riwayat 
+percakapan tersimpan, 
+dan masukan 
+pengguna menjadi 
+dasar perluasan fitur 
+pada Iterasi 2.  
+Iterasi 
+2 Pembuatan RPPH, 
+presensi siswa, 
+manajemen surat resmi, 
+validasi input , 
+penyimpanan data, dan 
+pemetaan intent 
+Chatbot  untuk 
+menjalankan fungsi 
+administrasi inti.  Implementasi modul 
+RPPH, presensi, dan 
+surat; penyimpanan 
+data ke PostgreSQL 
+Supabase; pembentukan 
+prompt  administratif; 
+serta integrasi Chatbot  
+untuk mengarahkan 
+atau menjalankan 
+fungsi modul.  Modul administrasi 
+inti dapat dijalankan 
+melalui Deployment  
+terbatas pada 
+lingkungan 
+lokal/pengembangan, 
+digunakan dalam 
+skenario kerja nyata, 
+dan artefak 
+perancangan 
+diperbarui sesuai hasil 
+umpan balik 
+pengguna.  
+Iterasi 
+3 Dashboard  pengguna, 
+RAG berbasis dokumen 
+lokal, optimasi Chatbot , 
+perbaikan antarmuka, 
+penguatan validasi, Pembuatan dashboard , 
+integrasi dokumen lokal 
+untuk RAG, 
+penyempurnaan 
+Chatbot  sebagai kendali AISYA -RA siap 
+deployment  secara 
+operasional pada 
+DigitalOcean, 
+terhubung dengan 
+Iterasi  Backlog  yang 
+Dikerjakan  Implementasi Utama  Luaran Iterasi  
+Deployment  
+DigitalOcean, koneksi 
+Supabase, dan 
+konfigurasi subdomain . sistem, Deployment  
+frontend -backend  pada 
+DigitalOcean, 
+penggunaan 
+PostgreSQL Supabase, 
+dan pengalihan 
+subdomain  aisya.ra -
+alislam.sch.id.  PostgreSQL 
+Supabase, dapat 
+diakses melalui 
+subdomain  resmi, dan 
+siap digunakan oleh 
+mitra selama minimal 
+30 hari sebelum 
+evaluasi efisiensi dan 
+SUS.  
+ 
+4.5.4 Test (Pengujian)  
+Tahap Test dilakukan untuk memastikan bahwa setiap fitur yang dikembangkan 
+menghasilkan keluaran yang sesuai dengan masukan pengguna. Pengujian utama yang 
+digunakan adalah Black Box Testing  karena penelitian berfokus pada perilaku sistem dari 
+sudut pandang pengguna, bukan pada pemeriksaan struktur internal kode program. Black 
+Box Testing  dilakukan pada setiap iterasi, bukan hanya pada akhir pengembangan.  
+Selain pengujian fungsional, tahap Test juga mencakup review pengguna dan 
+penyempurnaan sistem. Review dilakukan pada akhir setiap iterasi dengan melibatkan 
+Kepala RA dan Guru RA. Hasil review dikategorikan menjadi perbaikan bug (kesalahan), 
+penyesuaian antarmuka, perubahan alur kerja, penambahan kebutuhan, atau penundaan 
+fitur. Masukan yang bersifat kritis diperbaiki pada iterasi berjalan, sedangkan masukan 
+yang membutuhkan perubahan lebih besar dimasukkan kembali ke product backlog  untuk 
+diprioritaskan pa da iterasi berikutnya . Contoh fokus pengujian  disajikan pada Tabel 4. 9. 
+ 
+Tabel 4.9 Fokus Black Box Testing  per Iterasi  
+Iterasi  Fokus Pengujian  Contoh Skenario  
+Iterasi 1  Login , autentikasi, Chatbot  dasar, 
+koneksi frontend -backend , integrasi 
+awal Gemini API, dan penyimpanan 
+riwayat percakapan.  Pengguna login  dengan data valid; 
+pengguna login  dengan data salah; 
+pengguna mengirim pesan ke 
+Chatbot ; sistem menyimpan riwayat 
+percakapan.  
+Iterasi 2  RPPH, presensi, surat, validasi 
+input , penyimpanan data ke 
+PostgreSQL Supabase, dan perintah 
+Chatbot  untuk menjalankan modul 
+administrasi.  Guru membuat RPPH; guru 
+mencatat presensi; pengguna 
+membuat surat; Chatbot  menerima 
+perintah pembuatan RPPH atau 
+surat dan mengarahkan ke alur yang 
+sesuai.  
+Iterasi 3  Dashboard , RAG, optimasi 
+Chatbot , akses subdomain , koneksi 
+Database  cloud , dan pengujian 
+komprehensif seluruh fitur.  Kepala RA membuka dashboard ; 
+Chatbot  menjawab berdasarkan 
+dokumen lokal; sistem diakses 
+melalui subdomain ; data tersimpan 
+dan terbaca dari PostgreSQL 
+Supabase.  
+ 
+Setiap skenario pengujian dicatat dalam lembar uji yang memuat fitur yang diuji, data 
+masukan, keluaran yang diharapkan, keluaran aktual, dan status hasil pengujian. Apabila 
+ditemukan ketidaksesuaian, hasil tersebut menjadi dasar perbaikan pada iterasi ber jalan 
+atau dimasukkan kembali ke backlog  untuk dikerjakan pada iterasi berikutnya.  
+4.5.5 Deployment  
+Tahap Deployment  dalam penelitian ini dilaksanakan dalam dua bentuk, yaitu 
+Deployment  terbatas dan Deployment  operasional. Deployment  terbatas dilakukan pada 
+Iterasi 1 dan Iterasi 2 melalui lingkungan lokal atau pengembangan agar setiap increment 
+sistem dapat dijalankan, diuji, dan direview oleh pengguna. Sementara itu, Deployment  
+operasional dilakukan pada Iterasi 3 setelah fitur inti, dashboard , RAG, Chatbot , dan 
+pengujian komprehensif dinyatakan layak digunakan. Dengan demikian, Deployment  
+tetap menjadi bagian dari siklus Agile , tetapi bentuk penerapannya disesuaikan dengan 
+tingkat kesiapan sistem pada masing -masing iterasi.  
+AISYA -RA dijalankan pada DigitalOcean Droplet  sebagai server aplikasi. Frontend  
+React.js, backend  FastAPI, dan Nginx sebagai reverse proxy  dijalankan menggunakan 
+Docker agar lingkungan aplikasi lebih konsisten dan mudah dipelihara. Basis data utama 
+tidak dijalankan pada server DigitalOcean, tetapi menggunakan PostgreSQL yang 
+dikelola melalui Supabase. Pemisahan ini dilakukan agar pengelolaan  aplikasi dan 
+Database  menjadi lebih modular serta sesuai dengan arsitektur cloud  yang digunakan 
+dalam penelitian.  
+Akses pengguna terhadap AISYA -RA dilakukan melalui subdomain  aisya.ra -
+alislam.sch.id. Setelah Deployment  selesai, sistem digunakan secara operasional oleh 
+mitra selama minimal 30 hari. Periode ini digunakan untuk mengamati penggunaan 
+sistem dalam kondisi kerja nyata, mengukur efisiensi waktu administrasi, menemukan 
+kendala penggunaan, dan mengumpulkan data e valuasi usability  melalui System Usability  
+Scale  (SUS).  
+4.6 Implementasi dan Deployment  Sistem  
+4.6.1 Implementasi Aplikasi  
+Implementasi aplikasi dilakukan secara bertahap mengikuti rencana iterasi Agile . Pada 
+setiap iterasi, fitur yang dipilih dari product backlog  diimplementasikan dalam bentuk 
+increment yang dapat diuji. Backend  FastAPI berperan sebagai penghubung antara 
+frontend , layanan Chatbot , PostgreSQL Supabase, dan Gemini API. Frontend  React.js 
+berperan sebagai antarmuka pengguna yang menampilkan halaman login , ruang Chatbot , 
+modul administrasi, dan dashboard . 
+Implementasi Chatbot  dilakukan dengan memperhatikan dua fungsi utama. Pertama, 
+Chatbot  mendukung pemrosesan bahasa alami dan pembuatan teks administratif melalui 
+LLM. Kedua, Chatbot  berfungsi sebagai kendali sistem administrasi, yaitu mengarahkan 
+atau menjalankan fungsi sistem berdasarkan intent pengguna. Dengan pendekatan ini, 
+pengguna tidak harus selalu mencari menu secara manual, tetapi dapat memberikan 
+perintah seperti membuat RPPH, mencatat presensi, membuat surat, atau menampilkan 
+informasi tertentu melalui percakapan . 
+4.6.2 Deployment  pada DigitalOcean dan Supabase  
+Deployment  pada penelitian ini dibedakan menjadi Deployment  terbatas dan Deployment  
+operasional. Deployment  terbatas dilakukan pada Iterasi 1 dan Iterasi 2 melalui 
+lingkungan lokal atau pengembangan agar prototipe AISYA -RA dapat diakses, diuji, dan 
+direview oleh pengguna secara bertahap. Deployment  pada tahap ini bertujuan 
+memastikan setiap increment hasil pengembangan dapat dicoba dan dievaluasi sebelum 
+masuk ke iterasi berikutnya. Sementara itu, Deployment  operasional dilakukan pada 
+Iterasi 3 setelah fitur inti, dashboard , Chatbot , RAG, dan pengujian komprehensif 
+dinyatakan layak digunakan. Pada tahap ini, AIS YA-RA dijalankan pada DigitalOcean 
+Droplet  dengan spesifikasi Basic - Intel, 2 vCPU, 4 GB RAM, 120 GB  disk, dan region  
+sgp1/Singapura. Droplet  digunakan sebagai server aplikasi untuk menjalankan frontend , 
+backend , Docker, reverse proxy , dan konfigurasi akses aplikasi.  
+Basis data tidak dijalankan secara lokal pada server DigitalOcean, melainkan 
+menggunakan PostgreSQL yang dikelola melalui Supabase. Backend  FastAPI yang 
+berjalan pada server aplikasi melakukan koneksi ke PostgreSQL Supabase untuk 
+membaca dan menyimpan data. Pemisahan antara server aplikasi dan layanan Database  
+dilakukan agar pengelolaan sistem lebih modular, mudah dipelihara, dan lebih sesuai 
+dengan arsitektur cloud  yang digunakan dalam penelitian.  
+4.6.3 Penggunaan Subdomain  RA Al -Islam  
+Pada tahap Deployment  operasional, akses pengguna terhadap AISYA -RA dilakukan 
+melalui subdomain  aisya.ra -alislam.sch.id. Subdomain  tersebut diarahkan ke server 
+aplikasi DigitalOcean agar guru dan Kepala RA dapat membuka sistem melalui browser 
+pada perangkat masing -masing. Penggunaan subdomain  bertujuan membuat alamat 
+sistem lebih mudah dikenali dan menunjukkan bahwa AISYA -RA ditempatkan sebagai 
+bagian dari layanan digital internal RA Al -Islam Gunungcupu.  
+Setelah Deployment  operasional melalui subdomain  selesai, sistem digunakan oleh mitra 
+selama minimal 30 hari. Periode ini digunakan untuk mengamati penggunaan AISYA -
+RA dalam kondisi kerja nyata, mengukur efisiensi waktu administrasi, menemukan 
+kendala penggunaan, dan mengumpulkan data evaluasi usability  melalui System 
+Usability  Scale  (SUS). Dengan demikian, Deployment  operasional bukan hanya tahap 
+teknis untuk membuat sistem dapat diakses secara daring, tetapi juga menjadi bagian 
+penting dalam pembuktian bahwa AISYA -RA dapat digunakan pada lingkungan 
+operasional mitra.  
+4.7 Pengujian dan Evaluasi Sistem  
+4.7.1 Evaluasi Efisiensi  Waktu Administrasi  
+Evaluasi efisiensi waktu dilakukan untuk mengetahui dampak penggunaan AISYA -RA 
+terhadap proses administrasi guru. Pengukuran dilakukan dengan membandingkan waktu 
+pengerjaan beberapa aktivitas administrasi sebelum dan sesudah penggunaan sistem. 
+Aktivitas ya ng diukur meliputi penyusunan RPPH, pencatatan presensi, pembuatan surat, 
+dan pencarian informasi atau arsip administrasi.  Rancangan  pengukuran efisiensi waktu  
+administrasi dapat dilihat pada Tabel 4. 10. 
+Tabel 4.10 Rancangan Pengukuran Efisiensi Waktu Administrasi  
+No. Aktivitas 
+Administrasi  Pengukuran 
+Sebelum Sistem  Pengukuran 
+Setelah Sistem  Indikator 
+Efisiensi  
+1 Penyusunan 
+RPPH  Waktu yang 
+dibutuhkan guru 
+untuk menyusun 
+RPPH secara manual 
+atau semi -manual.  Waktu yang 
+dibutuhkan guru 
+ketika membuat 
+draf RPPH 
+melalui AISYA -
+RA. Penurunan durasi 
+pengerjaan dan 
+kemudahan 
+memperoleh draf 
+awal.  
+2 Pencatatan 
+presensi  Waktu pencatatan dan 
+rekap presensi 
+menggunakan cara 
+lama.  Waktu pencatatan 
+dan rekap 
+presensi melalui 
+modul digital 
+AISYA -RA. Kecepatan input , 
+kerapian data, dan 
+kemudahan 
+rekap.  
+3 Pembuatan 
+surat resmi  Waktu pembuatan 
+surat berdasarkan 
+template  manual.  Waktu pembuatan 
+surat melalui 
+modul surat dan 
+bantuan 
+Chatbot /LLM.  Kecepatan 
+penyusunan draf 
+dan keseragaman 
+format surat.  
+No. Aktivitas 
+Administrasi  Pengukuran 
+Sebelum Sistem  Pengukuran 
+Setelah Sistem  Indikator 
+Efisiensi  
+4 Pencarian 
+informasi 
+administrasi  Waktu mencari 
+dokumen atau 
+informasi secara 
+manual.  Waktu mencari 
+informasi melalui 
+sistem atau 
+Chatbot . Kecepatan akses 
+informasi dan 
+kemudahan 
+penelusuran 
+arsip.  
+ 
+Hasil pengukuran waktu dianalisis secara deskriptif dengan membandingkan durasi 
+sebelum dan sesudah penggunaan AISYA -RA. Jika diperlukan, persentase efisiensi 
+dihitung menggunakan rumus berikut:  
+Efisiensi = ((Waktu Sebelum - Waktu Sesudah) / Waktu Sebelum) x 100%  
+Hasil evaluasi ini digunakan untuk menjawab dampak penggunaan AISYA -RA terhadap 
+efisiensi proses administrasi guru.  
+4.7.2 System Usability  Scale  (SUS)  
+System Usability  Scale  (SUS) digunakan untuk mengukur tingkat kemudahan 
+penggunaan dan penerimaan pengguna terhadap AISYA -RA setelah sistem digunakan 
+secara operasional. SUS dipilih karena instrumen ini ringkas, mudah dipahami oleh 
+responden, dan dapat memberikan nilai kuantita tif terhadap persepsi usability  sistem.  
+Pengisian kuesioner SUS dilakukan setelah AISYA -RA digunakan oleh mitra selama 
+minimal 30 hari. Penentuan waktu ini dimaksudkan agar penilaian pengguna tidak hanya 
+berdasarkan kesan pertama, tetapi berdasarkan pengalaman nyata menggunakan sistem 
+dalam peke rjaan administrasi harian. Pengguna memberikan penilaian terhadap 10 
+pernyataan SUS menggunakan skala Likert  1 sampai 5.  
+Perhitungan skor SUS dilakukan dengan memperhatikan pernyataan bernomor ganjil dan 
+genap. Untuk pernyataan ganjil, skor kontribusi dihitung dari nilai jawaban dikurangi 1. 
+Untuk pernyataan genap, skor kontribusi dihitung dari 5 dikurangi nilai jawaban. Jum lah 
+seluruh skor kontribusi kemudian dikalikan 2,5 sehingga menghasilkan nilai 0 sampai 
+100. Hasil skor SUS digunakan untuk menilai apakah AISYA -RA berada pada kategori 
+tidak layak, marginal, baik, atau sangat baik dari sisi usability . 
+4.8 Jadwal Penelitian  
+Jadwal penelitian disusun agar kegiatan penelitian mengikuti alur Agile , mulai dari studi 
+awal, identifikasi kebutuhan, penyusunan backlog , iterasi pengembangan, Deployment  
+operasional, evaluasi, hingga penyusunan laporan. Jadwal ini bersifat terencana, tetapi 
+tetap memungkinkan penyesuaian apabila terdapat perubahan kebutuhan atau temuan 
+penting pada saat review iterasi.  Rincian jadwal penelitian disajikan pada Tabel 4.11.  
+ 
+  
+Tabel 4.11 Jadwal Penelitian  
+No. Kegiatan  Maret  April  Mei Juni  Juli Agustus  
+1 2 3 4 1 2 3 4 1 2 3 4 1 2 3 4 1 2 3 4 1 2 3 4 
+1 Studi literatur, observasi 
+awal, wawancara, dan studi 
+dokumentasi  ✔ ✔                       
+2 Planning : identifikasi 
+kebutuhan awal sistem   ✔ ✔                      
+3 Planning : penyusunan 
+product backlog  AISYA -RA   ✔ ✔ ✔                    
+4 Planning : perencanaan iterasi 
+Agile     ✔ ✔                    
+5 Iterasi 1 — Design , Develop , 
+dan Deployment  terbatas 
+fondasi sistem serta Chatbot  
+dasar      ✔ ✔ ✔                  
+No. Kegiatan  Maret  April  Mei Juni  Juli Agustus  
+1 2 3 4 1 2 3 4 1 2 3 4 1 2 3 4 1 2 3 4 1 2 3 4 
+6 Iterasi 1 — Test:  Black Box 
+Testing  fondasi sistem dan 
+Chatbot  dasar        ✔                  
+7 Iterasi 1 — Review dan 
+penyempurnaan hasil iterasi        ✔                  
+8 Iterasi 2 — Design , Develop , 
+dan Deployment  terbatas 
+modul administrasi inti 
+RPPH, presensi, dan surat         ✔ ✔ ✔               
+9 Iterasi 2 — Test:  Black Box 
+Testing  modul administrasi 
+inti          ✔               
+10 Iterasi 2 — Review  dan 
+penyempurnaan hasil iterasi           ✔               
+11 Iterasi 3 — Design  dan 
+Develop  dashboard , RAG,          ✔ ✔ ✔             
+No. Kegiatan  Maret  April  Mei Juni  Juli Agustus  
+1 2 3 4 1 2 3 4 1 2 3 4 1 2 3 4 1 2 3 4 1 2 3 4 
+penyempurnaan Chatbot , dan 
+kesiapan Deployment  
+operasional  
+12 Iterasi 3 — Test:  Black Box 
+Testing  komprehensif seluruh 
+fitur            ✔             
+13 Review akhir dan 
+penyempurnaan sistem             ✔             
+14 Deployment  operasional 
+AISYA -RA pada 
+DigitalOcean, Supabase, dan 
+subdomain             ✔             
+15 Implementasi operasional 
+AISYA -RA di RA Al -Islam 
+selama minimal 30 hari             ✔ ✔ ✔ ✔          
+No. Kegiatan  Maret  April  Mei Juni  Juli Agustus  
+1 2 3 4 1 2 3 4 1 2 3 4 1 2 3 4 1 2 3 4 1 2 3 4 
+16 Observasi penggunaan sistem 
+dan pengukuran efisiensi 
+waktu administrasi             ✔ ✔ ✔ ✔          
+17 Evaluasi penerimaan 
+pengguna menggunakan 
+System Usability  Scale  (SUS)                ✔          
+18 Analisis hasil pengujian dan 
+evaluasi                ✔          
+19 Penyusunan, revisi, dan 
+finalisasi laporan skripsi                ✔ ✔ ✔ ✔       
+ 
+Jadwal tersebut bersifat terencana namun tetap memungkinkan penyesuaian apabila terdapat perubahan kebutuhan atau temuan pent ing 
+pada saat review iterasi. Fleksibilitas ini sesuai dengan prinsip Agile , yaitu menyesuaikan prioritas pengembangan berdasarkan umpan 
+balik pengguna dan kondisi lapangan. Deployment  pada jadwal penelitian dibedakan menjadi Deployment  terbatas pada iterasi awal 
+dan Deployment  operasional pada iterasi akhir, sehingga alur penelitian tetap selaras dengan siklus Agile  yang bersifat ite ratif dan 
+inkremental.  
+ 

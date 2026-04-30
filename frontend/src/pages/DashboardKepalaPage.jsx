@@ -52,9 +52,12 @@ function DashboardKepalaPage() {
   return (
     <div className="min-h-screen bg-slate-50 px-4 py-8">
       <div className="mx-auto w-full max-w-7xl space-y-6">
-        <div className="rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-          <h1 className="text-2xl font-semibold text-slate-900">Dashboard Kepala RA</h1>
-          <p className="mt-1 text-sm text-slate-600">Ringkasan performa guru dan kelas</p>
+        <div className="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-200">
+          <div className="bg-emerald-800 px-6 py-5 text-white">
+            <h1 className="text-2xl font-bold tracking-tight">Dashboard Kepala RA</h1>
+            <p className="mt-1 text-sm text-emerald-100">Ringkasan performa guru dan kelas</p>
+          </div>
+          <div className="p-6">
 
           {error ? <div className="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div> : null}
 
@@ -66,13 +69,13 @@ function DashboardKepalaPage() {
                 <h2 className="text-sm font-semibold text-slate-900">Ringkasan Guru</h2>
                 <div className="mt-3 overflow-x-auto">
                   <table className="w-full border-collapse text-sm">
-                    <thead>
-                      <tr className="border-b border-slate-200 text-left">
-                        <th className="px-3 py-2">Nama</th>
-                        <th className="px-3 py-2">RPPH Hari Ini</th>
-                        <th className="px-3 py-2">RPPH Minggu Ini</th>
-                        <th className="px-3 py-2">Catatan Minggu Ini</th>
-                        <th className="px-3 py-2">Presensi Dicatat</th>
+                    <thead className="bg-emerald-700 text-white">
+                      <tr className="text-left">
+                        <th className="px-3 py-3 font-semibold">Nama</th>
+                        <th className="px-3 py-3 font-semibold">RPPH Hari Ini</th>
+                        <th className="px-3 py-3 font-semibold">RPPH Minggu Ini</th>
+                        <th className="px-3 py-3 font-semibold">Catatan Minggu Ini</th>
+                        <th className="px-3 py-3 font-semibold">Presensi Dicatat</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -115,12 +118,12 @@ function DashboardKepalaPage() {
                 <h2 className="text-sm font-semibold text-slate-900">Ringkasan Kelas</h2>
                 <div className="mt-3 overflow-x-auto">
                   <table className="w-full border-collapse text-sm">
-                    <thead>
-                      <tr className="border-b border-slate-200 text-left">
-                        <th className="px-3 py-2">Kelas</th>
-                        <th className="px-3 py-2">Jumlah Siswa</th>
-                        <th className="px-3 py-2">RPPH Minggu Ini</th>
-                        <th className="px-3 py-2">Presensi Hari Ini</th>
+                    <thead className="bg-emerald-700 text-white">
+                      <tr className="text-left">
+                        <th className="px-3 py-3 font-semibold">Kelas</th>
+                        <th className="px-3 py-3 font-semibold">Jumlah Siswa</th>
+                        <th className="px-3 py-3 font-semibold">RPPH Minggu Ini</th>
+                        <th className="px-3 py-3 font-semibold">Presensi Hari Ini</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -138,6 +141,7 @@ function DashboardKepalaPage() {
               </div>
             </>
           ) : null}
+          </div>
         </div>
       </div>
     </div>

@@ -12,10 +12,10 @@ function ChatBubble({ isUser, text, timestamp }) {
     <div className={`mb-4 flex ${isUser ? 'justify-end' : 'justify-start'}`}>
       <div className={`max-w-[70%] ${isUser ? 'order-2' : 'order-1'}`}>
         <div
-          className={`rounded-2xl px-4 py-2 ${
+          className={`rounded-2xl px-4 py-2 shadow-sm ${
             isUser
-              ? 'bg-emerald-600 text-white rounded-br-sm'
-              : 'bg-slate-200 text-slate-900 rounded-bl-sm'
+              ? 'bg-[#d9fdd3] text-slate-900 rounded-tr-none'
+              : 'bg-white text-slate-900 rounded-tl-none'
           }`}
         >
           <p className="whitespace-pre-wrap break-words text-sm">{text}</p>
