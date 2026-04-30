@@ -4,18 +4,41 @@ from google import genai
 
 from app.config import settings
 
-SYSTEM_PROMPT = (
-    "Kamu adalah AISYA, asisten administrasi guru RA.\n"
-    "Gaya jawaban wajib:\n"
-    "- Singkat, to the point, dan bahasa Indonesia sederhana.\n"
-    "- Hindari istilah teknis internal sistem, nama tabel, nama kolom, JSON, atau kode.\n"
-    "- Maksimal 5 kalimat, atau maksimal 4 bullet jika perlu.\n"
-    "- Untuk permintaan aksi data, jelaskan hasil akhirnya secara jelas dan ringkas.\n"
-    "- Jika informasi kurang, minta 1 klarifikasi singkat.\n"
-    "- Jangan mengasumsikan nama sekolah, kepala RA, atau data profil lain tanpa konteks data yang tersedia."
-)
+def _build_system_prompt() -> str:
+    """Build system prompt with injected current date/time in WIB (UTC+7)."""
+    from datetime import datetime, timezone, timedelta
+    wib = timezone(timedelta(hours=7))
+    now_wib = datetime.now(wib)
+    hari_map = {
+        0: "Senin", 1: "Selasa", 2: "Rabu", 3: "Kamis",
+        4: "Jumat", 5: "Sabtu", 6: "Minggu",
+    }
+    bulan_map = {
+        1: "Januari", 2: "Februari", 3: "Maret", 4: "April",
+        5: "Mei", 6: "Juni", 7: "Juli", 8: "Agustus",
+        9: "September", 10: "Oktober", 11: "November", 12: "Desember",
+    }
+    hari = hari_map[now_wib.weekday()]
+    tanggal_str = f"{hari}, {now_wib.day} {bulan_map[now_wib.month]} {now_wib.year}"
+    jam_str = now_wib.strftime("%H:%M")
+
+    return (
+        "Kamu adalah AISYA, asisten administrasi guru RA.\n"
+        f"Waktu saat ini (WIB, UTC+7): {tanggal_str}, pukul {jam_str}.\n"
+        "Gaya jawaban wajib:\n"
+        "- Singkat, to the point, dan bahasa Indonesia sederhana.\n"
+        "- Hindari istilah teknis internal sistem, nama tabel, nama kolom, JSON, atau kode.\n"
+        "- Maksimal 5 kalimat, atau maksimal 4 bullet jika perlu.\n"
+        "- Untuk permintaan aksi data, jelaskan hasil akhirnya secara jelas dan ringkas.\n"
+        "- Jika informasi kurang, minta 1 klarifikasi singkat.\n"
+        "- Jangan mengasumsikan nama sekolah, kepala RA, atau data profil lain tanpa konteks data yang tersedia."
+    )
+
 DEFAULT_MODEL_CANDIDATES = [
+    "gemini-2.5-flash",
+    "gemini-2.5-pro",
     "gemini-2.0-flash",
+    "gemini-2.0-pro",
     "gemini-1.5-flash",
     "gemini-1.5-flash-latest",
 ]
@@ -49,7 +72,7 @@ def _fallback_response(exc: Optional[Exception] = None) -> str:
 
 
 def generate_response(prompt: str, context: Optional[str] = None) -> str:
-    full_prompt = SYSTEM_PROMPT + "\n\n"
+    full_prompt = _build_system_prompt() + "\n\n"
     if context:
         full_prompt += f"Konteks:\n{context}\n\n"
     full_prompt += f"Pertanyaan: {prompt}"

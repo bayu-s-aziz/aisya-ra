@@ -175,7 +175,8 @@ NATURAL_INTENT_VOCAB = sorted(
 )
 
 MULTI_STEP_SEPARATOR_PATTERN = re.compile(
-    r"\s*(?:\n+|;|,)?\s*(?:lalu|kemudian|selanjutnya|setelah itu|habis itu|terus)\s+",
+    r"\s*(?:\n+)\s*(?:lalu|kemudian|selanjutnya|setelah itu|habis itu|terus)\s+"
+    r"|\s+(?:lalu|kemudian|selanjutnya|setelah itu|habis itu|terus)\s+",
     flags=re.IGNORECASE,
 )
 
@@ -310,14 +311,16 @@ def _split_multi_step_commands(query: str) -> list[str]:
     parts = [part.strip(" ,;.") for part in MULTI_STEP_SEPARATOR_PATTERN.split(text)]
     parts = [part for part in parts if part]
 
-    # Fallback for numbered instructions: "1. ... 2. ..."
+    # Fallback for clearly numbered instructions: "1. ... 2. ..."
+    # Requires at least 2 items each >= 5 chars to avoid false positives on
+    # ordinary sentences that happen to contain a number followed by a dot.
     if len(parts) <= 1:
         numbered_parts = [
             part.strip(" ,;.")
-            for part in re.split(r"\s+\d+\.\s+", f" 1. {text}")
+            for part in re.split(r"(?:^|\s+)\d+\.\s+", text)
             if part.strip(" ,;.")
         ]
-        if len(numbered_parts) > 1:
+        if len(numbered_parts) >= 2 and all(len(p) >= 5 for p in numbered_parts):
             return numbered_parts
 
     return parts
