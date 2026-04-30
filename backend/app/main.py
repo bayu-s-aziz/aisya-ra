@@ -15,6 +15,7 @@ from app.routers.template_surat import router as template_surat_router
 from app.routers.surat import router as surat_router
 from app.routers.dashboard import router as dashboard_router
 from app.routers.tahun_ajaran import router as tahun_ajaran_router
+from app.routers.tahun_ajaran import router as tahun_ajaran_router
 from app.utils.scheduler import start_scheduler, shutdown_scheduler
 
 @asynccontextmanager

@@ -5,12 +5,14 @@ import RAProfileForm from '../components/Profile/RAProfileForm'
 import ProfileInfoCard from '../components/Profile/ProfileInfoCard'
 import AppModal from '../components/Modal/AppModal'
 import { fetchRAProfile, saveRAProfile } from '../lib/raProfile'
+import { fetchMyPresenceHistory, recordGTKPresence } from '../lib/presensiGtk'
 
-const loadStudentsManagementPanel = () => import('../components/Settings/StudentsManagementPanel')
-const loadUsersManagementPanel = () => import('../components/Settings/UsersManagementPanel')
-const loadKelompokManagementPanel = () => import('../components/Settings/KelompokManagementPanel')
-const loadPresensiManagementPanel = () => import('../components/Settings/PresensiManagementPanel')
-const loadAcademicYearManagementPanel = () => import('../components/Settings/AcademicYearManagementPanel')
+const loadStudentsManagementPanel = () => import('../components/Dashboards/StudentsManagementPanel')
+const loadUsersManagementPanel = () => import('../components/Dashboards/UsersManagementPanel')
+const loadKelompokManagementPanel = () => import('../components/Dashboards/KelompokManagementPanel')
+const loadPresensiManagementPanel = () => import('../components/Dashboards/PresensiManagementPanel')
+const loadPresensiGTKPanel = () => import('../components/Dashboards/PresensiGTKPanel')
+const loadAcademicYearManagementPanel = () => import('../components/Dashboards/AcademicYearManagementPanel')
 const loadKnowledgeBaseView = () => import('./KnowledgeBaseView')
 const loadSuratView = () => import('./SuratView')
 
@@ -18,6 +20,7 @@ const StudentsManagementPanel = lazy(loadStudentsManagementPanel)
 const UsersManagementPanel = lazy(loadUsersManagementPanel)
 const KelompokManagementPanel = lazy(loadKelompokManagementPanel)
 const PresensiManagementPanel = lazy(loadPresensiManagementPanel)
+const PresensiGTKPanel = lazy(loadPresensiGTKPanel)
 const AcademicYearManagementPanel = lazy(loadAcademicYearManagementPanel)
 const KnowledgeBaseView = lazy(loadKnowledgeBaseView)
 const SuratView = lazy(loadSuratView)
@@ -30,6 +33,7 @@ const PANEL_LABELS = {
   'manajemen-pengguna': 'Manajemen Pengguna',
   'manajemen-kelompok': 'Manajemen Kelompok',
   'manajemen-presensi': 'Manajemen Presensi',
+  'manajemen-presensi-gtk': 'Presensi GTK',
   'manajemen-berkas-dokumen': 'Manajemen Berkas - Dokumen',
   'manajemen-berkas-surat': 'Manajemen Berkas - Surat',
 }
@@ -81,17 +85,56 @@ function DashboardView({
   onSelectDocId,
   onDocumentsLoaded,
   onDocDeleted,
+  profile,
 }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [data, setData] = useState(null)
+  const [isInstitutionModalOpen, setIsInstitutionModalOpen] = useState(false)
+  const [raSaving, setRaSaving] = useState(false)
+  const [raError, setRaError] = useState('')
+  const [raSuccess, setRaSuccess] = useState('')
   const [raProfile, setRaProfile] = useState(null)
   const [raLoading, setRaLoading] = useState(false)
   const [raLoadError, setRaLoadError] = useState('')
-  const [raSaving, setRaSaving] = useState(false)
-  const [raSuccess, setRaSuccess] = useState('')
-  const [raError, setRaError] = useState('')
-  const [isInstitutionModalOpen, setIsInstitutionModalOpen] = useState(false)
+
+  const [myPresence, setMyPresence] = useState(null)
+  const [markingPresence, setMarkingPresence] = useState(false)
+
+  const loadMyPresence = async () => {
+    try {
+      const history = await fetchMyPresenceHistory()
+      const today = new Date().toISOString().slice(0, 10)
+      const todayRecord = history.find((p) => p.tanggal === today)
+      setMyPresence(todayRecord || null)
+    } catch (err) {
+      console.error('Gagal memuat presensi saya:', err)
+    }
+  }
+
+  const handleMarkMyPresence = async (status) => {
+    if (!profile?.id) return
+    setMarkingPresence(true)
+    try {
+      await recordGTKPresence({
+        pengguna_id: profile.id,
+        tanggal: new Date().toISOString().slice(0, 10),
+        status: status,
+        sumber_pencatatan: 'dashboard_quick',
+      })
+      await loadMyPresence()
+    } catch (err) {
+      alert(`Gagal mencatat presensi: ${err?.response?.data?.detail || err?.message}`)
+    } finally {
+      setMarkingPresence(false)
+    }
+  }
+
+  useEffect(() => {
+    if (activePanel === 'ringkasan') {
+      loadMyPresence()
+    }
+  }, [activePanel])
 
   const canManageInstitutionProfile = useMemo(() => {
     const normalizedRole = (role || '').toLowerCase()
@@ -188,9 +231,9 @@ function DashboardView({
 
     const presensiGuru = data?.rekap_presensi_hari_ini?.total
       ? (data.rekap_presensi_hari_ini.total.hadir || 0)
-        + (data.rekap_presensi_hari_ini.total.sakit || 0)
-        + (data.rekap_presensi_hari_ini.total.izin || 0)
-        + (data.rekap_presensi_hari_ini.total.alpha || 0)
+      + (data.rekap_presensi_hari_ini.total.sakit || 0)
+      + (data.rekap_presensi_hari_ini.total.izin || 0)
+      + (data.rekap_presensi_hari_ini.total.alpha || 0)
       : 0
 
     return {
@@ -318,6 +361,58 @@ function DashboardView({
                     ) : (
                       <p className="mt-3 text-sm text-[#64748b]">Belum ada data kelas untuk ditampilkan.</p>
                     )}
+                  </div>
+
+                  <div className="rounded-2xl border border-[#e2e8f0] bg-[#f8fafc] p-4">
+                    <p className="text-sm font-semibold text-[#0f172a]">Presensi Cepat Saya</p>
+                    <p className="mt-1 text-xs text-[#64748b]">Catat kehadiran Anda hari ini dengan cepat</p>
+                    <div className="mt-4">
+                      {myPresence ? (
+                        <div className="flex items-center gap-3 rounded-xl border border-emerald-100 bg-emerald-50 p-3">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500 text-white">
+                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-emerald-800">Sudah Presensi</p>
+                            <p className="text-xs text-emerald-600">Status: {myPresence.status.toUpperCase()}</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            onClick={() => handleMarkMyPresence('hadir')}
+                            disabled={markingPresence}
+                            className="rounded-xl border border-emerald-200 bg-white py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"
+                          >
+                            Hadir
+                          </button>
+                          <button
+                            onClick={() => handleMarkMyPresence('sakit')}
+                            disabled={markingPresence}
+                            className="rounded-xl border border-rose-200 bg-white py-2 text-sm font-medium text-rose-700 hover:bg-rose-50 disabled:opacity-50"
+                          >
+                            Sakit
+                          </button>
+                          <button
+                            onClick={() => handleMarkMyPresence('izin')}
+                            disabled={markingPresence}
+                            className="rounded-xl border border-amber-200 bg-white py-2 text-sm font-medium text-amber-700 hover:bg-amber-50 disabled:opacity-50"
+                          >
+                            Izin
+                          </button>
+                          <button
+                            onClick={() => handleMarkMyPresence('alpha')}
+                            disabled={markingPresence}
+                            className="rounded-xl border border-slate-200 bg-white py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                          >
+                            Alpha
+                          </button>
+                        </div>
+                      )}
+                      {markingPresence && <p className="mt-2 text-center text-xs text-[#64748b]">Mencatat...</p>}
+                    </div>
                   </div>
 
                   <div className="rounded-2xl border border-[#e2e8f0] bg-[#f8fafc] p-4">
@@ -455,6 +550,14 @@ function DashboardView({
           </section>
         ) : null}
 
+        {activePanel === 'manajemen-presensi-gtk' ? (
+          <section className="rounded-2xl border border-[#e2e8f0] bg-white p-4 shadow-sm">
+            <Suspense fallback={<PanelLoadingFallback />}>
+              <PresensiGTKPanel />
+            </Suspense>
+          </section>
+        ) : null}
+
         {activePanel === 'manajemen-berkas-dokumen' ? (
           <section className="rounded-2xl border border-[#e2e8f0] bg-white p-4 shadow-sm">
             <div className="min-h-[620px] overflow-hidden rounded-2xl border border-[#e2e8f0] bg-[#f8fafc]">
@@ -487,6 +590,7 @@ function DashboardView({
 
 DashboardView.propTypes = {
   role: PropTypes.string,
+  profile: PropTypes.object,
   activePanel: PropTypes.oneOf([
     'ringkasan',
     'profil-lembaga',
@@ -495,6 +599,7 @@ DashboardView.propTypes = {
     'manajemen-pengguna',
     'manajemen-kelompok',
     'manajemen-presensi',
+    'manajemen-presensi-gtk',
     'manajemen-berkas-dokumen',
     'manajemen-berkas-surat',
   ]),

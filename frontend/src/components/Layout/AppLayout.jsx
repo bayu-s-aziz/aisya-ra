@@ -25,7 +25,8 @@ const loadProfileView = () => import('../../views/ProfileView')
 const loadRpphView = () => import('../../views/RpphView')
 const loadSuratView = () => import('../../views/SuratView')
 const loadNotifikasiView = () => import('../../views/NotifikasiView')
-const loadPresensiManagementPanel = () => import('../../components/Settings/PresensiManagementPanel')
+const loadPresensiManagementPanel = () => import('../Dashboards/PresensiManagementPanel')
+const loadPresensiGTKPanel = () => import('../Dashboards/PresensiGTKPanel')
 
 const ChatList = lazy(loadChatList)
 const ChatView = lazy(loadChatView)
@@ -36,6 +37,7 @@ const RpphView = lazy(loadRpphView)
 const SuratView = lazy(loadSuratView)
 const NotifikasiView = lazy(loadNotifikasiView)
 const PresensiManagementPanel = lazy(loadPresensiManagementPanel)
+const PresensiGTKPanel = lazy(loadPresensiGTKPanel)
 
 const APP_MENU_ITEMS = [
   {
@@ -115,6 +117,12 @@ const DASHBOARD_MENUS = [
     id: 'manajemen-presensi',
     label: 'Manajemen Presensi',
     icon: ClipboardDocumentListIcon,
+  },
+  {
+    id: 'manajemen-presensi-gtk',
+    label: 'Presensi GTK',
+    icon: UserGroupIcon,
+    adminOnly: true,
   },
   {
     id: 'manajemen-berkas',
@@ -411,6 +419,7 @@ function AppLayout() {
         <Suspense fallback={<ContentLoadingFallback />}>
           <DashboardView
             role={userRole}
+            profile={profile}
             activePanel={dashboardPanel}
             selectedDocId={selectedDocId || ''}
             selectedDoc={selectedDoc}

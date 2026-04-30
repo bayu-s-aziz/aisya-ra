@@ -162,16 +162,21 @@ async def presensi_from_chat(
     tahun_ajaran_id = active_year["id"]
     
     # Gunakan Gemini untuk parsing pesan kehadiran
-    prompt = f"""Kamu adalah asisten yang membantu guru mencatat kehadiran siswa.
+    prompt = f"""Kamu adalah asisten yang membantu guru mencatat kehadiran.
 Parsing pesan berikut dan ekstrak data kehadiran dalam format JSON.
+Ada dua jenis kehadiran: 'siswa' (untuk murid) dan 'self' (jika pengirim pesan melaporkan kehadirannya sendiri, ditandai dengan kata 'saya', 'aku', dsb).
 
-Format output yang diharapkan (JSON array):
-[
-  {{"nama_siswa": "...", "status": "hadir/sakit/izin/alpha"}},
-  ...
-]
+Format output yang diharapkan (JSON object):
+{{
+  "type": "siswa" | "self",
+  "records": [
+    {{"nama": "...", "status": "hadir/sakit/izin/alpha"}}
+  ]
+}}
 
-Jika tidak ada data kehadiran yang jelas, kembalikan array kosong: []
+- Jika 'self', maka 'records' berisi status pengirim (nama bisa diisi "self").
+- Jika 'siswa', maka 'records' berisi daftar siswa.
+- Jika tidak ada data kehadiran yang jelas, kembalikan: {{"type": "unknown", "records": []}}
 
 Pesan: {request.pesan}
 
@@ -186,8 +191,11 @@ Output (hanya JSON, tanpa markdown atau penjelasan):"""
         
         parsed_data = json.loads(ai_response)
         
-        if not isinstance(parsed_data, list):
-            raise ValueError("Response bukan array")
+        if not isinstance(parsed_data, dict):
+            raise ValueError("Response bukan object")
+        
+        attendance_type = parsed_data.get("type", "unknown")
+        records = parsed_data.get("records", [])
         
     except Exception as e:
         raise HTTPException(
@@ -195,7 +203,7 @@ Output (hanya JSON, tanpa markdown atau penjelasan):"""
             detail=f"Gagal parsing pesan kehadiran: {str(e)}"
         )
     
-    if len(parsed_data) == 0:
+    if attendance_type == "unknown" or len(records) == 0:
         return PresensiFromChatResponse(
             success=True,
             message="Tidak ada data kehadiran yang terdeteksi",
@@ -205,13 +213,42 @@ Output (hanya JSON, tanpa markdown atau penjelasan):"""
     
     # Ambil tanggal hari ini
     today = date.today()
-    
-    # Proses setiap siswa dalam parsed data
     hasil_detail = []
     jumlah_dicatat = 0
-    
-    for item in parsed_data:
-        nama_siswa = item.get("nama_siswa", "").strip()
+
+    if attendance_type == "self":
+        # Proses kehadiran GTK (self)
+        status_str = records[0].get("status", "hadir").lower()
+        if status_str not in ["hadir", "sakit", "izin", "alpha"]:
+            status_str = "hadir"
+        
+        # Upsert ke presensi_gtk
+        try:
+            attendance_data = {
+                "pengguna_id": user_id,
+                "tanggal": str(today),
+                "status": status_str,
+                "dicatat_oleh": user_id,
+                "sumber_pencatatan": "chat",
+                "tahun_ajaran_id": tahun_ajaran_id,
+            }
+            supabase.table("presensi_gtk").upsert(
+                attendance_data,
+                on_conflict="pengguna_id,tanggal"
+            ).execute()
+            
+            return PresensiFromChatResponse(
+                success=True,
+                message=f"Berhasil mencatat kehadiran Anda sebagai {status_str}",
+                jumlah_dicatat=1,
+                detail=[{"nama": "Self", "status": status_str, "keterangan": "Berhasil dicatat"}]
+            )
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Gagal mencatat kehadiran GTK: {str(e)}")
+
+    # Proses setiap siswa dalam parsed data (attendance_type == "siswa")
+    for item in records:
+        nama_siswa = item.get("nama", "").strip()
         status_str = item.get("status", "").lower()
         
         if not nama_siswa or status_str not in ["hadir", "sakit", "izin", "alpha"]:

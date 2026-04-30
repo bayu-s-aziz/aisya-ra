@@ -152,10 +152,10 @@ function PresensiManagementPanel() {
 
       const nextStatusMap = {}
       const nextKeteranganMap = {}
-      ;(data?.detail || []).forEach((item) => {
-        nextStatusMap[item.siswa_id] = normalizeStatus(item.status)
-        nextKeteranganMap[item.siswa_id] = item.keterangan || ''
-      })
+        ; (data?.detail || []).forEach((item) => {
+          nextStatusMap[item.siswa_id] = normalizeStatus(item.status)
+          nextKeteranganMap[item.siswa_id] = item.keterangan || ''
+        })
       setStatusMap(nextStatusMap)
       setKeteranganMap(nextKeteranganMap)
       setIsDirty(false)
@@ -257,14 +257,14 @@ function PresensiManagementPanel() {
       belum_dicatat: 0,
     }
 
-    ;(rekap?.detail || []).forEach((item) => {
-      const currentStatus = normalizeStatus(statusMap[item.siswa_id])
-      if (currentStatus) {
-        summaryMap[currentStatus] = (summaryMap[currentStatus] || 0) + 1
-      } else {
-        summaryMap.belum_dicatat += 1
-      }
-    })
+      ; (rekap?.detail || []).forEach((item) => {
+        const currentStatus = normalizeStatus(statusMap[item.siswa_id])
+        if (currentStatus) {
+          summaryMap[currentStatus] = (summaryMap[currentStatus] || 0) + 1
+        } else {
+          summaryMap.belum_dicatat += 1
+        }
+      })
 
     return summaryMap
   }, [rekap, statusMap])
@@ -338,7 +338,7 @@ function PresensiManagementPanel() {
       {error ? <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div> : null}
 
       <div className="rounded-2xl border border-[#e2e8f0] bg-white p-4 shadow-sm">
-        <p className="text-sm font-semibold text-[#0f172a]">Filter Rekap Presensi</p>
+        <p className="text-sm font-semibold text-[#0f172a]">Filter Presensi</p>
         <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-4">
           <input
             type="date"
@@ -484,42 +484,42 @@ function PresensiManagementPanel() {
 
               {!loading && filteredDetail.length > 0
                 ? filteredDetail.map((item) => (
-                    <tr key={item.siswa_id}>
-                      <td className="px-3 py-2">{item.nama}</td>
-                      <td className="px-3 py-2">
-                        <div className="flex flex-wrap gap-2">
-                          {STATUS_OPTIONS.map((statusItem) => {
-                            const isActive = normalizeStatus(statusMap[item.siswa_id]) === statusItem.value
-                            const tone = STATUS_BUTTON_STYLE[statusItem.value] || STATUS_BUTTON_STYLE.hadir
-                            const buttonClass = isActive ? tone.active : tone.inactive
+                  <tr key={item.siswa_id}>
+                    <td className="px-3 py-2">{item.nama}</td>
+                    <td className="px-3 py-2">
+                      <div className="flex flex-wrap gap-2">
+                        {STATUS_OPTIONS.map((statusItem) => {
+                          const isActive = normalizeStatus(statusMap[item.siswa_id]) === statusItem.value
+                          const tone = STATUS_BUTTON_STYLE[statusItem.value] || STATUS_BUTTON_STYLE.hadir
+                          const buttonClass = isActive ? tone.active : tone.inactive
 
-                            return (
-                              <button
-                                key={statusItem.value}
-                                type="button"
-                                onClick={() => handleStatusChange(item.siswa_id, statusItem.value)}
-                                className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${buttonClass}`}
-                              >
-                                {statusItem.label}
-                              </button>
-                            )
-                          })}
-                        </div>
-                      </td>
-                      <td className="px-3 py-2">
-                        <input
-                          className={inputClass}
-                          value={keteranganMap[item.siswa_id] || ''}
-                          onChange={(ev) => {
-                            const value = ev.target.value
-                            setKeteranganMap((prev) => ({ ...prev, [item.siswa_id]: value }))
-                            setIsDirty(true)
-                          }}
-                          placeholder="Catatan singkat"
-                        />
-                      </td>
-                    </tr>
-                  ))
+                          return (
+                            <button
+                              key={statusItem.value}
+                              type="button"
+                              onClick={() => handleStatusChange(item.siswa_id, statusItem.value)}
+                              className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${buttonClass}`}
+                            >
+                              {statusItem.label}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2">
+                      <input
+                        className={inputClass}
+                        value={keteranganMap[item.siswa_id] || ''}
+                        onChange={(ev) => {
+                          const value = ev.target.value
+                          setKeteranganMap((prev) => ({ ...prev, [item.siswa_id]: value }))
+                          setIsDirty(true)
+                        }}
+                        placeholder="Catatan singkat"
+                      />
+                    </td>
+                  </tr>
+                ))
                 : null}
             </tbody>
           </table>
@@ -556,26 +556,26 @@ function PresensiManagementPanel() {
 
               {!loading
                 ? filteredPeriodSiswa.map((item) => (
-                    <tr key={item.siswa_id}>
-                      <td className="px-3 py-2 font-medium">{item.nama}</td>
-                      {(item.status_per_tanggal || []).map((statusItem) => {
-                        const badge = getPeriodStatusBadge(statusItem.status)
-                        return (
-                          <td key={`${item.siswa_id}-${statusItem.tanggal}`} className="px-3 py-2">
-                            <span className={`inline-flex min-w-6 items-center justify-center rounded-full border px-2 py-0.5 text-xs ${badge.className}`}>
-                              {badge.label}
-                            </span>
-                          </td>
-                        )
-                      })}
-                      <td className="px-3 py-2">{item.hadir}</td>
-                      <td className="px-3 py-2">{item.sakit}</td>
-                      <td className="px-3 py-2">{item.izin}</td>
-                      <td className="px-3 py-2">{item.alpha}</td>
-                      <td className="px-3 py-2">{item.belum_dicatat}</td>
-                      <td className="px-3 py-2">{item.persentase_hadir}%</td>
-                    </tr>
-                  ))
+                  <tr key={item.siswa_id}>
+                    <td className="px-3 py-2 font-medium">{item.nama}</td>
+                    {(item.status_per_tanggal || []).map((statusItem) => {
+                      const badge = getPeriodStatusBadge(statusItem.status)
+                      return (
+                        <td key={`${item.siswa_id}-${statusItem.tanggal}`} className="px-3 py-2">
+                          <span className={`inline-flex min-w-6 items-center justify-center rounded-full border px-2 py-0.5 text-xs ${badge.className}`}>
+                            {badge.label}
+                          </span>
+                        </td>
+                      )
+                    })}
+                    <td className="px-3 py-2">{item.hadir}</td>
+                    <td className="px-3 py-2">{item.sakit}</td>
+                    <td className="px-3 py-2">{item.izin}</td>
+                    <td className="px-3 py-2">{item.alpha}</td>
+                    <td className="px-3 py-2">{item.belum_dicatat}</td>
+                    <td className="px-3 py-2">{item.persentase_hadir}%</td>
+                  </tr>
+                ))
                 : null}
             </tbody>
           </table>
