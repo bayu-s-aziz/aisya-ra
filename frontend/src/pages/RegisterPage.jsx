@@ -27,11 +27,14 @@ function RegisterPage() {
   useEffect(() => {
     const checkStatus = async () => {
       try {
+        console.log('Checking registration status...')
         const response = await api.get('/auth/registration-status')
+        console.log('Registration status response:', response.data)
         setHasRA(response.data.has_ra)
         setRaName(response.data.ra_name || '')
       } catch (err) {
         console.error('Failed to check registration status', err)
+        setError('Gagal mengecek status registrasi. Pastikan backend sudah terupdate dan berjalan.')
       } finally {
         setCheckingStatus(false)
       }
@@ -139,12 +142,12 @@ function RegisterPage() {
               AISYA-RA
             </div>
             <h1 className="mt-5 text-3xl font-semibold leading-tight text-[#0f172a]">
-              {hasRA ? `Selamat Datang di ${raName}` : 'Daftarkan RA agar siap dipakai dalam hitungan menit.'}
+              {hasRA ? `Selamat Datang di AISYA-RA ${raName}` : 'Daftarkan diri Anda agar siap dipakai dalam hitungan menit.'}
             </h1>
             <p className="mt-3 max-w-md text-sm leading-relaxed text-[#64748b]">
               {hasRA 
-                ? 'Daftarkan akun Guru Anda untuk mulai menggunakan aplikasi internal ini.' 
-                : 'Isi data sekolah dan akun admin, lalu langsung masuk ke dashboard untuk mulai bekerja.'}
+                ? 'Daftarkan akun Guru Anda untuk mulai menggunakan AISYA-RA.' 
+                : 'Isi data RA dan Kepala RA, lalu langsung masuk ke dashboard untuk mulai bekerja.'}
             </p>
           </section>
 

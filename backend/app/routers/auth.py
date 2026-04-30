@@ -299,8 +299,9 @@ def get_registration_status():
         )
         has_ra = len(response.data) > 0
         ra_name = response.data[0]["nama_ra"] if has_ra else None
-        return {"has_ra": has_ra, "ra_name": ra_name}
-    except Exception:
+        return {"has_ra": has_ra, "ra_name": ra_name, "debug_v": 2}
+    except Exception as e:
+        print(f"DEBUG: get_registration_status error: {e}")
         return {"has_ra": False, "ra_name": None}
 
 

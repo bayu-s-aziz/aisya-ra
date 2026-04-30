@@ -58,6 +58,7 @@ class RegisterGuruRequest(BaseModel):
 class RegistrationStatusResponse(BaseModel):
     has_ra: bool
     ra_name: Optional[str] = None
+    debug_v: Optional[int] = None
 
 
 class LoginRequest(BaseModel):
