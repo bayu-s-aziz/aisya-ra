@@ -7,8 +7,6 @@ class PresensiGTKBase(BaseModel):
     pengguna_id: str
     tanggal: date
     status: StatusPresensi
-    jam_masuk: Optional[time] = None
-    jam_keluar: Optional[time] = None
     keterangan: Optional[str] = None
     sumber_pencatatan: Optional[str] = "manual_panel"
 

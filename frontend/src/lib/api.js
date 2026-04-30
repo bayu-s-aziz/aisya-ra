@@ -7,4 +7,13 @@ const api = axios.create({
   },
 })
 
+// Automatically attach the access token to every request
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('aisya_access_token')
+  if (token) {
+    config.headers['Authorization'] = `Bearer ${token}`
+  }
+  return config
+})
+
 export default api

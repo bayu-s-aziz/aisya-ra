@@ -8,8 +8,6 @@ CREATE TABLE IF NOT EXISTS presensi_gtk (
     pengguna_id UUID NOT NULL REFERENCES pengguna(id) ON DELETE CASCADE,
     tanggal DATE NOT NULL,
     status VARCHAR(20) NOT NULL CHECK (status IN ('hadir', 'sakit', 'izin', 'alpha')),
-    jam_masuk TIME,
-    jam_keluar TIME,
     dicatat_oleh UUID REFERENCES pengguna(id) ON DELETE SET NULL,
     keterangan TEXT,
     sumber_pencatatan VARCHAR(50) DEFAULT 'manual_panel',

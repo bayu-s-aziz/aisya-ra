@@ -34,8 +34,6 @@ async def record_gtk_presence(
         "pengguna_id": payload.pengguna_id,
         "tanggal": str(payload.tanggal),
         "status": payload.status.value,
-        "jam_masuk": payload.jam_masuk.isoformat() if payload.jam_masuk else None,
-        "jam_keluar": payload.jam_keluar.isoformat() if payload.jam_keluar else None,
         "dicatat_oleh": user_id,
         "keterangan": payload.keterangan,
         "sumber_pencatatan": payload.sumber_pencatatan,
@@ -103,8 +101,6 @@ async def get_rekap_presensi_gtk(
                 "role": gtk["role"],
                 "jabatan": gtk["jabatan"],
                 "status": status,
-                "jam_masuk": presence.get("jam_masuk"),
-                "jam_keluar": presence.get("jam_keluar"),
                 "keterangan": presence.get("keterangan"),
                 "sumber_pencatatan": presence.get("sumber_pencatatan"),
             })
@@ -116,8 +112,6 @@ async def get_rekap_presensi_gtk(
                 "role": gtk["role"],
                 "jabatan": gtk["jabatan"],
                 "status": "belum_dicatat",
-                "jam_masuk": None,
-                "jam_keluar": None,
                 "keterangan": None,
                 "sumber_pencatatan": None,
             })

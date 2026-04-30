@@ -15,7 +15,7 @@ from app.routers.template_surat import router as template_surat_router
 from app.routers.surat import router as surat_router
 from app.routers.dashboard import router as dashboard_router
 from app.routers.tahun_ajaran import router as tahun_ajaran_router
-from app.routers.tahun_ajaran import router as tahun_ajaran_router
+from app.routers.presensi_gtk import router as presensi_gtk_router
 from app.utils.scheduler import start_scheduler, shutdown_scheduler
 
 @asynccontextmanager
@@ -49,6 +49,7 @@ app.include_router(template_surat_router)
 app.include_router(surat_router)
 app.include_router(dashboard_router)
 app.include_router(tahun_ajaran_router, prefix="/api/tahun-ajaran", tags=["tahun_ajaran"])
+app.include_router(presensi_gtk_router, prefix="/api/presensi-gtk", tags=["presensi-gtk"])
 
 @app.get("/")
 def root():

@@ -9,6 +9,8 @@ services:
       - "8000:8000"
     networks:
       - aisya-network
+    volumes:
+      - ./backend:/app
 
   frontend:
     build: ./frontend

@@ -193,7 +193,6 @@ function PresensiGTKPanel() {
                   {item.status !== 'belum_dicatat' ? (
                     <>
                       <p>Oleh: {item.sumber_pencatatan === 'chat' ? 'Chat AI' : 'Panel'}</p>
-                      {item.jam_masuk && <p>Masuk: {item.jam_masuk}</p>}
                     </>
                   ) : (
                     'Belum ada data'
