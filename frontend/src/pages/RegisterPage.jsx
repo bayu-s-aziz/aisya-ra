@@ -182,13 +182,28 @@ function RegisterPage() {
             {!hasRA ? (
               step === 1 ? (
                 <form key="step-1" className="auth-step-enter space-y-4" onSubmit={toStepTwo}>
-                  <input className="w-full rounded-xl border border-[#cbd5e1] bg-white px-3 py-2.5 text-sm text-[#0f172a] outline-none transition-colors focus:border-[#0f172a]" name="nama_ra" placeholder="Nama RA" value={form.nama_ra} onChange={onChange} required />
-                  <textarea className="w-full rounded-xl border border-[#cbd5e1] bg-white px-3 py-2.5 text-sm text-[#0f172a] outline-none transition-colors focus:border-[#0f172a]" name="alamat" placeholder="Alamat" rows={3} value={form.alamat} onChange={onChange} required />
-                  <input className="w-full rounded-xl border border-[#cbd5e1] bg-white px-3 py-2.5 text-sm text-[#0f172a] outline-none transition-colors focus:border-[#0f172a]" name="nomor_statistik" placeholder="Nomor Statistik Madrasah" value={form.nomor_statistik} onChange={onChange} required />
-                  <input className="w-full rounded-xl border border-[#cbd5e1] bg-white px-3 py-2.5 text-sm text-[#0f172a] outline-none transition-colors focus:border-[#0f172a]" name="tahun_ajaran" placeholder="Tahun Ajaran (contoh: 2026/2027)" value={form.tahun_ajaran} onChange={onChange} required />
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Nama RA</label>
+                    <input className="w-full rounded-xl border border-[#cbd5e1] bg-white px-3 py-2.5 text-sm text-[#0f172a] outline-none transition-colors focus:border-[#0f172a]" name="nama_ra" placeholder="Nama Raudhatul Athfal" value={form.nama_ra} onChange={onChange} required />
+                  </div>
 
-                  <div>
-                    <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Upload logo (opsional)</label>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Alamat</label>
+                    <textarea className="w-full rounded-xl border border-[#cbd5e1] bg-white px-3 py-2.5 text-sm text-[#0f172a] outline-none transition-colors focus:border-[#0f172a]" name="alamat" placeholder="Alamat lengkap" rows={3} value={form.alamat} onChange={onChange} required />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Nomor Statistik Madrasah (NSM)</label>
+                    <input className="w-full rounded-xl border border-[#cbd5e1] bg-white px-3 py-2.5 text-sm text-[#0f172a] outline-none transition-colors focus:border-[#0f172a]" name="nomor_statistik" placeholder="Contoh: 101232..." value={form.nomor_statistik} onChange={onChange} required />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Tahun Ajaran Aktif</label>
+                    <input className="w-full rounded-xl border border-[#cbd5e1] bg-white px-3 py-2.5 text-sm text-[#0f172a] outline-none transition-colors focus:border-[#0f172a]" name="tahun_ajaran" placeholder="Contoh: 2026/2027" value={form.tahun_ajaran} onChange={onChange} required />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Upload logo (opsional)</label>
                     <input className="w-full rounded-xl border border-[#cbd5e1] bg-white px-3 py-2.5 text-sm text-[#0f172a] outline-none transition-colors focus:border-[#0f172a]" type="file" accept="image/*" onChange={onLogoChange} />
                   </div>
 
@@ -196,9 +211,20 @@ function RegisterPage() {
                 </form>
               ) : (
                 <form key="step-2" className="auth-step-enter space-y-4" onSubmit={onSubmitSchool}>
-                  <input className="w-full rounded-xl border border-[#cbd5e1] bg-white px-3 py-2.5 text-sm text-[#0f172a] outline-none transition-colors focus:border-[#0f172a]" name="nama" placeholder="Nama Kepala RA" value={form.nama} onChange={onChange} required />
-                  <input className="w-full rounded-xl border border-[#cbd5e1] bg-white px-3 py-2.5 text-sm text-[#0f172a] outline-none transition-colors focus:border-[#0f172a]" name="email" placeholder="Email" type="email" value={form.email} onChange={onChange} required />
-                  <input className="w-full rounded-xl border border-[#cbd5e1] bg-white px-3 py-2.5 text-sm text-[#0f172a] outline-none transition-colors focus:border-[#0f172a]" name="password" placeholder="Password" type="password" value={form.password} onChange={onChange} required />
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Nama Kepala RA</label>
+                    <input className="w-full rounded-xl border border-[#cbd5e1] bg-white px-3 py-2.5 text-sm text-[#0f172a] outline-none transition-colors focus:border-[#0f172a]" name="nama" placeholder="Nama lengkap" value={form.nama} onChange={onChange} required />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Email</label>
+                    <input className="w-full rounded-xl border border-[#cbd5e1] bg-white px-3 py-2.5 text-sm text-[#0f172a] outline-none transition-colors focus:border-[#0f172a]" name="email" placeholder="nama@email.com" type="email" value={form.email} onChange={onChange} required />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Password</label>
+                    <input className="w-full rounded-xl border border-[#cbd5e1] bg-white px-3 py-2.5 text-sm text-[#0f172a] outline-none transition-colors focus:border-[#0f172a]" name="password" placeholder="Min. 8 karakter" type="password" value={form.password} onChange={onChange} required />
+                  </div>
 
                   <div className="grid grid-cols-2 gap-3">
                     <button type="button" className="rounded-xl border border-[#cbd5e1] px-4 py-2.5 text-sm font-medium text-[#334155] transition-colors hover:bg-[#f8fafc]" onClick={() => setStep(1)}>
@@ -212,9 +238,20 @@ function RegisterPage() {
               )
             ) : (
               <form className="auth-step-enter space-y-4" onSubmit={onSubmitGuru}>
-                <input className="w-full rounded-xl border border-[#cbd5e1] bg-white px-3 py-2.5 text-sm text-[#0f172a] outline-none transition-colors focus:border-[#0f172a]" name="nama" placeholder="Nama Lengkap Guru" value={form.nama} onChange={onChange} required />
-                <input className="w-full rounded-xl border border-[#cbd5e1] bg-white px-3 py-2.5 text-sm text-[#0f172a] outline-none transition-colors focus:border-[#0f172a]" name="email" placeholder="Email" type="email" value={form.email} onChange={onChange} required />
-                <input className="w-full rounded-xl border border-[#cbd5e1] bg-white px-3 py-2.5 text-sm text-[#0f172a] outline-none transition-colors focus:border-[#0f172a]" name="password" placeholder="Password" type="password" value={form.password} onChange={onChange} required />
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Nama Lengkap Guru</label>
+                  <input className="w-full rounded-xl border border-[#cbd5e1] bg-white px-3 py-2.5 text-sm text-[#0f172a] outline-none transition-colors focus:border-[#0f172a]" name="nama" placeholder="Nama lengkap" value={form.nama} onChange={onChange} required />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Email</label>
+                  <input className="w-full rounded-xl border border-[#cbd5e1] bg-white px-3 py-2.5 text-sm text-[#0f172a] outline-none transition-colors focus:border-[#0f172a]" name="email" placeholder="nama@email.com" type="email" value={form.email} onChange={onChange} required />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Password</label>
+                  <input className="w-full rounded-xl border border-[#cbd5e1] bg-white px-3 py-2.5 text-sm text-[#0f172a] outline-none transition-colors focus:border-[#0f172a]" name="password" placeholder="Min. 8 karakter" type="password" value={form.password} onChange={onChange} required />
+                </div>
 
                 <button type="submit" disabled={loading} className="w-full rounded-xl bg-[#0f172a] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#020617] disabled:cursor-not-allowed disabled:opacity-60">
                   {loading ? 'Memproses...' : 'Daftar Sebagai Guru'}

@@ -209,28 +209,35 @@ function DashboardView({
   }, [data])
 
   const institutionReadonlyItems = useMemo(() => {
-    return [
-      { label: 'Nama Lembaga', value: raProfile?.nama_ra, fullWidth: true },
-      { label: 'NPSN', value: raProfile?.npsn },
-      { label: 'NSM / Nomor Statistik', value: raProfile?.nomor_statistik },
-      { label: 'Bentuk Pendidikan', value: raProfile?.bentuk_pendidikan },
-      { label: 'Status Lembaga', value: raProfile?.status_lembaga },
-      { label: 'Penyelenggara', value: raProfile?.penyelenggara },
-      { label: 'Akreditasi', value: raProfile?.akreditasi },
-      { label: 'SK Izin Operasional', value: raProfile?.sk_izin_operasional, fullWidth: true },
-      { label: 'Tanggal Izin Operasional', value: raProfile?.tanggal_izin_operasional },
-      { label: 'Nama Kepala RA', value: raProfile?.nama_kepala },
-      { label: 'Telepon', value: raProfile?.telepon },
-      { label: 'Email Lembaga', value: raProfile?.email_lembaga },
-      { label: 'Website', value: raProfile?.website },
-      { label: 'Tahun Ajaran', value: raProfile?.tahun_ajaran },
-      { label: 'Kelurahan / Desa', value: raProfile?.kelurahan_desa },
-      { label: 'Kecamatan', value: raProfile?.kecamatan },
-      { label: 'Kabupaten / Kota', value: raProfile?.kabupaten_kota },
-      { label: 'Provinsi', value: raProfile?.provinsi },
-      { label: 'Kode Pos', value: raProfile?.kode_pos },
-      { label: 'Alamat', value: raProfile?.alamat, fullWidth: true },
+    if (!raProfile) return []
+
+    // These fields are already in the summary card or title/subtitle
+    const summaryLabels = ['NPSN', 'NSM', 'Status Lembaga', 'Akreditasi', 'Kepala RA', 'Telepon', 'Email Lembaga']
+    const headerLabels = ['Nama Lembaga', 'Tahun Ajaran']
+    const excludedLabels = [...summaryLabels, ...headerLabels]
+
+    const allItems = [
+      { label: 'NPSN', value: raProfile.npsn },
+      { label: 'NSM / Nomor Statistik', value: raProfile.nomor_statistik },
+      { label: 'Bentuk Pendidikan', value: raProfile.bentuk_pendidikan },
+      { label: 'Status Lembaga', value: raProfile.status_lembaga },
+      { label: 'Penyelenggara', value: raProfile.penyelenggara },
+      { label: 'Akreditasi', value: raProfile.akreditasi },
+      { label: 'SK Izin Operasional', value: raProfile.sk_izin_operasional, fullWidth: true },
+      { label: 'Tanggal Izin Operasional', value: raProfile.tanggal_izin_operasional },
+      { label: 'Nama Kepala RA', value: raProfile.nama_kepala },
+      { label: 'Telepon', value: raProfile.telepon },
+      { label: 'Email Lembaga', value: raProfile.email_lembaga },
+      { label: 'Website', value: raProfile.website },
+      { label: 'Kelurahan / Desa', value: raProfile.kelurahan_desa },
+      { label: 'Kecamatan', value: raProfile.kecamatan },
+      { label: 'Kabupaten / Kota', value: raProfile.kabupaten_kota },
+      { label: 'Provinsi', value: raProfile.provinsi },
+      { label: 'Kode Pos', value: raProfile.kode_pos },
+      { label: 'Alamat Lengkap', value: raProfile.alamat, fullWidth: true },
     ]
+
+    return allItems.filter(item => !excludedLabels.includes(item.label) && item.label !== 'Nama Kepala RA')
   }, [raProfile])
 
   const institutionSummaryItems = useMemo(() => {

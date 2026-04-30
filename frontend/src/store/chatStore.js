@@ -270,8 +270,8 @@ export const useChatStore = create((set, get) => ({
 
         set({
           rooms: fetchedRooms,
-          selectedRoomId: selectedFromFetch?.id || fetchedRooms[0]?.id || '',
-          selectedRoom: selectedFromFetch || fetchedRooms[0] || null,
+          selectedRoomId: selectedFromFetch?.id || '',
+          selectedRoom: selectedFromFetch,
           roomsLoading: false,
         })
         roomsLastFetchedAt = Date.now()

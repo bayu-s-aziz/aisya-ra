@@ -531,13 +531,16 @@ function UsersManagementPanel() {
         title="Import Guru dari GTK"
         description="Pilih file CSV lalu konfirmasi sebelum data diimport."
       >
-        <div className="space-y-3">
-          <input
-            type="file"
-            accept=".csv"
-            className={inputClass}
-            onChange={(ev) => setImportFile(ev.target.files?.[0] || null)}
-          />
+        <div className="space-y-4">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Pilih File (CSV)</label>
+            <input
+              type="file"
+              accept=".csv"
+              className={inputClass}
+              onChange={(ev) => setImportFile(ev.target.files?.[0] || null)}
+            />
+          </div>
           <div className="flex justify-end gap-2">
             <button
               type="button"
@@ -571,124 +574,196 @@ function UsersManagementPanel() {
         description="Lengkapi data pengguna baru, lalu simpan setelah konfirmasi."
         size="lg"
       >
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {createModalError ? <div className="md:col-span-2 rounded-md bg-red-50 p-3 text-sm text-red-700">{createModalError}</div> : null}
-          <input
-            className={inputClass}
-            value={createForm.nama}
-            onChange={(ev) => setCreateForm((prev) => ({ ...prev, nama: ev.target.value }))}
-            placeholder="Nama lengkap"
-          />
-          <input
-            className={inputClass}
-            type="email"
-            value={createForm.email}
-            onChange={(ev) => setCreateForm((prev) => ({ ...prev, email: ev.target.value }))}
-            placeholder="Email"
-          />
-          <input
-            className={inputClass}
-            type="password"
-            value={createForm.password}
-            onChange={(ev) => setCreateForm((prev) => ({ ...prev, password: ev.target.value }))}
-            placeholder="Password awal"
-          />
-          <select
-            className={inputClass}
-            value={createForm.role}
-            onChange={(ev) => setCreateForm((prev) => ({ ...prev, role: ev.target.value }))}
-          >
-            <option value="guru">Guru</option>
-            <option value="kepala_ra">Kepala RA</option>
-          </select>
-          <input
-            className={inputClass}
-            value={createForm.jabatan}
-            onChange={(ev) => setCreateForm((prev) => ({ ...prev, jabatan: ev.target.value }))}
-            placeholder="Jabatan"
-          />
-          <input
-            className={inputClass}
-            value={createForm.telepon}
-            onChange={(ev) => setCreateForm((prev) => ({ ...prev, telepon: ev.target.value }))}
-            placeholder="Telepon"
-          />
-          <input
-            className={inputClass}
-            value={createForm.nik}
-            onChange={(ev) => setCreateForm((prev) => ({ ...prev, nik: ev.target.value }))}
-            placeholder="NIK"
-          />
-          <input
-            className={inputClass}
-            value={createForm.nuptk}
-            onChange={(ev) => setCreateForm((prev) => ({ ...prev, nuptk: ev.target.value }))}
-            placeholder="NUPTK"
-          />
-          <input
-            className={inputClass}
-            value={createForm.nip}
-            onChange={(ev) => setCreateForm((prev) => ({ ...prev, nip: ev.target.value }))}
-            placeholder="NIP"
-          />
-          <input
-            className={inputClass}
-            value={createForm.status_kepegawaian}
-            onChange={(ev) => setCreateForm((prev) => ({ ...prev, status_kepegawaian: ev.target.value }))}
-            placeholder="Status kepegawaian"
-          />
-          <select
-            className={inputClass}
-            value={createForm.jenis_kelamin}
-            onChange={(ev) => setCreateForm((prev) => ({ ...prev, jenis_kelamin: ev.target.value }))}
-          >
-            <option value="">Jenis kelamin</option>
-            <option value="Laki-laki">Laki-laki</option>
-            <option value="Perempuan">Perempuan</option>
-          </select>
-          <input
-            className={inputClass}
-            value={createForm.tempat_lahir}
-            onChange={(ev) => setCreateForm((prev) => ({ ...prev, tempat_lahir: ev.target.value }))}
-            placeholder="Tempat lahir"
-          />
-          <input
-            className={inputClass}
-            type="date"
-            value={createForm.tanggal_lahir}
-            onChange={(ev) => setCreateForm((prev) => ({ ...prev, tanggal_lahir: ev.target.value }))}
-          />
-          <input
-            className={inputClass}
-            type="email"
-            value={createForm.email_akun_madrasah_digital}
-            onChange={(ev) => setCreateForm((prev) => ({ ...prev, email_akun_madrasah_digital: ev.target.value }))}
-            placeholder="Email akun madrasah digital"
-          />
-          <input
-            className={inputClass}
-            value={createForm.tugas}
-            onChange={(ev) => setCreateForm((prev) => ({ ...prev, tugas: ev.target.value }))}
-            placeholder="Tugas"
-          />
-          <input
-            className={inputClass}
-            value={createForm.mata_pelajaran}
-            onChange={(ev) => setCreateForm((prev) => ({ ...prev, mata_pelajaran: ev.target.value }))}
-            placeholder="Mata pelajaran"
-          />
-          <input
-            className={inputClass}
-            value={createForm.penempatan}
-            onChange={(ev) => setCreateForm((prev) => ({ ...prev, penempatan: ev.target.value }))}
-            placeholder="Penempatan"
-          />
-          <input
-            className={inputClass}
-            value={createForm.total_jtm}
-            onChange={(ev) => setCreateForm((prev) => ({ ...prev, total_jtm: ev.target.value }))}
-            placeholder="Total JTM"
-          />
+          
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Nama Lengkap</label>
+            <input
+              className={inputClass}
+              value={createForm.nama}
+              onChange={(ev) => setCreateForm((prev) => ({ ...prev, nama: ev.target.value }))}
+              placeholder="Contoh: Siti Aminah"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Email</label>
+            <input
+              className={inputClass}
+              type="email"
+              value={createForm.email}
+              onChange={(ev) => setCreateForm((prev) => ({ ...prev, email: ev.target.value }))}
+              placeholder="nama@email.com"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Password Awal</label>
+            <input
+              className={inputClass}
+              type="password"
+              value={createForm.password}
+              onChange={(ev) => setCreateForm((prev) => ({ ...prev, password: ev.target.value }))}
+              placeholder="Minimal 8 karakter"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Role</label>
+            <select
+              className={inputClass}
+              value={createForm.role}
+              onChange={(ev) => setCreateForm((prev) => ({ ...prev, role: ev.target.value }))}
+            >
+              <option value="guru">Guru</option>
+              <option value="kepala_ra">Kepala RA</option>
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Jabatan</label>
+            <input
+              className={inputClass}
+              value={createForm.jabatan}
+              onChange={(ev) => setCreateForm((prev) => ({ ...prev, jabatan: ev.target.value }))}
+              placeholder="Contoh: Guru Kelas"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Telepon</label>
+            <input
+              className={inputClass}
+              value={createForm.telepon}
+              onChange={(ev) => setCreateForm((prev) => ({ ...prev, telepon: ev.target.value }))}
+              placeholder="Contoh: 0812..."
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">NIK</label>
+            <input
+              className={inputClass}
+              value={createForm.nik}
+              onChange={(ev) => setCreateForm((prev) => ({ ...prev, nik: ev.target.value }))}
+              placeholder="Nomor Induk Kependudukan"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">NUPTK</label>
+            <input
+              className={inputClass}
+              value={createForm.nuptk}
+              onChange={(ev) => setCreateForm((prev) => ({ ...prev, nuptk: ev.target.value }))}
+              placeholder="Nomor Unik Pendidik"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">NIP</label>
+            <input
+              className={inputClass}
+              value={createForm.nip}
+              onChange={(ev) => setCreateForm((prev) => ({ ...prev, nip: ev.target.value }))}
+              placeholder="Nomor Induk Pegawai"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Status Kepegawaian</label>
+            <input
+              className={inputClass}
+              value={createForm.status_kepegawaian}
+              onChange={(ev) => setCreateForm((prev) => ({ ...prev, status_kepegawaian: ev.target.value }))}
+              placeholder="Contoh: GTY/PTY"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Jenis Kelamin</label>
+            <select
+              className={inputClass}
+              value={createForm.jenis_kelamin}
+              onChange={(ev) => setCreateForm((prev) => ({ ...prev, jenis_kelamin: ev.target.value }))}
+            >
+              <option value="">Pilih jenis kelamin</option>
+              <option value="Laki-laki">Laki-laki</option>
+              <option value="Perempuan">Perempuan</option>
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Tempat Lahir</label>
+            <input
+              className={inputClass}
+              value={createForm.tempat_lahir}
+              onChange={(ev) => setCreateForm((prev) => ({ ...prev, tempat_lahir: ev.target.value }))}
+              placeholder="Kota kelahiran"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Tanggal Lahir</label>
+            <input
+              className={inputClass}
+              type="date"
+              value={createForm.tanggal_lahir}
+              onChange={(ev) => setCreateForm((prev) => ({ ...prev, tanggal_lahir: ev.target.value }))}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Email Madrasah Digital</label>
+            <input
+              className={inputClass}
+              type="email"
+              value={createForm.email_akun_madrasah_digital}
+              onChange={(ev) => setCreateForm((prev) => ({ ...prev, email_akun_madrasah_digital: ev.target.value }))}
+              placeholder="Opsional"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Tugas Tambahan</label>
+            <input
+              className={inputClass}
+              value={createForm.tugas}
+              onChange={(ev) => setCreateForm((prev) => ({ ...prev, tugas: ev.target.value }))}
+              placeholder="Opsional"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Mata Pelajaran</label>
+            <input
+              className={inputClass}
+              value={createForm.mata_pelajaran}
+              onChange={(ev) => setCreateForm((prev) => ({ ...prev, mata_pelajaran: ev.target.value }))}
+              placeholder="Opsional"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Penempatan</label>
+            <input
+              className={inputClass}
+              value={createForm.penempatan}
+              onChange={(ev) => setCreateForm((prev) => ({ ...prev, penempatan: ev.target.value }))}
+              placeholder="Opsional"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Total JTM</label>
+            <input
+              className={inputClass}
+              value={createForm.total_jtm}
+              onChange={(ev) => setCreateForm((prev) => ({ ...prev, total_jtm: ev.target.value }))}
+              placeholder="Jam Tatap Muka"
+            />
+          </div>
         </div>
         <div className="mt-4 flex justify-end gap-2">
           <button
@@ -724,33 +799,105 @@ function UsersManagementPanel() {
         description="Perubahan pengguna disimpan setelah Anda konfirmasi."
         size="lg"
       >
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {editModalError ? <div className="md:col-span-2 rounded-md bg-red-50 p-3 text-sm text-red-700">{editModalError}</div> : null}
-          <input className={inputClass} value={editForm.nama} onChange={(ev) => setEditForm((prev) => ({ ...prev, nama: ev.target.value }))} placeholder="Nama lengkap" />
-          <input className={inputClass} type="email" value={editForm.email} onChange={(ev) => setEditForm((prev) => ({ ...prev, email: ev.target.value }))} placeholder="Email" />
-          <input className={inputClass} type="password" value={editForm.password} onChange={(ev) => setEditForm((prev) => ({ ...prev, password: ev.target.value }))} placeholder="Password baru (opsional)" />
-          <select className={inputClass} value={editForm.role} onChange={(ev) => setEditForm((prev) => ({ ...prev, role: ev.target.value }))}>
-            <option value="guru">Guru</option>
-            <option value="kepala_ra">Kepala RA</option>
-          </select>
-          <input className={inputClass} value={editForm.jabatan} onChange={(ev) => setEditForm((prev) => ({ ...prev, jabatan: ev.target.value }))} placeholder="Jabatan" />
-          <input className={inputClass} value={editForm.telepon} onChange={(ev) => setEditForm((prev) => ({ ...prev, telepon: ev.target.value }))} placeholder="Telepon" />
-          <input className={inputClass} value={editForm.nik} onChange={(ev) => setEditForm((prev) => ({ ...prev, nik: ev.target.value }))} placeholder="NIK" />
-          <input className={inputClass} value={editForm.nuptk} onChange={(ev) => setEditForm((prev) => ({ ...prev, nuptk: ev.target.value }))} placeholder="NUPTK" />
-          <input className={inputClass} value={editForm.nip} onChange={(ev) => setEditForm((prev) => ({ ...prev, nip: ev.target.value }))} placeholder="NIP" />
-          <input className={inputClass} value={editForm.status_kepegawaian} onChange={(ev) => setEditForm((prev) => ({ ...prev, status_kepegawaian: ev.target.value }))} placeholder="Status kepegawaian" />
-          <select className={inputClass} value={editForm.jenis_kelamin} onChange={(ev) => setEditForm((prev) => ({ ...prev, jenis_kelamin: ev.target.value }))}>
-            <option value="">Jenis kelamin</option>
-            <option value="Laki-laki">Laki-laki</option>
-            <option value="Perempuan">Perempuan</option>
-          </select>
-          <input className={inputClass} value={editForm.tempat_lahir} onChange={(ev) => setEditForm((prev) => ({ ...prev, tempat_lahir: ev.target.value }))} placeholder="Tempat lahir" />
-          <input className={inputClass} type="date" value={editForm.tanggal_lahir} onChange={(ev) => setEditForm((prev) => ({ ...prev, tanggal_lahir: ev.target.value }))} />
-          <input className={inputClass} type="email" value={editForm.email_akun_madrasah_digital} onChange={(ev) => setEditForm((prev) => ({ ...prev, email_akun_madrasah_digital: ev.target.value }))} placeholder="Email madrasah digital" />
-          <input className={inputClass} value={editForm.tugas} onChange={(ev) => setEditForm((prev) => ({ ...prev, tugas: ev.target.value }))} placeholder="Tugas" />
-          <input className={inputClass} value={editForm.mata_pelajaran} onChange={(ev) => setEditForm((prev) => ({ ...prev, mata_pelajaran: ev.target.value }))} placeholder="Mata pelajaran" />
-          <input className={inputClass} value={editForm.penempatan} onChange={(ev) => setEditForm((prev) => ({ ...prev, penempatan: ev.target.value }))} placeholder="Penempatan" />
-          <input className={inputClass} value={editForm.total_jtm} onChange={(ev) => setEditForm((prev) => ({ ...prev, total_jtm: ev.target.value }))} placeholder="Total JTM" />
+          
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Nama Lengkap</label>
+            <input className={inputClass} value={editForm.nama} onChange={(ev) => setEditForm((prev) => ({ ...prev, nama: ev.target.value }))} placeholder="Nama lengkap" />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Email</label>
+            <input className={inputClass} type="email" value={editForm.email} onChange={(ev) => setEditForm((prev) => ({ ...prev, email: ev.target.value }))} placeholder="Email" />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Password Baru (Opsional)</label>
+            <input className={inputClass} type="password" value={editForm.password} onChange={(ev) => setEditForm((prev) => ({ ...prev, password: ev.target.value }))} placeholder="Kosongkan jika tidak diubah" />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Role</label>
+            <select className={inputClass} value={editForm.role} onChange={(ev) => setEditForm((prev) => ({ ...prev, role: ev.target.value }))}>
+              <option value="guru">Guru</option>
+              <option value="kepala_ra">Kepala RA</option>
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Jabatan</label>
+            <input className={inputClass} value={editForm.jabatan} onChange={(ev) => setEditForm((prev) => ({ ...prev, jabatan: ev.target.value }))} placeholder="Jabatan" />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Telepon</label>
+            <input className={inputClass} value={editForm.telepon} onChange={(ev) => setEditForm((prev) => ({ ...prev, telepon: ev.target.value }))} placeholder="Telepon" />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">NIK</label>
+            <input className={inputClass} value={editForm.nik} onChange={(ev) => setEditForm((prev) => ({ ...prev, nik: ev.target.value }))} placeholder="NIK" />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">NUPTK</label>
+            <input className={inputClass} value={editForm.nuptk} onChange={(ev) => setEditForm((prev) => ({ ...prev, nuptk: ev.target.value }))} placeholder="NUPTK" />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">NIP</label>
+            <input className={inputClass} value={editForm.nip} onChange={(ev) => setEditForm((prev) => ({ ...prev, nip: ev.target.value }))} placeholder="NIP" />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Status Kepegawaian</label>
+            <input className={inputClass} value={editForm.status_kepegawaian} onChange={(ev) => setEditForm((prev) => ({ ...prev, status_kepegawaian: ev.target.value }))} placeholder="Status kepegawaian" />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Jenis Kelamin</label>
+            <select className={inputClass} value={editForm.jenis_kelamin} onChange={(ev) => setEditForm((prev) => ({ ...prev, jenis_kelamin: ev.target.value }))}>
+              <option value="">Jenis kelamin</option>
+              <option value="Laki-laki">Laki-laki</option>
+              <option value="Perempuan">Perempuan</option>
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Tempat Lahir</label>
+            <input className={inputClass} value={editForm.tempat_lahir} onChange={(ev) => setEditForm((prev) => ({ ...prev, tempat_lahir: ev.target.value }))} placeholder="Tempat lahir" />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Tanggal Lahir</label>
+            <input className={inputClass} type="date" value={editForm.tanggal_lahir} onChange={(ev) => setEditForm((prev) => ({ ...prev, tanggal_lahir: ev.target.value }))} />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Email Madrasah Digital</label>
+            <input className={inputClass} type="email" value={editForm.email_akun_madrasah_digital} onChange={(ev) => setEditForm((prev) => ({ ...prev, email_akun_madrasah_digital: ev.target.value }))} placeholder="Email madrasah digital" />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Tugas</label>
+            <input className={inputClass} value={editForm.tugas} onChange={(ev) => setEditForm((prev) => ({ ...prev, tugas: ev.target.value }))} placeholder="Tugas" />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Mata Pelajaran</label>
+            <input className={inputClass} value={editForm.mata_pelajaran} onChange={(ev) => setEditForm((prev) => ({ ...prev, mata_pelajaran: ev.target.value }))} placeholder="Mata pelajaran" />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Penempatan</label>
+            <input className={inputClass} value={editForm.penempatan} onChange={(ev) => setEditForm((prev) => ({ ...prev, penempatan: ev.target.value }))} placeholder="Penempatan" />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Total JTM</label>
+            <input className={inputClass} value={editForm.total_jtm} onChange={(ev) => setEditForm((prev) => ({ ...prev, total_jtm: ev.target.value }))} placeholder="Total JTM" />
+          </div>
         </div>
         <div className="mt-4 flex justify-end gap-2">
           <button

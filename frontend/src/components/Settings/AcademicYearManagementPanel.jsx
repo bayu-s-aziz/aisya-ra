@@ -823,14 +823,18 @@ function AcademicYearManagementPanel() {
         title="Tambah Tahun Ajaran"
         description="Isi label tahun ajaran, lalu konfirmasi sebelum data disimpan."
       >
-        <div className="space-y-3">
+        <div className="space-y-4">
           {createModalError ? <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">{createModalError}</div> : null}
-          <input
-            className={inputClass}
-            value={labelInput}
-            onChange={(ev) => setLabelInput(ev.target.value)}
-            placeholder="Contoh: 2026/2027"
-          />
+          
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Label Tahun Ajaran</label>
+            <input
+              className={inputClass}
+              value={labelInput}
+              onChange={(ev) => setLabelInput(ev.target.value)}
+              placeholder="Contoh: 2026/2027"
+            />
+          </div>
           <div className="flex justify-end gap-2">
             <button
               type="button"
@@ -861,84 +865,105 @@ function AcademicYearManagementPanel() {
         title="Tambah Libur / Event Kalender"
         description="Pilih tipe, lalu atur tanggal tunggal atau rentang tanggal."
       >
-        <div className="space-y-3">
+        <div className="space-y-4">
           {calendarEventModalError ? <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">{calendarEventModalError}</div> : null}
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <select
-              className={inputClass}
-              value={calendarEventType}
-              onChange={(ev) => setCalendarEventType(ev.target.value)}
-            >
-              <option value="holiday">Hari Libur</option>
-              <option value="event">Acara / Event</option>
-            </select>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Tipe Event</label>
+              <select
+                className={inputClass}
+                value={calendarEventType}
+                onChange={(ev) => setCalendarEventType(ev.target.value)}
+              >
+                <option value="holiday">Hari Libur</option>
+                <option value="event">Acara / Event</option>
+              </select>
+            </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setDateSelectionMode('single')}
-                className={[
-                  'rounded-full border px-3 py-2 text-xs font-medium',
-                  dateSelectionMode === 'single'
-                    ? 'border-[#0f172a] bg-[#0f172a] text-white'
-                    : 'border-[#cbd5e1] bg-white text-[#334155] hover:bg-[#f8fafc]',
-                ].join(' ')}
-              >
-                Tanggal Tunggal
-              </button>
-              <button
-                type="button"
-                onClick={() => setDateSelectionMode('range')}
-                className={[
-                  'rounded-full border px-3 py-2 text-xs font-medium',
-                  dateSelectionMode === 'range'
-                    ? 'border-[#0f172a] bg-[#0f172a] text-white'
-                    : 'border-[#cbd5e1] bg-white text-[#334155] hover:bg-[#f8fafc]',
-                ].join(' ')}
-              >
-                Rentang Tanggal
-              </button>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Mode Pemilihan Tanggal</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDateSelectionMode('single')}
+                  className={[
+                    'rounded-full border px-3 py-2 text-xs font-medium',
+                    dateSelectionMode === 'single'
+                      ? 'border-[#0f172a] bg-[#0f172a] text-white'
+                      : 'border-[#cbd5e1] bg-white text-[#334155] hover:bg-[#f8fafc]',
+                  ].join(' ')}
+                >
+                  Tanggal Tunggal
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDateSelectionMode('range')}
+                  className={[
+                    'rounded-full border px-3 py-2 text-xs font-medium',
+                    dateSelectionMode === 'range'
+                      ? 'border-[#0f172a] bg-[#0f172a] text-white'
+                      : 'border-[#cbd5e1] bg-white text-[#334155] hover:bg-[#f8fafc]',
+                  ].join(' ')}
+                >
+                  Rentang Tanggal
+                </button>
+              </div>
             </div>
           </div>
 
           {dateSelectionMode === 'single' ? (
-            <input
-              type="date"
-              className={inputClass}
-              value={singleDateInput}
-              onChange={(ev) => setSingleDateInput(ev.target.value)}
-            />
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Pilih Tanggal</label>
+              <input
+                type="date"
+                className={inputClass}
+                value={singleDateInput}
+                onChange={(ev) => setSingleDateInput(ev.target.value)}
+              />
+            </div>
           ) : (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <input
-                type="date"
-                className={inputClass}
-                value={rangeStartDateInput}
-                onChange={(ev) => setRangeStartDateInput(ev.target.value)}
-              />
-              <input
-                type="date"
-                className={inputClass}
-                value={rangeEndDateInput}
-                onChange={(ev) => setRangeEndDateInput(ev.target.value)}
-              />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Tanggal Mulai</label>
+                <input
+                  type="date"
+                  className={inputClass}
+                  value={rangeStartDateInput}
+                  onChange={(ev) => setRangeStartDateInput(ev.target.value)}
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Tanggal Selesai</label>
+                <input
+                  type="date"
+                  className={inputClass}
+                  value={rangeEndDateInput}
+                  onChange={(ev) => setRangeEndDateInput(ev.target.value)}
+                />
+              </div>
             </div>
           )}
 
-          <input
-            className={inputClass}
-            value={calendarEventName}
-            onChange={(ev) => setCalendarEventName(ev.target.value)}
-            placeholder="Nama hari libur / event"
-          />
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Nama Event / Libur</label>
+            <input
+              className={inputClass}
+              value={calendarEventName}
+              onChange={(ev) => setCalendarEventName(ev.target.value)}
+              placeholder="Contoh: Libur Hari Raya"
+            />
+          </div>
 
-          <input
-            className={inputClass}
-            value={calendarEventNote}
-            onChange={(ev) => setCalendarEventNote(ev.target.value)}
-            placeholder="Keterangan (opsional)"
-          />
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">Keterangan (Opsional)</label>
+            <input
+              className={inputClass}
+              value={calendarEventNote}
+              onChange={(ev) => setCalendarEventNote(ev.target.value)}
+              placeholder="Catatan tambahan..."
+            />
+          </div>
 
           <div className="flex justify-end gap-2">
             <button
