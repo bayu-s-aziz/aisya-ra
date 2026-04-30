@@ -37,7 +37,7 @@ async def generate_surat(
     user_id = profile["profile"]["id"]
     
     # 1. Ambil template
-    template_response = supabase.table("template_surat").select("*").eq(
+    template_response = supabase.table("surat_template").select("*").eq(
         "id", data.template_id
     ).execute()
     
@@ -66,7 +66,7 @@ async def generate_surat(
     
     # 4. Simpan surat ke database
     try:
-        surat_response = supabase.table("surat").insert({
+        surat_response = supabase.table("surat_keluar").insert({
             "ra_id": ra_id,
             "template_id": data.template_id,
             "nomor_surat": nomor_surat,
@@ -106,16 +106,16 @@ async def list_surat(
     ra_id = profile["ra_id"]
     
     # Join dengan template_surat untuk mendapatkan jenis_surat
-    response = supabase.table("surat").select(
-        "id, nomor_surat, judul, created_at, template_surat:template_id(jenis_surat)"
+    response = supabase.table("surat_keluar").select(
+        "id, nomor_surat, judul, created_at, surat_template:template_id(jenis_surat)"
     ).eq("ra_id", ra_id).order("created_at", desc=True).execute()
     
     # Format response
     result = []
     for surat in response.data:
         jenis_surat = None
-        if surat.get("template_surat") and isinstance(surat["template_surat"], dict):
-            jenis_surat = surat["template_surat"].get("jenis_surat")
+        if surat.get("surat_template") and isinstance(surat["surat_template"], dict):
+            jenis_surat = surat["surat_template"].get("jenis_surat")
         
         result.append({
             "id": surat["id"],
@@ -139,7 +139,7 @@ async def get_surat(
     supabase = get_supabase_client()
     ra_id = profile["ra_id"]
     
-    response = supabase.table("surat").select("*").eq("id", id).execute()
+    response = supabase.table("surat_keluar").select("*").eq("id", id).execute()
     
     if len(response.data) == 0:
         raise HTTPException(status_code=404, detail="Surat tidak ditemukan")
@@ -164,7 +164,7 @@ async def get_surat_pdf(
     ra_id = profile["ra_id"]
     
     # Ambil surat
-    response = supabase.table("surat").select("*").eq("id", id).execute()
+    response = supabase.table("surat_keluar").select("*").eq("id", id).execute()
     
     if len(response.data) == 0:
         raise HTTPException(status_code=404, detail="Surat tidak ditemukan")
@@ -243,7 +243,7 @@ async def delete_surat(
     ra_id = profile["ra_id"]
     
     # Cek kepemilikan
-    existing_response = supabase.table("surat").select("*").eq("id", id).execute()
+    existing_response = supabase.table("surat_keluar").select("*").eq("id", id).execute()
     
     if len(existing_response.data) == 0:
         raise HTTPException(status_code=404, detail="Surat tidak ditemukan")
@@ -252,7 +252,7 @@ async def delete_surat(
         raise HTTPException(status_code=403, detail="Tidak memiliki akses ke surat ini")
     
     # Hapus surat
-    delete_response = supabase.table("surat").delete().eq("id", id).execute()
+    delete_response = supabase.table("surat_keluar").delete().eq("id", id).execute()
     
     if len(delete_response.data) == 0:
         raise HTTPException(status_code=500, detail="Gagal menghapus surat")

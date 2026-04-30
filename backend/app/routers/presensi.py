@@ -60,7 +60,7 @@ async def upsert_presensi_batch(
     tahun_ajaran_id = active_year["id"]
 
     # Validate kelompok ownership
-    kelompok_response = supabase.table("kelompok").select("id, ra_id").eq(
+    kelompok_response = supabase.table("kelompok_belajar").select("id, ra_id").eq(
         "id", payload.kelompok_id
     ).eq("ra_id", ra_id).eq("tahun_ajaran_id", tahun_ajaran_id).limit(1).execute()
     kelompok_rows = kelompok_response.data or []
@@ -313,7 +313,7 @@ async def get_rekap_presensi(
     
     # Validasi kelompok milik RA ini
     if kelompok_id:
-        kelompok_response = supabase.table("kelompok").select("id, nama_kelompok, ra_id").eq(
+        kelompok_response = supabase.table("kelompok_belajar").select("id, nama_kelompok, ra_id").eq(
             "id", kelompok_id
         ).eq("ra_id", ra_id).eq("tahun_ajaran_id", tahun_ajaran_id).execute()
         kelompok_rows = kelompok_response.data or []
@@ -408,7 +408,7 @@ async def get_rekap_presensi_periode(
     target_date = date.fromisoformat(tanggal) if tanggal else date.today()
 
     if kelompok_id:
-        kelompok_response = supabase.table("kelompok").select("id, nama_kelompok, ra_id").eq(
+        kelompok_response = supabase.table("kelompok_belajar").select("id, nama_kelompok, ra_id").eq(
             "id", kelompok_id
         ).eq("ra_id", ra_id).eq("tahun_ajaran_id", tahun_ajaran_id).limit(1).execute()
         kelompok_rows = kelompok_response.data or []

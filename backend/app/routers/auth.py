@@ -12,7 +12,9 @@ from app.models.auth import (
     LoginRequest,
     ManagedUserCreateRequest,
     ManagedUserUpdateRequest,
+    RegisterGuruRequest,
     RegisterSchoolRequest,
+    RegistrationStatusResponse,
     UpdateProfileRequest,
     UpdateRAProfileRequest,
 )
@@ -208,7 +210,7 @@ def _insert_profile_with_fallback(supabase, payload: dict):
 
     while insert_payload:
         try:
-            response = supabase.table("profiles").insert(insert_payload).execute()
+            response = supabase.table("pengguna").insert(insert_payload).execute()
             return response
         except Exception as exc:
             missing_column = _extract_missing_profiles_column(exc)
@@ -228,7 +230,7 @@ def _update_profile_with_fallback(supabase, payload: dict, user_id: str, ra_id: 
 
     while update_payload:
         try:
-            query = supabase.table("profiles").update(update_payload).eq("id", user_id)
+            query = supabase.table("pengguna").update(update_payload).eq("id", user_id)
             if ra_id:
                 query = query.eq("ra_id", ra_id)
             response = query.execute()
@@ -249,7 +251,7 @@ def _update_profile_with_fallback(supabase, payload: dict, user_id: str, ra_id: 
 def _get_manager_profile(supabase, current_user_id: str):
     try:
         profile_resp = (
-            supabase.table("profiles")
+            supabase.table("pengguna")
             .select("id,ra_id,role")
             .eq("id", current_user_id)
             .limit(1)
@@ -285,6 +287,23 @@ def _get_manager_profile(supabase, current_user_id: str):
     return manager_profile
 
 
+@router.get("/registration-status", response_model=RegistrationStatusResponse)
+def get_registration_status():
+    supabase = get_supabase_client()
+    try:
+        response = (
+            supabase.table("sekolah")
+            .select("nama_ra")
+            .limit(1)
+            .execute()
+        )
+        has_ra = len(response.data) > 0
+        ra_name = response.data[0]["nama_ra"] if has_ra else None
+        return {"has_ra": has_ra, "ra_name": ra_name}
+    except Exception:
+        return {"has_ra": False, "ra_name": None}
+
+
 @router.post("/register-school", status_code=status.HTTP_201_CREATED)
 def register_school(payload: RegisterSchoolRequest):
     if not settings.SUPABASE_SERVICE_ROLE_KEY:
@@ -297,7 +316,7 @@ def register_school(payload: RegisterSchoolRequest):
 
     try:
         ra_insert_response = (
-            supabase.table("ra_profiles")
+            supabase.table("sekolah")
             .insert(
                 {
                     "nama_ra": payload.nama_ra,
@@ -338,7 +357,7 @@ def register_school(payload: RegisterSchoolRequest):
         ) from exc
 
     try:
-        supabase.table("profiles").insert(
+        supabase.table("pengguna").insert(
             {
                 "id": auth_user_id,
                 "nama": payload.admin.nama,
@@ -354,7 +373,7 @@ def register_school(payload: RegisterSchoolRequest):
         ) from exc
 
     try:
-        supabase.table("chat_rooms").insert(
+        supabase.table("chat_ruang").insert(
             {
                 "ra_id": ra_id,
                 "tipe": "utama",
@@ -373,6 +392,86 @@ def register_school(payload: RegisterSchoolRequest):
         "data": {
             "ra_id": ra_id,
             "admin_id": auth_user_id,
+        },
+    }
+
+
+@router.post("/register-guru", status_code=status.HTTP_201_CREATED)
+def register_guru(payload: RegisterGuruRequest):
+    if not settings.SUPABASE_SERVICE_ROLE_KEY:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="SUPABASE_SERVICE_ROLE_KEY belum di-set.",
+        )
+
+    supabase = get_supabase_client()
+
+    # 1. Get the existing school
+    try:
+        ra_response = supabase.table("sekolah").select("id").limit(1).execute()
+        if not ra_response.data:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Belum ada RA terdaftar. Kepala RA harus mendaftar terlebih dahulu.",
+            )
+        ra_id = ra_response.data[0]["id"]
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Gagal mengecek data RA: {exc}",
+        ) from exc
+
+    # 2. Create Auth User
+    try:
+        auth_result = supabase.auth.admin.create_user(
+            {
+                "email": payload.email,
+                "password": payload.password,
+                "email_confirm": True,
+                "user_metadata": {
+                    "nama": payload.nama,
+                    "role": "guru",
+                    "ra_id": ra_id,
+                },
+            }
+        )
+        auth_user_id = _extract_auth_user_id(auth_result)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Gagal membuat user auth: {exc}",
+        ) from exc
+
+    # 3. Create Profile
+    try:
+        supabase.table("pengguna").insert(
+            {
+                "id": auth_user_id,
+                "nama": payload.nama,
+                "email": payload.email,
+                "role": "guru",
+                "ra_id": ra_id,
+            }
+        ).execute()
+    except Exception as exc:
+        # Cleanup auth user if profile creation fails
+        try:
+            supabase.auth.admin.delete_user(auth_user_id)
+        except Exception:
+            pass
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Gagal membuat profil guru: {exc}",
+        ) from exc
+
+    return {
+        "success": True,
+        "message": "Registrasi Guru berhasil",
+        "data": {
+            "user_id": auth_user_id,
+            "ra_id": ra_id,
         },
     }
 
@@ -436,7 +535,7 @@ def me(current_user=Depends(_get_current_auth_user)):
     try:
         profile_response = _select_profiles_with_fallback(
             lambda fields: (
-                supabase.table("profiles")
+                supabase.table("pengguna")
                 .select(fields)
                 .eq("id", current_user.id)
                 .limit(1)
@@ -448,7 +547,7 @@ def me(current_user=Depends(_get_current_auth_user)):
 
         if profile and profile.get("ra_id"):
             ra_response = (
-                supabase.table("ra_profiles")
+                supabase.table("sekolah")
                 .select(RA_PROFILE_SELECT_FIELDS)
                 .eq("id", profile["ra_id"])
                 .limit(1)
@@ -517,7 +616,7 @@ def update_ra_profile(
     # Only kepala / admin may update RA profile
     try:
         profile_resp = (
-            supabase.table("profiles")
+            supabase.table("pengguna")
             .select("role,ra_id")
             .eq("id", current_user.id)
             .limit(1)
@@ -559,7 +658,7 @@ def update_ra_profile(
 
     try:
         response = (
-            supabase.table("ra_profiles")
+            supabase.table("sekolah")
             .update(update_data)
             .eq("id", ra_id)
             .execute()
@@ -587,7 +686,7 @@ def list_managed_users(current_user=Depends(_get_current_auth_user)):
     try:
         response = _select_profiles_with_fallback(
             lambda fields: (
-                supabase.table("profiles")
+                supabase.table("pengguna")
                 .select(fields)
                 .eq("ra_id", ra_id)
                 .order("nama")
@@ -781,7 +880,7 @@ def update_managed_user(
         else:
             updated_profile = _select_profiles_with_fallback(
                 lambda fields: (
-                    supabase.table("profiles")
+                    supabase.table("pengguna")
                     .select(fields)
                     .eq("id", user_id)
                     .eq("ra_id", ra_id)
@@ -831,7 +930,7 @@ def delete_managed_user(
 
     try:
         target_profile = (
-            supabase.table("profiles")
+            supabase.table("pengguna")
             .select("id")
             .eq("id", user_id)
             .eq("ra_id", ra_id)
@@ -921,7 +1020,7 @@ async def import_managed_users_from_gtk(
 
         try:
             existing_profile = (
-                supabase.table("profiles")
+                supabase.table("pengguna")
                 .select("id")
                 .eq("ra_id", ra_id)
                 .eq("email", email)

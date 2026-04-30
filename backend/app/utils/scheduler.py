@@ -19,8 +19,8 @@ async def check_presensi_reminder():
         logger.info(f"Running presensi reminder check for {today}")
         
         # Ambil semua kelompok yang aktif
-        kelompok_response = supabase.table("kelompok").select(
-            "id, nama, ra_id"
+        kelompok_response = supabase.table("kelompok_belajar").select(
+            "id, nama_kelompok, ra_id"
         ).execute()
         
         notifications_created = 0
@@ -46,19 +46,19 @@ async def check_presensi_reminder():
                 # Untuk sekarang, kita anggap semua user di RA ini adalah guru
                 # Bisa diperbaiki dengan menambah tabel guru_kelompok atau role management
                 
-                # Ambil semua user di RA ini (melalui ra_profiles)
-                ra_profiles_response = supabase.table("ra_profiles").select(
-                    "profile_id"
+                # Ambil semua user di RA ini (melalui pengguna)
+                pengguna_response = supabase.table("pengguna").select(
+                    "id"
                 ).eq("ra_id", kelompok["ra_id"]).execute()
                 
-                for ra_profile in ra_profiles_response.data:
-                    user_id = ra_profile["profile_id"]
+                for p in pengguna_response.data:
+                    user_id = p["id"]
                     
                     # Buat notifikasi
                     notif_response = supabase.table("notifikasi").insert({
                         "user_id": user_id,
                         "judul": "Reminder: Isi Presensi",
-                        "pesan": f"Presensi untuk {kelompok['nama']} hari ini ({today}) belum diisi. Mohon segera dicatat.",
+                        "pesan": f"Presensi untuk {kelompok['nama_kelompok']} hari ini ({today}) belum diisi. Mohon segera dicatat.",
                         "dibaca": False
                     }).execute()
                     

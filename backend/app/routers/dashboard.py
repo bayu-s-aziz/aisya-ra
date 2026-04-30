@@ -32,38 +32,11 @@ def _count_rpph_for_guru(
     return response.count or 0
 
 
-def _count_catatan_for_guru_optional(
-    supabase,
-    guru_id: str,
-    start_date: date,
-    end_date: date,
-    tahun_ajaran_id: str,
-) -> tuple[int, str]:
-    try:
-        response = (
-            supabase.table("catatan_anekdot")
-            .select("id", count="exact")
-            .eq("guru_id", guru_id)
-            .eq("tahun_ajaran_id", tahun_ajaran_id)
-            .gte("tanggal", str(start_date))
-            .lte("tanggal", str(end_date))
-            .execute()
-        )
-        return response.count or 0, "catatan"
-    except Exception:
-        fallback_count = _count_rpph_for_guru(
-            supabase,
-            guru_id,
-            start_date,
-            end_date,
-            tahun_ajaran_id,
-        )
-        return fallback_count, "rpph_fallback"
 
 
 def _get_active_students_in_ra(supabase, ra_id: str, tahun_ajaran_id: str):
     kelompok_response = (
-        supabase.table("kelompok")
+        supabase.table("kelompok_belajar")
         .select("id,nama_kelompok")
         .eq("ra_id", ra_id)
         .eq("tahun_ajaran_id", tahun_ajaran_id)
@@ -99,58 +72,6 @@ def _get_active_students_in_ra(supabase, ra_id: str, tahun_ajaran_id: str):
     return result
 
 
-def _get_students_without_catatan_7_days_optional(
-    supabase,
-    ra_id: str,
-    today: date,
-    tahun_ajaran_id: str,
-):
-    students = _get_active_students_in_ra(supabase, ra_id, tahun_ajaran_id)
-    if not students:
-        return [], "catatan"
-
-    start_date = today - timedelta(days=7)
-    student_ids = [item["id"] for item in students]
-
-    try:
-        catatan_response = (
-            supabase.table("catatan_anekdot")
-            .select("siswa_id")
-            .eq("tahun_ajaran_id", tahun_ajaran_id)
-            .gte("tanggal", str(start_date))
-            .lte("tanggal", str(today))
-            .in_("siswa_id", student_ids)
-            .execute()
-        )
-        siswa_with_catatan = {item["siswa_id"] for item in (catatan_response.data or []) if item.get("siswa_id")}
-        source = "catatan"
-    except Exception:
-        presensi_response = (
-            supabase.table("presensi")
-            .select("siswa_id")
-            .eq("tahun_ajaran_id", tahun_ajaran_id)
-            .gte("tanggal", str(start_date))
-            .lte("tanggal", str(today))
-            .in_("siswa_id", student_ids)
-            .execute()
-        )
-        siswa_with_catatan = {item["siswa_id"] for item in (presensi_response.data or []) if item.get("siswa_id")}
-        source = "presensi_fallback"
-
-    without_catatan = [
-        {
-            "siswa_id": siswa["id"],
-            "nama": siswa["nama"],
-            "kelompok_id": siswa.get("kelompok_id"),
-            "kelompok_nama": siswa.get("kelompok_nama"),
-        }
-        for siswa in students
-        if siswa["id"] not in siswa_with_catatan
-    ]
-
-    return without_catatan, source
-
-
 @router.get("/guru")
 def get_dashboard_guru(current=Depends(get_current_user_profile)):
     supabase = get_supabase_client()
@@ -175,23 +96,8 @@ def get_dashboard_guru(current=Depends(get_current_user_profile)):
             or 0
         )
 
-        catatan_week_count, catatan_source = _count_catatan_for_guru_optional(
-            supabase,
-            guru_id,
-            start_week,
-            today,
-            tahun_ajaran_id,
-        )
-
-        siswa_tanpa_catatan, siswa_tanpa_catatan_source = _get_students_without_catatan_7_days_optional(
-            supabase,
-            ra_id,
-            today,
-            tahun_ajaran_id,
-        )
-
         kelompok_response = (
-            supabase.table("kelompok")
+            supabase.table("kelompok_belajar")
             .select("id,nama_kelompok")
             .eq("ra_id", ra_id)
             .eq("tahun_ajaran_id", tahun_ajaran_id)
@@ -292,13 +198,6 @@ def get_dashboard_guru(current=Depends(get_current_user_profile)):
                 "sudah_buat": rpph_today_count > 0,
                 "jumlah": rpph_today_count,
             },
-            "jumlah_catatan_minggu_ini": catatan_week_count,
-            "catatan_source": catatan_source,
-            "siswa_tanpa_catatan_7_hari": {
-                "jumlah": len(siswa_tanpa_catatan),
-                "source": siswa_tanpa_catatan_source,
-                "items": siswa_tanpa_catatan,
-            },
             "rekap_presensi_hari_ini": {
                 "tanggal": str(today),
                 "total": total_rekap,
@@ -330,7 +229,7 @@ def get_dashboard_kepala(current=Depends(get_current_user_profile)):
 
     try:
         guru_response = (
-            supabase.table("profiles")
+            supabase.table("pengguna")
             .select("id,nama,email,role")
             .eq("ra_id", ra_id)
             .execute()
@@ -358,13 +257,6 @@ def get_dashboard_kepala(current=Depends(get_current_user_profile)):
                 today,
                 tahun_ajaran_id,
             )
-            catatan_week, catatan_source = _count_catatan_for_guru_optional(
-                supabase,
-                guru["id"],
-                start_week,
-                today,
-                tahun_ajaran_id,
-            )
             presensi_dicatat = (
                 supabase.table("presensi")
                 .select("id", count="exact")
@@ -383,14 +275,12 @@ def get_dashboard_kepala(current=Depends(get_current_user_profile)):
                     "email": guru.get("email"),
                     "rpph_hari_ini": rpph_today,
                     "rpph_minggu_ini": rpph_week,
-                    "catatan_minggu_ini": catatan_week,
-                    "catatan_source": catatan_source,
                     "presensi_dicatat_hari_ini": presensi_dicatat,
                 }
             )
 
         kelas_response = (
-            supabase.table("kelompok")
+            supabase.table("kelompok_belajar")
             .select("id,nama_kelompok")
             .eq("ra_id", ra_id)
             .eq("tahun_ajaran_id", tahun_ajaran_id)

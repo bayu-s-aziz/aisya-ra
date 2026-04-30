@@ -49,7 +49,7 @@ EMIS_HEADER_ALIASES = {
 
 def _validate_kelompok_access(supabase, ra_id: str, kelompok_id: str, tahun_ajaran_id: str | None = None):
     query = (
-        supabase.table("kelompok")
+        supabase.table("kelompok_belajar")
         .select("id")
         .eq("id", kelompok_id)
         .eq("ra_id", ra_id)
@@ -205,7 +205,7 @@ def _get_or_create_kelompok_id_by_name(
     # Create new kelompok when not found
     try:
         create_response = (
-            supabase.table("kelompok")
+            supabase.table("kelompok_belajar")
             .insert(
                 {
                     "ra_id": ra_id,
@@ -429,7 +429,7 @@ async def import_siswa(
 
     try:
         kelompok_response = (
-            supabase.table("kelompok")
+            supabase.table("kelompok_belajar")
             .select("id,nama_kelompok")
             .eq("ra_id", ra_id)
             .eq("tahun_ajaran_id", tahun_ajaran_id)

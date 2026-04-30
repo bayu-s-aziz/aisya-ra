@@ -6,7 +6,7 @@ import api from './lib/api'
 
 const AppLayout = lazy(() => import('./components/Layout/AppLayout'))
 const LoginPage = lazy(() => import('./pages/LoginPage'))
-const RegisterSchoolPage = lazy(() => import('./pages/RegisterSchoolPage'))
+const RegisterPage = lazy(() => import('./pages/RegisterPage'))
 
 function RouteLoadingFallback() {
   return (
@@ -200,7 +200,7 @@ function App() {
         element={(
           <PublicOnly>
             <Suspense fallback={<RouteLoadingFallback />}>
-              <RegisterSchoolPage />
+              <RegisterPage />
             </Suspense>
           </PublicOnly>
         )}

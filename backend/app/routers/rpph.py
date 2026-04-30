@@ -76,7 +76,7 @@ def create_rpph(payload: RpphCreateRequest, current=Depends(get_current_user_pro
 
     try:
         kelompok_check = (
-            supabase.table("kelompok")
+            supabase.table("kelompok_belajar")
             .select("id")
             .eq("id", payload.kelompok_id)
             .eq("ra_id", ra_id)
@@ -171,7 +171,7 @@ def update_rpph(id: str, payload: RpphUpdateRequest, current=Depends(get_current
     if kelompok_id:
         try:
             kelompok_check = (
-                supabase.table("kelompok")
+                supabase.table("kelompok_belajar")
                 .select("id")
                 .eq("id", kelompok_id)
                 .eq("ra_id", ra_id)

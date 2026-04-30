@@ -49,6 +49,17 @@ class RegisterSchoolRequest(BaseModel):
     admin: AdminRegisterRequest
 
 
+class RegisterGuruRequest(BaseModel):
+    nama: str
+    email: str
+    password: str
+
+
+class RegistrationStatusResponse(BaseModel):
+    has_ra: bool
+    ra_name: Optional[str] = None
+
+
 class LoginRequest(BaseModel):
     email: str
     password: str

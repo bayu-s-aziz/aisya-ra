@@ -193,11 +193,10 @@ def delete_tahun_ajaran(
         )
 
     usage_checks = [
-        ("kelompok", "kelompok"),
+        ("kelompok_belajar", "kelompok"),
         ("siswa", "siswa"),
         ("presensi", "presensi"),
         ("rpph", "RPPH"),
-        ("catatan_anekdot", "catatan anekdot"),
     ]
 
     for table_name, label in usage_checks:

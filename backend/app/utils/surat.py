@@ -28,13 +28,13 @@ def generate_nomor_surat(ra_id: str, kode_surat: str = "RA") -> str:
     bulan_str = bulan_romawi[bulan]
     
     # Ambil atau buat counter untuk RA, tahun, dan bulan ini
-    counter_response = supabase.table("nomor_surat_counter").select("*").eq(
+    counter_response = supabase.table("surat_nomor_counter").select("*").eq(
         "ra_id", ra_id
     ).eq("tahun", tahun).eq("bulan", bulan).execute()
     
     if len(counter_response.data) == 0:
         # Buat counter baru
-        new_counter = supabase.table("nomor_surat_counter").insert({
+        new_counter = supabase.table("surat_nomor_counter").insert({
             "ra_id": ra_id,
             "tahun": tahun,
             "bulan": bulan,
@@ -47,7 +47,7 @@ def generate_nomor_surat(ra_id: str, kode_surat: str = "RA") -> str:
         current_counter = counter_response.data[0]["counter"]
         counter_value = current_counter + 1
         
-        supabase.table("nomor_surat_counter").update({
+        supabase.table("surat_nomor_counter").update({
             "counter": counter_value
         }).eq("ra_id", ra_id).eq("tahun", tahun).eq("bulan", bulan).execute()
     

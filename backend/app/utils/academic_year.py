@@ -46,7 +46,7 @@ def normalize_academic_year_label(raw_label: str | None) -> str:
 def _read_ra_profile_tahun_ajaran(supabase, ra_id: str) -> str | None:
     try:
         response = (
-            supabase.table("ra_profiles")
+            supabase.table("sekolah")
             .select("tahun_ajaran")
             .eq("id", ra_id)
             .limit(1)
@@ -64,7 +64,7 @@ def _read_ra_profile_tahun_ajaran(supabase, ra_id: str) -> str | None:
 def _sync_ra_profile_tahun_ajaran(supabase, ra_id: str, label: str):
     try:
         (
-            supabase.table("ra_profiles")
+            supabase.table("sekolah")
             .update({"tahun_ajaran": label})
             .eq("id", ra_id)
             .execute()

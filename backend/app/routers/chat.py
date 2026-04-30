@@ -37,7 +37,7 @@ from app.utils.dashboard_chat_formatter import (
 router = APIRouter()
 
 
-VALID_TIPE = {'utama', 'rpph', 'anekdot', 'surat', 'presensi', 'custom', 'dashboard'}
+VALID_TIPE = {'utama', 'rpph', 'surat', 'presensi', 'custom', 'dashboard'}
 VALID_PRESENSI_STATUS = {"hadir", "sakit", "izin", "alpha"}
 
 NATURAL_TOKEN_NORMALIZATION = {
@@ -390,7 +390,7 @@ def _build_students_context(supabase, ra_id: str, tahun_ajaran_id: str, query: s
 
     try:
         kelompok_resp = (
-            supabase.table("kelompok")
+            supabase.table("kelompok_belajar")
             .select("id,nama_kelompok")
             .eq("ra_id", ra_id)
             .eq("tahun_ajaran_id", tahun_ajaran_id)
@@ -460,7 +460,7 @@ def _build_students_context(supabase, ra_id: str, tahun_ajaran_id: str, query: s
 def _build_users_context(supabase, ra_id: str, can_view_sensitive: bool) -> str | None:
     try:
         response = (
-            supabase.table("profiles")
+            supabase.table("pengguna")
             .select("id,nama,email,role,jabatan,telepon")
             .eq("ra_id", ra_id)
             .order("nama")
@@ -565,7 +565,7 @@ def _build_presensi_context(supabase, ra_id: str, tahun_ajaran_id: str) -> str |
 def _build_rpph_context(supabase, ra_id: str, tahun_ajaran_id: str) -> str | None:
     try:
         guru_resp = (
-            supabase.table("profiles")
+            supabase.table("pengguna")
             .select("id")
             .eq("ra_id", ra_id)
             .execute()
@@ -600,7 +600,7 @@ def _build_rpph_context(supabase, ra_id: str, tahun_ajaran_id: str) -> str | Non
 def _build_surat_context(supabase, ra_id: str) -> str | None:
     try:
         surat_resp = (
-            supabase.table("surat")
+            supabase.table("surat_keluar")
             .select("id,nomor_surat,judul,created_at")
             .eq("ra_id", ra_id)
             .order("created_at", desc=True)
@@ -624,7 +624,7 @@ def _build_surat_context(supabase, ra_id: str) -> str | None:
 def _build_template_surat_context(supabase, ra_id: str) -> str | None:
     try:
         template_resp = (
-            supabase.table("template_surat")
+            supabase.table("surat_template")
             .select("id,nama_template,jenis_surat")
             .eq("ra_id", ra_id)
             .order("nama_template")
@@ -698,7 +698,7 @@ def _build_notifikasi_context(supabase, user_id: str) -> str | None:
 def _build_chat_rooms_context(supabase, ra_id: str) -> str | None:
     try:
         room_resp = (
-            supabase.table("chat_rooms")
+            supabase.table("chat_ruang")
             .select("id,nama,tipe")
             .eq("ra_id", ra_id)
             .order("nama")
@@ -722,7 +722,7 @@ def _build_chat_rooms_context(supabase, ra_id: str) -> str | None:
 def _build_ra_profile_context(supabase, ra_id: str) -> str | None:
     try:
         response = (
-            supabase.table("ra_profiles")
+            supabase.table("sekolah")
             .select(
                 "nama_ra,nama_kepala,npsn,nomor_statistik,status_lembaga,bentuk_pendidikan,"
                 "penyelenggara,akreditasi,alamat,telepon,email_lembaga,website,"
@@ -1235,7 +1235,7 @@ def _infer_latest_kelompok_from_recent_chat(supabase, room_id: str) -> str | Non
 
     try:
         rows = (
-            supabase.table("chat_history")
+            supabase.table("chat_riwayat")
             .select("role_msg,content,timestamp")
             .eq("room_id", room_id)
             .order("timestamp", desc=True)
@@ -1265,7 +1265,7 @@ def _format_student_list_by_kelompok(
 ) -> str:
     try:
         kelompok_rows = (
-            supabase.table("kelompok")
+            supabase.table("kelompok_belajar")
             .select("id,nama_kelompok")
             .eq("ra_id", ra_id)
             .eq("tahun_ajaran_id", tahun_ajaran_id)
@@ -1909,7 +1909,7 @@ def _try_execute_create_student_action(supabase, current: dict, query: str) -> s
 
     try:
         kelompok_rows = (
-            supabase.table("kelompok")
+            supabase.table("kelompok_belajar")
             .select("id,nama_kelompok")
             .eq("ra_id", ra_id)
             .eq("tahun_ajaran_id", tahun_ajaran_id)
@@ -2006,7 +2006,7 @@ def _try_execute_transfer_student_action(supabase, current: dict, query: str) ->
 
     try:
         kelompok_rows = (
-            supabase.table("kelompok")
+            supabase.table("kelompok_belajar")
             .select("id,nama_kelompok")
             .eq("ra_id", ra_id)
             .eq("tahun_ajaran_id", tahun_ajaran_id)
@@ -2131,7 +2131,7 @@ def _try_execute_school_profile_action(supabase, current: dict, query: str) -> s
         return "Saya tidak menemukan informasi spesifik untuk diubah pada profil sekolah. Contoh: 'Alamat RA ganti ke Jl. Mawar'."
 
     try:
-        supabase.table("ra_profiles").update(payload).eq("id", ra_id).execute()
+        supabase.table("sekolah").update(payload).eq("id", ra_id).execute()
         
         changes = ", ".join([f"{k.replace('_', ' ')}: {v}" for k, v in payload.items()])
         return f"Berhasil memperbarui profil sekolah: {changes}."
@@ -2149,7 +2149,7 @@ def _try_execute_gtk_info_action(supabase, current: dict, query: str) -> str:
 
     try:
         # Search for the profile
-        profile_resp = supabase.table("profiles").select("id,nama").eq("ra_id", ra_id).ilike("nama", f"%{target_name}%").limit(5).execute()
+        profile_resp = supabase.table("pengguna").select("id,nama").eq("ra_id", ra_id).ilike("nama", f"%{target_name}%").limit(5).execute()
         profiles = profile_resp.data or []
         
         if not profiles:
@@ -2169,7 +2169,7 @@ def _try_execute_gtk_info_action(supabase, current: dict, query: str) -> str:
         if not payload:
             return f"Saya menemukan data {profiles[0]['nama']}, tapi tidak ada instruksi perubahan yang valid (hanya Nama, Jabatan, Telepon yang diizinkan)."
 
-        supabase.table("profiles").update(payload).eq("id", profile_id).execute()
+        supabase.table("pengguna").update(payload).eq("id", profile_id).execute()
         changes = ", ".join([f"{k}: {v}" for k, v in payload.items()])
         return f"Berhasil memperbarui data {profiles[0]['nama']}: {changes}."
     except Exception as exc:
@@ -2188,14 +2188,14 @@ def _try_execute_manage_kelompok_action(supabase, current: dict, query: str) -> 
 
     try:
         # Check if exists
-        existing_resp = supabase.table("kelompok").select("id").eq("ra_id", ra_id).eq("tahun_ajaran_id", tahun_ajaran_id).ilike("nama_kelompok", f"%{nama_kelompok}%").limit(1).execute()
+        existing_resp = supabase.table("kelompok_belajar").select("id").eq("ra_id", ra_id).eq("tahun_ajaran_id", tahun_ajaran_id).ilike("nama_kelompok", f"%{nama_kelompok}%").limit(1).execute()
         existing = existing_resp.data[0] if existing_resp.data else None
         
         # Resolve wali kelas if provided
         wali_kelas_id = None
         wali_kelas_nama = config.get("wali_kelas_nama")
         if wali_kelas_nama:
-            guru_resp = supabase.table("profiles").select("id,nama").eq("ra_id", ra_id).ilike("nama", f"%{wali_kelas_nama}%").limit(5).execute()
+            guru_resp = supabase.table("pengguna").select("id,nama").eq("ra_id", ra_id).ilike("nama", f"%{wali_kelas_nama}%").limit(5).execute()
             gurus = guru_resp.data or []
             if gurus:
                 wali_kelas_id = gurus[0]["id"]
@@ -2210,10 +2210,10 @@ def _try_execute_manage_kelompok_action(supabase, current: dict, query: str) -> 
         if wali_kelas_id: payload["wali_kelas_id"] = wali_kelas_id
 
         if existing:
-            supabase.table("kelompok").update(payload).eq("id", existing["id"]).execute()
+            supabase.table("kelompok_belajar").update(payload).eq("id", existing["id"]).execute()
             return f"Berhasil memperbarui data kelompok {nama_kelompok}."
         else:
-            supabase.table("kelompok").insert(payload).execute()
+            supabase.table("kelompok_belajar").insert(payload).execute()
             return f"Berhasil membuat kelompok baru: {nama_kelompok}."
             
     except Exception as exc:
@@ -2510,7 +2510,7 @@ def _build_operational_query_response(supabase, current: dict, query: str, room_
 
         try:
             response = (
-                supabase.table("ra_profiles")
+                supabase.table("sekolah")
                 .select(
                     "id,nama_ra,nama_kepala,alamat,telepon,email_lembaga,website,"
                     "npsn,akreditasi,status_lembaga,bentuk_pendidikan,penyelenggara,"
@@ -2533,7 +2533,7 @@ def _build_operational_query_response(supabase, current: dict, query: str, room_
 
         try:
             response = (
-                supabase.table("profiles")
+                supabase.table("pengguna")
                 .select("id,nama,role,jabatan,email,telepon")
                 .eq("ra_id", ra_id)
                 .order("nama")
@@ -2572,7 +2572,7 @@ def _build_operational_query_response(supabase, current: dict, query: str, room_
 
         try:
             response = (
-                supabase.table("kelompok")
+                supabase.table("kelompok_belajar")
                 .select(
                     "id,nama_kelompok,wali_kelas_id,kode_rombel,tingkat,"
                     "semester,kurikulum,ruang_kelas,kapasitas,status_rombel"
@@ -3090,7 +3090,7 @@ def _build_operational_query_response(supabase, current: dict, query: str, room_
         try:
             active_year_id = _get_tahun_ajaran_id()
             kelompok_rows = (
-                supabase.table("kelompok")
+                supabase.table("kelompok_belajar")
                 .select("id,nama_kelompok")
                 .eq("ra_id", ra_id)
                 .eq("tahun_ajaran_id", active_year_id)
@@ -3326,7 +3326,7 @@ def _build_operational_query_response(supabase, current: dict, query: str, room_
     if surat_query:
         try:
             surat_rows = (
-                supabase.table("surat")
+                supabase.table("surat_keluar")
                 .select("nomor_surat,judul,created_at")
                 .eq("ra_id", ra_id)
                 .order("created_at", desc=True)
@@ -3361,7 +3361,7 @@ def _build_operational_query_response(supabase, current: dict, query: str, room_
     if template_surat_query:
         try:
             template_rows = (
-                supabase.table("template_surat")
+                supabase.table("surat_template")
                 .select("nama_template,jenis_surat")
                 .eq("ra_id", ra_id)
                 .order("nama_template")
@@ -3454,7 +3454,7 @@ def _build_operational_query_response(supabase, current: dict, query: str, room_
     if chat_room_query:
         try:
             room_rows = (
-                supabase.table("chat_rooms")
+                supabase.table("chat_ruang")
                 .select("nama,tipe")
                 .eq("ra_id", ra_id)
                 .order("nama")
@@ -3480,7 +3480,7 @@ def _build_operational_query_response(supabase, current: dict, query: str, room_
 def _build_recent_chat_context(supabase, room_id: str, max_messages: int = 10) -> str | None:
     try:
         rows = (
-            supabase.table("chat_history")
+            supabase.table("chat_riwayat")
             .select("role_msg,content,timestamp")
             .eq("room_id", room_id)
             .order("timestamp", desc=True)
@@ -3575,7 +3575,7 @@ def _extract_rows_from_response(response) -> list[dict]:
 def _save_assistant_message(supabase, user_id: str, room_id: str, content: str, error_prefix: str) -> dict:
     try:
         bot_message_response = (
-            supabase.table("chat_history")
+            supabase.table("chat_riwayat")
             .insert(
                 {
                     "user_id": user_id,
@@ -3711,7 +3711,7 @@ def create_chat_room(
 
     try:
         response = (
-            supabase.table("chat_rooms")
+            supabase.table("chat_ruang")
             .insert({"ra_id": ra_id, "nama": nama, "tipe": tipe, "created_by": created_by})
             .execute()
         )
@@ -3740,7 +3740,7 @@ def list_chat_rooms(current=Depends(get_current_user_profile)):
     for _ in range(2):
         try:
             response = (
-                supabase.table("chat_rooms")
+                supabase.table("chat_ruang")
                 .select("id,ra_id,tipe,nama")
                 .eq("ra_id", ra_id)
                 .order("nama")
@@ -3769,7 +3769,7 @@ def delete_chat_room(
 
     try:
         room_check = (
-            supabase.table("chat_rooms")
+            supabase.table("chat_ruang")
             .select("id")
             .eq("id", room_id)
             .eq("ra_id", ra_id)
@@ -3789,8 +3789,8 @@ def delete_chat_room(
         )
 
     try:
-        supabase.table("chat_history").delete().eq("room_id", room_id).execute()
-        supabase.table("chat_rooms").delete().eq("id", room_id).eq("ra_id", ra_id).execute()
+        supabase.table("chat_riwayat").delete().eq("room_id", room_id).execute()
+        supabase.table("chat_ruang").delete().eq("id", room_id).eq("ra_id", ra_id).execute()
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -3818,7 +3818,7 @@ def get_chat_messages(
 
     try:
         room_check = (
-            supabase.table("chat_rooms")
+            supabase.table("chat_ruang")
             .select("id,tipe")
             .eq("id", room_id)
             .eq("ra_id", ra_id)
@@ -3840,7 +3840,7 @@ def get_chat_messages(
     room_tipe = _extract_room_tipe(room_check.data)
     try:
         count_response = (
-            supabase.table("chat_history")
+            supabase.table("chat_riwayat")
             .select("id")
             .eq("room_id", room_id)
             .execute()
@@ -3853,7 +3853,7 @@ def get_chat_messages(
             try:
                 welcome_text = _build_dashboard_text_from_endpoint(current, refreshed=False)
                 welcome_resp = (
-                    supabase.table("chat_history")
+                    supabase.table("chat_riwayat")
                     .insert({
                         "user_id": current["profile"]["id"],
                         "room_id": room_id,
@@ -3884,7 +3884,7 @@ def get_chat_messages(
                 messages_data = []
             else:
                 messages_response = (
-                    supabase.table("chat_history")
+                    supabase.table("chat_riwayat")
                     .select("id,user_id,room_id,role_msg,content,timestamp")
                     .eq("room_id", room_id)
                     .order("timestamp", desc=False)
@@ -3925,7 +3925,7 @@ def send_chat_message(
 
     try:
         room_check = (
-            supabase.table("chat_rooms")
+            supabase.table("chat_ruang")
             .select("id,tipe")
             .eq("id", room_id)
             .eq("ra_id", ra_id)
@@ -3949,7 +3949,7 @@ def send_chat_message(
 
     try:
         user_message_response = (
-            supabase.table("chat_history")
+            supabase.table("chat_riwayat")
             .insert(
                 {
                     "user_id": user_id,
@@ -4102,7 +4102,7 @@ async def send_voice_message(
 
     try:
         room_check = (
-            supabase.table("chat_rooms")
+            supabase.table("chat_ruang")
             .select("id,tipe")
             .eq("id", room_id)
             .eq("ra_id", ra_id)
@@ -4151,7 +4151,7 @@ async def send_voice_message(
     # Save user voice message (as transcription text)
     try:
         user_message_response = (
-            supabase.table("chat_history")
+            supabase.table("chat_riwayat")
             .insert(
                 {
                     "user_id": user_id,

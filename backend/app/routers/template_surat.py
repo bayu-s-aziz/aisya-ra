@@ -24,7 +24,7 @@ async def create_template_surat(
     ra_id = profile["ra_id"]
     
     try:
-        response = supabase.table("template_surat").insert({
+        response = supabase.table("surat_template").insert({
             "ra_id": ra_id,
             "nama_template": data.nama_template,
             "jenis_surat": data.jenis_surat,
@@ -51,7 +51,7 @@ async def list_template_surat(
     supabase = get_supabase_client()
     ra_id = profile["ra_id"]
     
-    response = supabase.table("template_surat").select("*").eq(
+    response = supabase.table("surat_template").select("*").eq(
         "ra_id", ra_id
     ).order("created_at", desc=True).execute()
     
@@ -69,7 +69,7 @@ async def get_template_surat(
     supabase = get_supabase_client()
     ra_id = profile["ra_id"]
     
-    response = supabase.table("template_surat").select("*").eq("id", id).execute()
+    response = supabase.table("surat_template").select("*").eq("id", id).execute()
     
     if len(response.data) == 0:
         raise HTTPException(status_code=404, detail="Template tidak ditemukan")
@@ -93,7 +93,7 @@ async def get_template_placeholders_endpoint(
     supabase = get_supabase_client()
     ra_id = profile["ra_id"]
     
-    response = supabase.table("template_surat").select("*").eq("id", id).execute()
+    response = supabase.table("surat_template").select("*").eq("id", id).execute()
     
     if len(response.data) == 0:
         raise HTTPException(status_code=404, detail="Template tidak ditemukan")
@@ -124,7 +124,7 @@ async def update_template_surat(
     ra_id = profile["ra_id"]
     
     # Cek kepemilikan
-    existing_response = supabase.table("template_surat").select("*").eq("id", id).execute()
+    existing_response = supabase.table("surat_template").select("*").eq("id", id).execute()
     
     if len(existing_response.data) == 0:
         raise HTTPException(status_code=404, detail="Template tidak ditemukan")
@@ -144,7 +144,7 @@ async def update_template_surat(
     if not update_data:
         raise HTTPException(status_code=400, detail="Tidak ada data yang diupdate")
     
-    response = supabase.table("template_surat").update(update_data).eq("id", id).execute()
+    response = supabase.table("surat_template").update(update_data).eq("id", id).execute()
     
     if len(response.data) == 0:
         raise HTTPException(status_code=500, detail="Gagal mengupdate template")
@@ -164,7 +164,7 @@ async def delete_template_surat(
     ra_id = profile["ra_id"]
     
     # Cek kepemilikan
-    existing_response = supabase.table("template_surat").select("*").eq("id", id).execute()
+    existing_response = supabase.table("surat_template").select("*").eq("id", id).execute()
     
     if len(existing_response.data) == 0:
         raise HTTPException(status_code=404, detail="Template tidak ditemukan")
@@ -173,7 +173,7 @@ async def delete_template_surat(
         raise HTTPException(status_code=403, detail="Tidak memiliki akses ke template ini")
     
     # Hapus template
-    delete_response = supabase.table("template_surat").delete().eq("id", id).execute()
+    delete_response = supabase.table("surat_template").delete().eq("id", id).execute()
     
     if len(delete_response.data) == 0:
         raise HTTPException(status_code=500, detail="Gagal menghapus template")

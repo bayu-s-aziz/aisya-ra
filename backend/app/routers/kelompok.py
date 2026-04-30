@@ -25,7 +25,7 @@ def list_kelompok(current=Depends(get_current_user_profile)):
 
     try:
         response = (
-            supabase.table("kelompok")
+            supabase.table("kelompok_belajar")
             .select(
                 "id,ra_id,tahun_ajaran_id,nama_kelompok,wali_kelas_id,"
                 "kode_rombel,tingkat,semester,kurikulum,ruang_kelas,kapasitas,status_rombel"
@@ -56,7 +56,7 @@ def create_kelompok(payload: KelompokCreateRequest, current=Depends(get_current_
 
     try:
         response = (
-            supabase.table("kelompok")
+            supabase.table("kelompok_belajar")
             .insert(
                 {
                     "ra_id": ra_id,
@@ -106,7 +106,7 @@ def update_kelompok(id: str, payload: KelompokUpdateRequest, current=Depends(get
 
     try:
         response = (
-            supabase.table("kelompok")
+            supabase.table("kelompok_belajar")
             .update(update_data)
             .eq("id", id)
             .eq("ra_id", ra_id)
@@ -167,7 +167,7 @@ def delete_kelompok(id: str, current=Depends(get_current_user_profile)):
 
     try:
         delete_response = (
-            supabase.table("kelompok")
+            supabase.table("kelompok_belajar")
             .delete()
             .eq("id", id)
             .eq("ra_id", ra_id)

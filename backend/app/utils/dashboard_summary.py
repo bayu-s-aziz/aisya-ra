@@ -66,26 +66,10 @@ def _build_guru_summary(supabase, guru_id: str, ra_id: str, today: date, start_w
     except Exception:
         lines.append("✅ RPPH hari ini: (gagal memuat)")
 
-    # --- Catatan anekdot minggu ini ---
-    try:
-        catatan_count = (
-            supabase.table("catatan_anekdot")
-            .select("id", count="exact")
-            .eq("guru_id", guru_id)
-            .gte("tanggal", str(start_week))
-            .lte("tanggal", str(today))
-            .execute()
-            .count
-            or 0
-        )
-        lines.append(f"📝 Catatan anekdot minggu ini: {catatan_count}")
-    except Exception:
-        lines.append("📝 Catatan anekdot minggu ini: (gagal memuat)")
-
     # --- Presensi hari ini (semua kelompok di RA) ---
     try:
         kelompok_resp = (
-            supabase.table("kelompok")
+            supabase.table("kelompok_belajar")
             .select("id,nama_kelompok")
             .eq("ra_id", ra_id)
             .order("nama_kelompok")
@@ -148,39 +132,6 @@ def _build_guru_summary(supabase, guru_id: str, ra_id: str, today: date, start_w
     except Exception:
         lines.append("👥 Presensi hari ini: (gagal memuat)")
 
-    # --- Siswa tanpa catatan 7 hari ---
-    try:
-        all_siswa = [
-            s
-            for s in (
-                supabase.table("siswa")
-                .select("id,kelompok:kelompok_id(ra_id)")
-                .eq("status_aktif", True)
-                .execute()
-                .data
-                or []
-            )
-            if (s.get("kelompok") or {}).get("ra_id") == ra_id
-        ]
-        siswa_ids_all = {s["id"] for s in all_siswa}
-        with_catatan = {
-            r["siswa_id"]
-            for r in (
-                supabase.table("catatan_anekdot")
-                .select("siswa_id")
-                .gte("tanggal", str(today - timedelta(days=7)))
-                .lte("tanggal", str(today))
-                .execute()
-                .data
-                or []
-            )
-            if r.get("siswa_id")
-        }
-        tanpa = len(siswa_ids_all - with_catatan)
-        lines.append(f"⚠️ Siswa tanpa catatan (7 hari): {tanpa} siswa")
-    except Exception:
-        lines.append("⚠️ Siswa tanpa catatan (7 hari): (gagal memuat)")
-
     lines += [
         "",
         '💬 Ketik "refresh" untuk memperbarui data.',
@@ -198,7 +149,7 @@ def _build_kepala_summary(supabase, ra_id: str, today: date, start_week: date, h
         guru_list = [
             g
             for g in (
-                supabase.table("profiles")
+                supabase.table("pengguna")
                 .select("id,nama,role")
                 .eq("ra_id", ra_id)
                 .execute()
@@ -231,7 +182,7 @@ def _build_kepala_summary(supabase, ra_id: str, today: date, start_week: date, h
 
     try:
         kelas_list = (
-            supabase.table("kelompok")
+            supabase.table("kelompok_belajar")
             .select("id,nama_kelompok")
             .eq("ra_id", ra_id)
             .order("nama_kelompok")
@@ -292,3 +243,4 @@ def _build_kepala_summary(supabase, ra_id: str, today: date, start_week: date, h
         '💬 Ketik "refresh" untuk memperbarui data.',
     ]
     return "\n".join(lines)
+

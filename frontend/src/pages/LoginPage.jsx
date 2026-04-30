@@ -120,7 +120,7 @@ function LoginPage() {
           <p className="mt-5 text-sm text-[#667085]">
             Belum punya akun?{' '}
             <Link className="font-semibold text-[#0f172a] underline decoration-[#94a3b8] underline-offset-4" to="/register-school">
-              Registrasi sekolah
+              Daftar di sini
             </Link>
           </p>
         </section>
