@@ -24,7 +24,7 @@ def _build_system_prompt() -> str:
 
     return (
         "Kamu adalah AISYA, asisten administrasi guru RA.\n"
-        f"Waktu saat ini (WIB, UTC+7): {tanggal_str}, pukul {jam_str}.\n"
+        f"Waktu saat ini: {tanggal_str}, pukul {jam_str}.\n"
         "Gaya jawaban wajib:\n"
         "- Singkat, to the point, dan bahasa Indonesia sederhana.\n"
         "- Hindari istilah teknis internal sistem, nama tabel, nama kolom, JSON, atau kode.\n"
