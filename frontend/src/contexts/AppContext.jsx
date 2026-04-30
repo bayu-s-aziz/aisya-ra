@@ -59,9 +59,7 @@ export function AppProvider({ children }) {
       return []
     }
 
-    const response = await api.get('/chat/rooms', {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    const response = await api.get('/chat/rooms')
 
     const rooms = Array.isArray(response?.data?.data) ? response.data.data : []
     dispatch({ type: 'SET_ROOMS', payload: rooms })
@@ -75,9 +73,7 @@ export function AppProvider({ children }) {
       return []
     }
 
-    const response = await api.get('/knowledge/documents', {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    const response = await api.get('/knowledge/documents')
 
     const documents = Array.isArray(response?.data) ? response.data : []
     dispatch({ type: 'SET_DOCUMENTS', payload: documents })

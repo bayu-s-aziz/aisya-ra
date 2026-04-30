@@ -34,7 +34,7 @@ def get_current_user_profile(current_user=Depends(get_current_auth_user)):
     try:
         profile_response = (
             supabase.table("pengguna")
-            .select("id,nama,email,role,ra_id")
+            .select("id,nama,email,role,ra_id,jabatan")
             .eq("id", current_user.id)
             .limit(1)
             .execute()

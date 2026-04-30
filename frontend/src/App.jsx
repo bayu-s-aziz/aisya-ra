@@ -58,9 +58,7 @@ function RequireAuth({ children }) {
       }
 
       try {
-        await api.get('/auth/me', {
-          headers: { Authorization: `Bearer ${token}` },
-        })
+        await api.get('/auth/me')
         if (active) {
           setIsValid(true)
         }
@@ -126,9 +124,7 @@ function PublicOnly({ children }) {
       }
 
       try {
-        await api.get('/auth/me', {
-          headers: { Authorization: `Bearer ${token}` },
-        })
+        await api.get('/auth/me')
         if (active) {
           setIsValid(true)
         }

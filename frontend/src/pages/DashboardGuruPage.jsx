@@ -24,16 +24,12 @@ function DashboardGuruPage() {
   const [error, setError] = useState('')
   const [data, setData] = useState(null)
 
-  const token = localStorage.getItem('aisya_access_token')
-
   useEffect(() => {
     const fetchDashboard = async () => {
       setLoading(true)
       setError('')
       try {
-        const response = await api.get('/dashboard/guru', {
-          headers: { Authorization: `Bearer ${token}` },
-        })
+        const response = await api.get('/dashboard/guru')
         setData(response?.data?.data || null)
       } catch (err) {
         setError(err?.response?.data?.detail || 'Gagal memuat dashboard guru')
@@ -42,8 +38,8 @@ function DashboardGuruPage() {
       }
     }
 
-    if (token) fetchDashboard()
-  }, [token])
+    fetchDashboard()
+  }, [])
 
   const totalPresensi = useMemo(() => {
     if (!data?.rekap_presensi_hari_ini?.total) return 0

@@ -15,16 +15,12 @@ function DashboardKepalaPage() {
   const [error, setError] = useState('')
   const [data, setData] = useState(null)
 
-  const token = localStorage.getItem('aisya_access_token')
-
   useEffect(() => {
     const fetchDashboard = async () => {
       setLoading(true)
       setError('')
       try {
-        const me = await api.get('/auth/me', {
-          headers: { Authorization: `Bearer ${token}` },
-        })
+        const me = await api.get('/auth/me')
         const role = (me?.data?.data?.profile?.role || '').toLowerCase()
         if (!['kepala_ra', 'kepala', 'admin', 'admin_ra'].includes(role)) {
           setError('Halaman ini hanya untuk Kepala RA/Admin')
@@ -32,9 +28,7 @@ function DashboardKepalaPage() {
           return
         }
 
-        const response = await api.get('/dashboard/kepala', {
-          headers: { Authorization: `Bearer ${token}` },
-        })
+        const response = await api.get('/dashboard/kepala')
         setData(response?.data?.data || null)
       } catch (err) {
         setError(err?.response?.data?.detail || 'Gagal memuat dashboard kepala')
@@ -43,8 +37,8 @@ function DashboardKepalaPage() {
       }
     }
 
-    if (token) fetchDashboard()
-  }, [token])
+    fetchDashboard()
+  }, [])
 
   const chartData = useMemo(() => {
     return (data?.summary_per_kelas || []).map((k) => ({

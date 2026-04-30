@@ -100,6 +100,7 @@ function DashboardView({
 
   const [myPresence, setMyPresence] = useState(null)
   const [markingPresence, setMarkingPresence] = useState(false)
+  const [presenceError, setPresenceError] = useState('')
 
   const loadMyPresence = async () => {
     try {
@@ -115,6 +116,7 @@ function DashboardView({
   const handleMarkMyPresence = async (status) => {
     if (!profile?.id) return
     setMarkingPresence(true)
+    setPresenceError('')
     try {
       await recordGTKPresence({
         pengguna_id: profile.id,
@@ -124,7 +126,7 @@ function DashboardView({
       })
       await loadMyPresence()
     } catch (err) {
-      alert(`Gagal mencatat presensi: ${err?.response?.data?.detail || err?.message}`)
+      setPresenceError(err?.response?.data?.detail || err?.message || 'Gagal mencatat presensi')
     } finally {
       setMarkingPresence(false)
     }
@@ -412,6 +414,7 @@ function DashboardView({
                         </div>
                       )}
                       {markingPresence && <p className="mt-2 text-center text-xs text-[#64748b]">Mencatat...</p>}
+                      {presenceError && <p className="mt-2 rounded-lg bg-red-50 p-2 text-center text-xs text-red-700">{presenceError}</p>}
                     </div>
                   </div>
 

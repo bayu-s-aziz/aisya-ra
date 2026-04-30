@@ -40,9 +40,7 @@ function LoginPage() {
         localStorage.setItem('aisya_user_email', authUserEmail)
       }
 
-      await api.get('/auth/me', {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      })
+      await api.get('/auth/me')
 
       sessionStorage.removeItem('aisya_chat_bootstrap_done')
 

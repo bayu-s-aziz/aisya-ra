@@ -1,7 +1,8 @@
 from pydantic import BaseModel
-from datetime import date, time
+from datetime import date
 from typing import Optional
 from .presensi import StatusPresensi
+
 
 class PresensiGTKBase(BaseModel):
     pengguna_id: str
@@ -10,15 +11,18 @@ class PresensiGTKBase(BaseModel):
     keterangan: Optional[str] = None
     sumber_pencatatan: Optional[str] = "manual_panel"
 
+
 class PresensiGTKCreate(PresensiGTKBase):
     pass
+
 
 class PresensiGTKResponse(PresensiGTKBase):
     id: str
     dicatat_oleh: Optional[str] = None
     tahun_ajaran_id: str
-    created_at: str
-    updated_at: str
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
 
 class RekapPresensiGTKResponse(BaseModel):
     tanggal: date

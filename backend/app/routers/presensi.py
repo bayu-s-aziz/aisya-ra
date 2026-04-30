@@ -324,7 +324,7 @@ Output (hanya JSON, tanpa markdown atau penjelasan):"""
     
     return PresensiFromChatResponse(
         success=True,
-        message=f"Berhasil mencatat {jumlah_dicatat} dari {len(parsed_data)} data",
+        message=f"Berhasil mencatat {jumlah_dicatat} dari {len(records)} data",
         jumlah_dicatat=jumlah_dicatat,
         detail=hasil_detail
     )
