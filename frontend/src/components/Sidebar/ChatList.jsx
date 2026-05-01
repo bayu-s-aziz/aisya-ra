@@ -72,13 +72,21 @@ function ChatList({
     }
   }, [createDraftRoom, refreshRooms])
 
+  const draftRooms = useMemo(() => {
+    return rooms.filter((room) => String(room?.id || '').startsWith('draft-') || room?.isDraft)
+  }, [rooms])
+
+  const realRooms = useMemo(() => {
+    return rooms.filter((room) => !String(room?.id || '').startsWith('draft-') && !room?.isDraft)
+  }, [rooms])
+
   const sortedRooms = useMemo(() => {
-    return [...rooms].sort((first, second) => {
+    return [...realRooms].sort((first, second) => {
       const firstTime = new Date(first?.updated_at || first?.created_at || 0).getTime()
       const secondTime = new Date(second?.updated_at || second?.created_at || 0).getTime()
       return secondTime - firstTime
     })
-  }, [rooms])
+  }, [realRooms])
 
   const filteredRooms = useMemo(() => {
     const normalized = query.trim().toLowerCase()
@@ -211,98 +219,138 @@ function ChatList({
         ) : null}
       </div>
 
-      <div className="px-4 pt-4 pb-2">
-        <p className="text-xs font-bold tracking-wider uppercase text-[#94a3b8]">{listTitle}</p>
-      </div>
-
       <div className="flex-1 overflow-y-auto">
         {createError ? (
           <div className="px-4 py-2 text-xs text-red-600">{createError}</div>
-        ) : null}
-
-        {roomsLoading ? (
-          <div className="px-4 py-3 text-sm text-[#64748b]">Memuat chat...</div>
         ) : null}
 
         {roomsError ? (
           <div className="px-4 py-2 text-sm text-red-600">{roomsError}</div>
         ) : null}
 
-        {isCustomMode
-          ? customItems.map((item) => {
-            const Icon = item.icon
-            const childItems = Array.isArray(item.children) ? item.children : []
-            const activeChild = childItems.find((child) => child.id === activeCustomItemId)
-            const isExpanded = childItems.length > 0
-              ? expandedCustomMenus[item.id] ?? true
-              : false
-            const isActive = activeCustomItemId === item.id || Boolean(activeChild) || isExpanded
+        {isCustomMode ? (
+          <>
+            <div className="px-4 pt-4 pb-2">
+              <p className="text-xs font-bold tracking-wider uppercase text-[#94a3b8]">{listTitle}</p>
+            </div>
+            {customItems.map((item) => {
+              const Icon = item.icon
+              const childItems = Array.isArray(item.children) ? item.children : []
+              const activeChild = childItems.find((child) => child.id === activeCustomItemId)
+              const isExpanded = childItems.length > 0
+                ? expandedCustomMenus[item.id] ?? true
+                : false
+              const isActive = activeCustomItemId === item.id || Boolean(activeChild) || isExpanded
 
-            return (
-              <div key={item.id} className="mx-2 mb-1">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (childItems.length > 0) {
-                      setExpandedCustomMenus((prev) => ({
-                        ...prev,
-                        [item.id]: !(prev[item.id] ?? true),
-                      }))
-                      return
-                    }
+              return (
+                <div key={item.id} className="mx-2 mb-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (childItems.length > 0) {
+                        setExpandedCustomMenus((prev) => ({
+                          ...prev,
+                          [item.id]: !(prev[item.id] ?? true),
+                        }))
+                        return
+                      }
+                      onCustomItemClick?.(item.id)
+                    }}
+                    className={[
+                      'inline-flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm transition-colors',
+                      isActive
+                        ? 'bg-[#e5e7eb] font-semibold text-[#111827]'
+                        : 'font-medium text-[#344054] hover:bg-white',
+                    ].join(' ')}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {item.label}
+                  </button>
 
-                    onCustomItemClick?.(item.id)
-                  }}
-                  className={[
-                    'inline-flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm transition-colors',
-                    isActive
-                      ? 'bg-[#e5e7eb] font-semibold text-[#111827]'
-                      : 'font-medium text-[#344054] hover:bg-white',
-                  ].join(' ')}
-                >
-                  <Icon className="h-4 w-4" />
-                  {item.label}
-                </button>
+                  {childItems.length > 0 && isExpanded ? (
+                    <div className="mt-1 ml-6 space-y-1 border-l border-[#e5e7eb] pl-2">
+                      {childItems.map((child) => {
+                        const isChildActive = child.id === activeCustomItemId
+                        return (
+                          <button
+                            key={child.id}
+                            type="button"
+                            onClick={() => onCustomItemClick?.(child.id)}
+                            className={[
+                              'block w-full rounded-lg px-2 py-1.5 text-left text-sm transition-colors',
+                              isChildActive
+                                ? 'bg-[#eef2f6] font-semibold text-[#111827]'
+                                : 'text-[#475467] hover:bg-white hover:text-[#111827]',
+                            ].join(' ')}
+                          >
+                            {child.label}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  ) : null}
+                </div>
+              )
+            })}
+          </>
+        ) : (
+          <>
+            {/* Draft rooms — aktif saat ini */}
+            {draftRooms.length > 0 ? (
+              <>
+                <div className="px-4 pt-4 pb-1">
+                  <p className="text-[10px] font-bold tracking-wider uppercase text-[#94a3b8]">Chat Aktif</p>
+                </div>
+                {draftRooms.map((room) => (
+                  <ChatListItem
+                    key={room.id}
+                    room={room}
+                    isActive={(selectedRoomId || selectedRoom?.id) === room.id}
+                    onClick={() => handleRoomSelect(room)}
+                    onDelete={() => handleDeleteRoom(room)}
+                    isDeleting={deletingRoomId === room.id}
+                  />
+                ))}
+              </>
+            ) : null}
 
-                {childItems.length > 0 && isExpanded ? (
-                  <div className="mt-1 ml-6 space-y-1 border-l border-[#e5e7eb] pl-2">
-                    {childItems.map((child) => {
-                      const isChildActive = child.id === activeCustomItemId
-                      return (
-                        <button
-                          key={child.id}
-                          type="button"
-                          onClick={() => onCustomItemClick?.(child.id)}
-                          className={[
-                            'block w-full rounded-lg px-2 py-1.5 text-left text-sm transition-colors',
-                            isChildActive
-                              ? 'bg-[#eef2f6] font-semibold text-[#111827]'
-                              : 'text-[#475467] hover:bg-white hover:text-[#111827]',
-                          ].join(' ')}
-                        >
-                          {child.label}
-                        </button>
-                      )
-                    })}
-                  </div>
-                ) : null}
+            {/* Riwayat percakapan nyata */}
+            <div className="px-4 pt-4 pb-1">
+              <p className="text-[10px] font-bold tracking-wider uppercase text-[#94a3b8]">{listTitle}</p>
+            </div>
+
+            {roomsLoading ? (
+              <div className="space-y-1 px-2">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="mx-2 h-12 animate-pulse rounded-xl bg-[#e5e7eb]/60" />
+                ))}
               </div>
-            )
-          })
-          : filteredRooms.map((room) => (
-            <ChatListItem
-              key={room.id}
-              room={room}
-              isActive={(selectedRoomId || selectedRoom?.id) === room.id}
-              onClick={() => handleRoomSelect(room)}
-              onDelete={() => handleDeleteRoom(room)}
-              isDeleting={deletingRoomId === room.id}
-            />
-          ))}
+            ) : null}
 
-        {!isCustomMode && filteredRooms.length === 0 ? (
-          <div className="px-4 py-8 text-center text-sm text-[#64748b]">Tidak ada chat ditemukan</div>
-        ) : null}
+            {!roomsLoading && filteredRooms.length === 0 && query.trim() ? (
+              <div className="px-4 py-6 text-center text-sm text-[#94a3b8]">
+                Tidak ada percakapan ditemukan
+              </div>
+            ) : null}
+
+            {!roomsLoading && filteredRooms.length === 0 && !query.trim() && realRooms.length === 0 ? (
+              <div className="px-4 py-6 text-center text-sm text-[#94a3b8]">
+                Belum ada riwayat percakapan
+              </div>
+            ) : null}
+
+            {filteredRooms.map((room) => (
+              <ChatListItem
+                key={room.id}
+                room={room}
+                isActive={(selectedRoomId || selectedRoom?.id) === room.id}
+                onClick={() => handleRoomSelect(room)}
+                onDelete={() => handleDeleteRoom(room)}
+                isDeleting={deletingRoomId === room.id}
+              />
+            ))}
+          </>
+        )}
       </div>
     </div>
   )

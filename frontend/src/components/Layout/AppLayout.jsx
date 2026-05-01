@@ -12,6 +12,10 @@ import {
   UserIcon,
   BellAlertIcon,
   BuildingLibraryIcon,
+  XMarkIcon,
+  DocumentTextIcon,
+  ArrowDownTrayIcon,
+  ClipboardDocumentIcon,
 } from '@heroicons/react/24/outline'
 import { fetchAuthMeData } from '../../lib/authMe'
 import { useChatStore } from '../../store/chatStore'
@@ -198,6 +202,73 @@ function setFaviconHref(href) {
   iconLink.setAttribute('href', nextHref)
 }
 
+function RightDocumentPanel({ content, onClose }) {
+  if (!content) return null
+
+  const handleCopy = () => {
+    navigator.clipboard?.writeText(content).catch(() => {})
+  }
+
+  return (
+    <aside
+      className="flex w-[340px] max-w-[90vw] flex-none flex-col border-l border-[#e4e7ec] bg-[#f8fafc] transition-all duration-300"
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between border-b border-[#e4e7ec] px-4 py-3">
+        <div className="flex items-center gap-2">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#0f172a]">
+            <DocumentTextIcon className="h-4 w-4 text-white" />
+          </div>
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest text-[#667085]">AISYA Workspace</p>
+            <p className="text-sm font-semibold text-[#111827]">Panel Kanan</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded-lg p-1.5 text-[#94a3b8] transition-colors hover:bg-[#e5e7eb] hover:text-[#374151]"
+          aria-label="Tutup panel"
+        >
+          <XMarkIcon className="h-4 w-4" />
+        </button>
+      </div>
+
+      {/* Document preview */}
+      <div className="flex-1 overflow-y-auto p-4">
+        <div className="rounded-2xl border border-[#e2e8f0] bg-white shadow-sm">
+          <div className="flex items-center gap-2 border-b border-[#f1f5f9] bg-[#f8fafc] px-4 py-3 rounded-t-2xl">
+            <DocumentTextIcon className="h-4 w-4 text-[#3b82f6]" />
+            <p className="text-sm font-semibold text-[#0f172a]">Draf Dokumen</p>
+          </div>
+          <div className="p-4">
+            <div className="min-h-[200px] rounded-xl border border-dashed border-[#d1d5db] bg-[#fafafa] p-4 text-sm leading-relaxed text-[#334155] whitespace-pre-wrap font-serif">
+              {content}
+            </div>
+          </div>
+          <div className="flex items-center justify-end gap-2 border-t border-[#f1f5f9] bg-[#f8fafc] px-4 py-3 rounded-b-2xl">
+            <button
+              type="button"
+              onClick={handleCopy}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-[#e2e8f0] bg-white px-3 py-1.5 text-xs font-semibold text-[#475467] transition-all hover:bg-[#f1f5f9] active:scale-95"
+            >
+              <ClipboardDocumentIcon className="h-3.5 w-3.5" />
+              Salin Teks
+            </button>
+            <button
+              type="button"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-[#0f172a] px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-all hover:bg-[#1e293b] active:scale-95"
+            >
+              <ArrowDownTrayIcon className="h-3.5 w-3.5" />
+              Unduh PDF
+            </button>
+          </div>
+        </div>
+      </div>
+    </aside>
+  )
+}
+
 function AppLayout() {
   const token = localStorage.getItem('aisya_access_token')
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
@@ -205,6 +276,7 @@ function AppLayout() {
   const [currentView, setCurrentView] = useState('chat')
   const [dashboardPanel, setDashboardPanel] = useState('ringkasan')
   const [profileViewMode, setProfileViewMode] = useState('overview')
+  const [rightPanelContent, setRightPanelContent] = useState(null)
 
   const [profile, setProfile] = useState(null)
   const [raProfile, setRaProfile] = useState(null)
@@ -215,6 +287,25 @@ function AppLayout() {
   const switchTimerRef = useRef(null)
 
   const initializeChatContext = useChatStore((state) => state.initializeContext)
+
+  // Subscribe ke incoming messages untuk mendeteksi konten dokumen dari AI
+  const incomingMessages = useChatStore((state) => state.incomingMessages)
+  useEffect(() => {
+    if (!incomingMessages.length) return
+    const lastBot = [...incomingMessages]
+      .reverse()
+      .find((m) => m?.role_msg !== 'user' && m?.content)
+    if (!lastBot?.content) return
+
+    const content = lastBot.content
+    if (content.includes('[[DRAFT]]')) {
+      const excerpt = content.split('[[DRAFT]]')[1]?.trim() || ''
+      if (excerpt) setRightPanelContent(excerpt)
+    } else if (content.includes('[[RPPH_PANEL]]')) {
+      const excerpt = content.split('[[RPPH_PANEL]]')[1]?.trim() || ''
+      if (excerpt) setRightPanelContent(excerpt)
+    }
+  }, [incomingMessages])
 
   const {
     selectedRoomId: contextSelectedRoomId,
@@ -520,6 +611,8 @@ function AppLayout() {
     )
   }
 
+  const showRightPanel = currentView === 'chat' && Boolean(rightPanelContent)
+
   return (
     <div className="flex h-screen w-full overflow-hidden bg-[#f5f5f7] text-[#0f172a]">
       {isSidebarOpen ? (
@@ -650,6 +743,14 @@ function AppLayout() {
           {renderMainContent()}
         </div>
       </main>
+
+      {/* Panel Kanan: preview dokumen dari AI */}
+      {showRightPanel ? (
+        <RightDocumentPanel
+          content={rightPanelContent}
+          onClose={() => setRightPanelContent(null)}
+        />
+      ) : null}
     </div>
   )
 }

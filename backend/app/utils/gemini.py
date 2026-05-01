@@ -24,7 +24,7 @@ def _build_system_prompt() -> str:
     jam_str = now_wib.strftime("%H:%M")
 
     return (
-        "Kamu adalah AISYA, asisten administrasi guru RA.\n"
+        "Kamu adalah AISYA, asisten administrasi guru Raudhatul Athfal Al-Islam.\n"
         f"Waktu saat ini: {tanggal_str}, pukul {jam_str}.\n"
         "Gaya jawaban wajib:\n"
         "- Singkat, to the point, dan bahasa Indonesia sederhana.\n"
@@ -36,12 +36,20 @@ def _build_system_prompt() -> str:
     )
 
 DEFAULT_MODEL_CANDIDATES = [
+    "gemini-3.1-pro",          # State-of-the-art (Paling cerdas & agentic)
+    "gemini-3-flash",
+    "gemini-3.1-flash-lite",     # Kecepatan tinggi, kualitas frontier
+    "gemini-2.5-pro",          # Backup seri 2.5
     "gemini-2.5-flash",
-    "gemini-2.5-pro",
+    "gemini-2.0-pro",          # Backup seri 2.0
     "gemini-2.0-flash",
-    "gemini-2.0-pro",
-    "gemini-1.5-flash",
-    "gemini-1.5-flash-latest",
+    "gemini-3.1-flash-lite",   # Model paling ringan & efisien
+]
+
+DEFAULT_EMBEDDING_MODELS = [
+    "gemini-embedding-2",      # Multimodal embedding (Teks, Gambar, PDF)
+    "text-embedding-004",      # Standar industri untuk teks
+    "models/embedding-001",    # Legacy/Stable fallback
 ]
 
 
@@ -190,14 +198,27 @@ FORMAT OUTPUT WAJIB (HANYA JSON OBJECT):
                 text = (getattr(response, "text", None) or "").strip()
                 if text:
                     import re
-                    text = re.sub(r"^```(?:json)?\s*", "", text, flags=re.IGNORECASE)
-                    text = re.sub(r"\s*```$", "", text)
-                    try:
-                        parsed = json.loads(text)
-                        if isinstance(parsed, dict) and "intent" in parsed and "reply_message" in parsed:
-                            return parsed
-                    except json.JSONDecodeError:
-                        continue
+                    # Temukan blok JSON object di dalam teks
+                    json_match = re.search(r"\{.*\}", text, flags=re.DOTALL)
+                    if json_match:
+                        json_str = json_match.group(0)
+                        try:
+                            parsed = json.loads(json_str)
+                            if isinstance(parsed, dict):
+                                # Normalize keys to lowercase
+                                normalized_parsed = {k.lower(): v for k, v in parsed.items()}
+                                if "intent" in normalized_parsed and "reply_message" in normalized_parsed:
+                                    # Also normalize intent value
+                                    intent_val = str(normalized_parsed["intent"]).strip().lower()
+                                    normalized_parsed["intent"] = intent_val
+                                    
+                                    # Fallback empty parameters if missing
+                                    if "parameters" not in normalized_parsed:
+                                        normalized_parsed["parameters"] = {}
+                                        
+                                    return normalized_parsed
+                        except json.JSONDecodeError:
+                            continue
             except Exception as exc:
                 gemini_error = exc
                 continue
@@ -207,4 +228,32 @@ FORMAT OUTPUT WAJIB (HANYA JSON OBJECT):
         "parameters": {},
         "reply_message": _fallback_response(gemini_error)
     }
+
+def generate_embedding(text: str, model_name: Optional[str] = None) -> list[float]:
+    """Menghasilkan vektor embedding untuk keperluan RAG."""
+    if not settings.GEMINI_API_KEY:
+        raise ValueError("GEMINI_API_KEY belum diset")
+
+    client = genai.Client(api_key=settings.GEMINI_API_KEY)
+    
+    # Gunakan model yang spesifik jika diminta, atau fallback melalui daftar default
+    candidates = [model_name] if model_name else DEFAULT_EMBEDDING_MODELS
+    
+    last_error = None
+    for model in candidates:
+        try:
+            # Note: SDK genai menggunakan client.models.embed_content
+            response = client.models.embed_content(
+                model=model,
+                contents=text,
+            )
+            if hasattr(response, "embeddings") and response.embeddings:
+                return response.embeddings[0].values
+        except Exception as exc:
+            last_error = exc
+            continue
+            
+    if last_error:
+        raise last_error
+    return []
 

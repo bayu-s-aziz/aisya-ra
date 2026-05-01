@@ -189,7 +189,7 @@ function ChatPage() {
       if (bot_message) {
         setMessages((prev) => [...prev, bot_message])
         
-        if (bot_message.intent === 'buat_rpph') {
+        if (bot_message.intent?.trim().toLowerCase() === 'buat_rpph') {
           // Trigger RPPH generation UI based on backend AI's parsed parameters
           await generateRpphFromParams(bot_message.parameters || {})
         }
@@ -343,7 +343,7 @@ function ChatPage() {
       if (bot_message) {
         setMessages((prev) => [...prev, bot_message])
         
-        if (bot_message.intent === 'buat_rpph') {
+        if (bot_message.intent?.trim().toLowerCase() === 'buat_rpph') {
           await generateRpphFromParams(bot_message.parameters || {})
         }
       }
