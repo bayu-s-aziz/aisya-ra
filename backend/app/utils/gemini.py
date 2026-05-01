@@ -36,14 +36,12 @@ def _build_system_prompt() -> str:
     )
 
 DEFAULT_MODEL_CANDIDATES = [
-    "gemini-3.1-pro",          # State-of-the-art (Paling cerdas & agentic)
-    "gemini-3-flash",
-    "gemini-3.1-flash-lite",     # Kecepatan tinggi, kualitas frontier
-    "gemini-2.5-pro",          # Backup seri 2.5
+    "gemini-2.5-pro",          # Sesuai permintaan
     "gemini-2.5-flash",
-    "gemini-2.0-pro",          # Backup seri 2.0
+    "gemini-2.0-pro",
     "gemini-2.0-flash",
-    "gemini-3.1-flash-lite",   # Model paling ringan & efisien
+    "gemini-1.5-pro",
+    "gemini-1.5-flash",
 ]
 
 DEFAULT_EMBEDDING_MODELS = [
@@ -147,23 +145,26 @@ PILIHAN INTENT:
 1. "catat_presensi": Jika user meminta mencatat kehadiran/ketidakhadiran siswa.
    Parameter wajib:
    - "records": array of objects [{{"nama_siswa": "...", "status": "hadir|sakit|izin|alpha", "tanggal": "YYYY-MM-DD", "keterangan": "..."}}]
-2. "buat_rpph": Jika user meminta membuat draft RPPH.
+2. "buat_rpph": Jika user meminta membuat draft RPPH dan SEMUA parameternya sudah jelas.
    Parameter wajib:
-   - "tema": string (atau null)
-   - "subtema": string (atau null)
-   - "kelompok": string (atau null)
-   - "hari": string (atau null)
-3. "buat_surat": Jika user meminta membuat atau menulis surat resmi.
+   - "tema": string
+   - "subtema": string
+   - "kelompok": string
+   - "hari": string (waktu kapan RPPH ini dibuat/dilaksanakan)
+3. "buat_surat": Jika user meminta membuat surat resmi dan SEMUA parameternya sudah jelas.
    Parameter wajib:
-   - "jenis_surat": string (atau null)
-   - "keterangan": string (detail tambahan untuk surat)
-4. "tanya_jawab": Jika user hanya bertanya biasa atau meminta ringkasan data yang ada di Konteks.
+   - "jenis_surat": string
+   - "tanggal_surat": string
+   - "pihak_dituju": string
+   - "keterangan": string
+4. "tanya_jawab": Jika user hanya bertanya biasa, meminta ringkasan data, ATAU jika user meminta buat_rpph/buat_surat TETAPI parameternya belum lengkap.
    Parameter wajib: tidak ada (kosongkan atau {{}})
 
 ATURAN BALASAN (reply_message):
 - Berikan balasan singkat, ramah, dan natural dalam bahasa Indonesia.
-- Jika intent adalah aksi (rpph/presensi/surat), balas bahwa kamu sedang memproses atau telah mencatat hal tersebut sesuai perintah.
-- Jika tanya_jawab, jawab pertanyaannya berdasarkan Konteks yang diberikan. Jangan mengarang data profil.
+- Jika intent "buat_rpph" atau "buat_surat" tapi parameter belum lengkap, ubah intent menjadi "tanya_jawab" dan gunakan reply_message untuk BERTANYA kepada user secara spesifik parameter mana yang kurang (misal: "Untuk kelompok apa RPPH ini dibuat dan untuk kapan?" atau "Kepada siapa surat ini ditujukan dan tanggal berapa?").
+- Jika intent adalah aksi (rpph/presensi/surat) dan SEMUA parameter lengkap, balas bahwa kamu sedang memprosesnya.
+- Jika tanya_jawab murni, jawab berdasarkan Konteks. Jangan mengarang data.
 
 Konteks Sistem saat ini (Daftar Siswa, dll):
 {context or "Tidak ada konteks"}

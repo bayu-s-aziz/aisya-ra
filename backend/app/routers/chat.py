@@ -4001,6 +4001,15 @@ def send_chat_message(
 
     context_text = _build_system_data_context(supabase, current, effective_query)
     
+    try:
+        history_resp = supabase.table("chat_riwayat").select("role_msg, content").eq("room_id", room_id).order("timestamp", desc=True).limit(6).execute()
+        if history_resp.data:
+            history_lines = [f"{msg['role_msg'].upper()}: {msg['content']}" for msg in reversed(history_resp.data)]
+            history_text = "\n".join(history_lines)
+            context_text += f"\n\nRiwayat Percakapan (Penting untuk mengerti konteks pesan user saat ini):\n{history_text}"
+    except Exception:
+        pass
+
     from app.utils.gemini import analyze_chat_intent
     try:
         intent_data = analyze_chat_intent(effective_query, context_text)
@@ -4035,6 +4044,70 @@ def send_chat_message(
                         "created_by": user_id,
                         "updated_at": datetime.now(timezone.utc).isoformat()
                     }, on_conflict="siswa_id,tanggal,tahun_ajaran_id").execute()
+
+    elif intent == "buat_rpph":
+        tema = params.get("tema", "")
+        subtema = params.get("subtema", "")
+        kelompok = params.get("kelompok", "")
+        hari = params.get("hari", "")
+        prompt_rpph = (
+            "Buatkan Rencana Pelaksanaan Pembelajaran Harian (RPPH) resmi berstandar PAUD/RA. Format markdown rapi.\n"
+            f"Tema: {tema}\nSubtema: {subtema}\nKelompok: {kelompok}\nPelaksanaan: {hari}\n"
+            "Wajib memuat komponen berikut:\n"
+            "1. Identitas Lengkap (Nama RA, Semester/Bulan/Minggu, Kelompok/Usia, Tema/Subtema, Hari/Tanggal, Alokasi Waktu)\n"
+            "2. Tujuan Pembelajaran (Kompetensi Dasar / KD dan Indikator)\n"
+            "3. Materi Pembelajaran & Alat/Bahan\n"
+            "4. Langkah Kegiatan (Pembukaan, Inti, Istirahat, Penutup)\n"
+            "5. Rencana Penilaian/Asesmen"
+        )
+        try:
+            draft_text = generate_response(prompt_rpph)
+            ai_response_text += f"\n\n[[DRAFT]]\n{draft_text}"
+        except Exception:
+            pass
+
+    elif intent == "buat_surat":
+        jenis = params.get("jenis_surat", "")
+        keterangan = params.get("keterangan", "")
+        tanggal_surat = params.get("tanggal_surat", "")
+        pihak_dituju = params.get("pihak_dituju", "")
+        
+        now = datetime.now()
+        singkatan = "".join([word[0].upper() for word in jenis.split() if word]) or "SRT"
+        nomor_surat = f"01/{singkatan}/RA.043/{now.month}/{now.year}"
+
+        prompt_surat = (
+            "Buatkan draf surat resmi sekolah RA dengan mematuhi format persis seperti berikut (Gunakan HTML/Markdown):\n\n"
+            "<div align='center'>\n"
+            "<b>YAYASAN AL-ISLAM GUNUNGCUPU</b><br>\n"
+            "<b>RAUDHATUL ATHFAL (RA) AL-ISLAM</b><br>\n"
+            "Dusun Sirnagalih RT. 038 RW. 018 Desa Gunungcupu<br>\n"
+            "Kecamatan Sindangkasih Kabupaten Ciamis 46268\n"
+            "</div>\n\n"
+            "---\n\n"
+            "<div align='center'>\n"
+            f"<b><u>{jenis.upper()}</u></b><br>\n"
+            f"<b>Nomor: {nomor_surat}</b>\n"
+            "</div>\n\n"
+            "Yang bertanda tangan dibawah ini:<br><br>\n"
+            "&nbsp;&nbsp;&nbsp;&nbsp;Nama &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: Lilis Farida, S.Pd.I<br>\n"
+            "&nbsp;&nbsp;&nbsp;&nbsp;NIP &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: 198004132005012003<br>\n"
+            "&nbsp;&nbsp;&nbsp;&nbsp;Jabatan &nbsp;&nbsp;&nbsp;: Kepala RA Al-Islam<br><br>\n"
+            f"Dengan ini memberikan tugas/menyampaikan kepada <b>{pihak_dituju}</b>:<br><br>\n"
+            f"Isi/Tujuan: {keterangan} (kembangkan kalimat resmi yang rapi jika perlu dibuatkan tabel/poin).<br><br>\n"
+            "Demikian surat ini untuk dapat dipergunakan sebagaimana mestinya.<br><br>\n"
+            "<div align='right'>\n"
+            f"Sindangkasih, {tanggal_surat}<br>\n"
+            "Kepala RA Al-Islam<br><br><br><br>\n"
+            "<b><u>LILIS FARIDA, S.Pd.I</u></b><br>\n"
+            "<b>198004132005012003</b>\n"
+            "</div>"
+        )
+        try:
+            draft_text = generate_response(prompt_surat)
+            ai_response_text += f"\n\n[[DRAFT]]\n{draft_text}"
+        except Exception:
+            pass
 
     bot_message = _save_assistant_message(
         supabase,
@@ -4177,6 +4250,15 @@ async def send_voice_message(
 
     context_text = _build_system_data_context(supabase, current, effective_query)
     
+    try:
+        history_resp = supabase.table("chat_riwayat").select("role_msg, content").eq("room_id", room_id).order("timestamp", desc=True).limit(6).execute()
+        if history_resp.data:
+            history_lines = [f"{msg['role_msg'].upper()}: {msg['content']}" for msg in reversed(history_resp.data)]
+            history_text = "\n".join(history_lines)
+            context_text += f"\n\nRiwayat Percakapan (Penting untuk mengerti konteks pesan user saat ini):\n{history_text}"
+    except Exception:
+        pass
+
     from app.utils.gemini import analyze_chat_intent
     try:
         intent_data = analyze_chat_intent(effective_query, context_text)
@@ -4211,6 +4293,70 @@ async def send_voice_message(
                         "created_by": user_id,
                         "updated_at": datetime.now(timezone.utc).isoformat()
                     }, on_conflict="siswa_id,tanggal,tahun_ajaran_id").execute()
+
+    elif intent == "buat_rpph":
+        tema = params.get("tema", "")
+        subtema = params.get("subtema", "")
+        kelompok = params.get("kelompok", "")
+        hari = params.get("hari", "")
+        prompt_rpph = (
+            "Buatkan Rencana Pelaksanaan Pembelajaran Harian (RPPH) resmi berstandar PAUD/RA. Format markdown rapi.\n"
+            f"Tema: {tema}\nSubtema: {subtema}\nKelompok: {kelompok}\nPelaksanaan: {hari}\n"
+            "Wajib memuat komponen berikut:\n"
+            "1. Identitas Lengkap (Nama RA, Semester/Bulan/Minggu, Kelompok/Usia, Tema/Subtema, Hari/Tanggal, Alokasi Waktu)\n"
+            "2. Tujuan Pembelajaran (Kompetensi Dasar / KD dan Indikator)\n"
+            "3. Materi Pembelajaran & Alat/Bahan\n"
+            "4. Langkah Kegiatan (Pembukaan, Inti, Istirahat, Penutup)\n"
+            "5. Rencana Penilaian/Asesmen"
+        )
+        try:
+            draft_text = generate_response(prompt_rpph)
+            ai_response_text += f"\n\n[[DRAFT]]\n{draft_text}"
+        except Exception:
+            pass
+
+    elif intent == "buat_surat":
+        jenis = params.get("jenis_surat", "")
+        keterangan = params.get("keterangan", "")
+        tanggal_surat = params.get("tanggal_surat", "")
+        pihak_dituju = params.get("pihak_dituju", "")
+        
+        now = datetime.now()
+        singkatan = "".join([word[0].upper() for word in jenis.split() if word]) or "SRT"
+        nomor_surat = f"01/{singkatan}/RA.043/{now.month}/{now.year}"
+
+        prompt_surat = (
+            "Buatkan draf surat resmi sekolah RA dengan mematuhi format persis seperti berikut (Gunakan HTML/Markdown):\n\n"
+            "<div align='center'>\n"
+            "<b>YAYASAN AL-ISLAM GUNUNGCUPU</b><br>\n"
+            "<b>RAUDHATUL ATHFAL (RA) AL-ISLAM</b><br>\n"
+            "Dusun Sirnagalih RT. 038 RW. 018 Desa Gunungcupu<br>\n"
+            "Kecamatan Sindangkasih Kabupaten Ciamis 46268\n"
+            "</div>\n\n"
+            "---\n\n"
+            "<div align='center'>\n"
+            f"<b><u>{jenis.upper()}</u></b><br>\n"
+            f"<b>Nomor: {nomor_surat}</b>\n"
+            "</div>\n\n"
+            "Yang bertanda tangan dibawah ini:<br><br>\n"
+            "&nbsp;&nbsp;&nbsp;&nbsp;Nama &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: Lilis Farida, S.Pd.I<br>\n"
+            "&nbsp;&nbsp;&nbsp;&nbsp;NIP &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: 198004132005012003<br>\n"
+            "&nbsp;&nbsp;&nbsp;&nbsp;Jabatan &nbsp;&nbsp;&nbsp;: Kepala RA Al-Islam<br><br>\n"
+            f"Dengan ini memberikan tugas/menyampaikan kepada <b>{pihak_dituju}</b>:<br><br>\n"
+            f"Isi/Tujuan: {keterangan} (kembangkan kalimat resmi yang rapi jika perlu dibuatkan tabel/poin).<br><br>\n"
+            "Demikian surat ini untuk dapat dipergunakan sebagaimana mestinya.<br><br>\n"
+            "<div align='right'>\n"
+            f"Sindangkasih, {tanggal_surat}<br>\n"
+            "Kepala RA Al-Islam<br><br><br><br>\n"
+            "<b><u>LILIS FARIDA, S.Pd.I</u></b><br>\n"
+            "<b>198004132005012003</b>\n"
+            "</div>"
+        )
+        try:
+            draft_text = generate_response(prompt_surat)
+            ai_response_text += f"\n\n[[DRAFT]]\n{draft_text}"
+        except Exception:
+            pass
 
     bot_message = _save_assistant_message(
         supabase,
