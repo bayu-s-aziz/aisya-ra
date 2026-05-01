@@ -4062,6 +4062,12 @@ def send_chat_message(
             "4. Langkah Kegiatan (Pembukaan, Inti, Istirahat, Penutup)\n"
             "5. Rencana Penilaian/Asesmen"
         )
+        # RAG: Ambil pedoman kurikulum jika ada
+        chunks = retrieve_relevant_context(f"Pedoman RPPH {tema} {subtema}", ra_id)
+        if chunks:
+            pedoman_text = "\n".join([f"- {c['content']}" for c in chunks])
+            prompt_rpph += f"\n\nBERIKUT ADALAH PEDOMAN KURIKULUM DARI DOKUMEN SEKOLAH (Wajib Diikuti):\n{pedoman_text}"
+
         try:
             draft_text = generate_response(prompt_rpph)
             ai_response_text += f"\n\n[[DRAFT]]\n{draft_text}"
@@ -4105,11 +4111,29 @@ def send_chat_message(
             "<b>198004132005012003</b>\n"
             "</div>"
         )
+        # RAG: Ambil format surat jika ada
+        chunks = retrieve_relevant_context(f"Format dan Aturan Surat {jenis}", ra_id)
+        if chunks:
+            pedoman_text = "\n".join([f"- {c['content']}" for c in chunks])
+            prompt_surat += f"\n\nBERIKUT ADALAH REFERENSI FORMAT SURAT DARI DOKUMEN SEKOLAH:\n{pedoman_text}"
+
         try:
             draft_text = generate_response(prompt_surat)
             ai_response_text += f"\n\n[[DRAFT]]\n{draft_text}"
         except Exception:
             pass
+
+    if intent == "tanya_jawab":
+        # RAG: Hanya gunakan untuk pertanyaan terkait administrasi/RA agar chat kasual tetap alami
+        keywords = ["ra ", "ra.", "sekolah", "kurikulum", "pedoman", "aturan", "siswa", "guru", "pembelajaran", "materi", "tugas", "surat", "rpph"]
+        if any(kw in effective_query.lower() for kw in keywords):
+            chunks = retrieve_relevant_context(effective_query, ra_id)
+            if chunks:
+                rag_prompt = build_rag_prompt(effective_query, chunks)
+                try:
+                    ai_response_text = generate_response(rag_prompt)
+                except Exception:
+                    pass
 
     bot_message = _save_assistant_message(
         supabase,
@@ -4311,6 +4335,12 @@ async def send_voice_message(
             "4. Langkah Kegiatan (Pembukaan, Inti, Istirahat, Penutup)\n"
             "5. Rencana Penilaian/Asesmen"
         )
+        # RAG: Ambil pedoman kurikulum jika ada
+        chunks = retrieve_relevant_context(f"Pedoman RPPH {tema} {subtema}", ra_id)
+        if chunks:
+            pedoman_text = "\n".join([f"- {c['content']}" for c in chunks])
+            prompt_rpph += f"\n\nBERIKUT ADALAH PEDOMAN KURIKULUM DARI DOKUMEN SEKOLAH (Wajib Diikuti):\n{pedoman_text}"
+
         try:
             draft_text = generate_response(prompt_rpph)
             ai_response_text += f"\n\n[[DRAFT]]\n{draft_text}"
@@ -4354,11 +4384,29 @@ async def send_voice_message(
             "<b>198004132005012003</b>\n"
             "</div>"
         )
+        # RAG: Ambil format surat jika ada
+        chunks = retrieve_relevant_context(f"Format dan Aturan Surat {jenis}", ra_id)
+        if chunks:
+            pedoman_text = "\n".join([f"- {c['content']}" for c in chunks])
+            prompt_surat += f"\n\nBERIKUT ADALAH REFERENSI FORMAT SURAT DARI DOKUMEN SEKOLAH:\n{pedoman_text}"
+
         try:
             draft_text = generate_response(prompt_surat)
             ai_response_text += f"\n\n[[DRAFT]]\n{draft_text}"
         except Exception:
             pass
+
+    if intent == "tanya_jawab":
+        # RAG: Hanya gunakan untuk pertanyaan terkait administrasi/RA
+        keywords = ["ra ", "ra.", "sekolah", "kurikulum", "pedoman", "aturan", "siswa", "guru", "pembelajaran", "materi", "tugas", "surat", "rpph"]
+        if any(kw in transcription.lower() for kw in keywords):
+            chunks = retrieve_relevant_context(transcription, ra_id)
+            if chunks:
+                rag_prompt = build_rag_prompt(transcription, chunks)
+                try:
+                    ai_response_text = generate_response(rag_prompt)
+                except Exception:
+                    pass
 
     bot_message = _save_assistant_message(
         supabase,
