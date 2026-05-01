@@ -3742,10 +3742,12 @@ def list_chat_rooms(current=Depends(get_current_user_profile)):
     last_error = None
     for _ in range(2):
         try:
+            user_id = current["profile"]["id"]
             response = (
                 supabase.table("chat_ruang")
                 .select("id,ra_id,tipe,nama")
                 .eq("ra_id", ra_id)
+                .eq("created_by", user_id)
                 .order("nama")
                 .execute()
             )
